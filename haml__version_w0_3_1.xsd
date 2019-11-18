@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+Invalid XML: <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="urn:HAML.Namespace"
       targetNamespace="urn:HAML.Namespace" elementFormDefault="qualified"
       attributeFormDefault="unqualified">
@@ -8,7 +8,7 @@
             <!-- 
              Description:
              ____________
-             Version: w0.3.1 - The workshop haml.xsd is limited to the essential aspects thatcan directly be extracted from the vendors' export files. Requested options for full version are excluded. See Full version for these aspects
+             Version: w0.3 - The workshop haml.xsd is limited to the essential aspects thatcan directly be extracted from the vendors' export files. Requested options for full version are excluded. See Full version for these aspects
              Root element of the document identifying it as an HAML message. 
              Must contain the version of HAML that the modeled data in this document uses.
              
@@ -94,11 +94,10 @@
                                                   </xs:attribute>
                                                 </xs:complexType>
                                           </xs:element>
-
+                                        </xs:sequence>
                                     <xs:attribute name="sampleID" type="xs:string"/>
                                     <xs:attribute name="patientID" type="xs:string"/>
                                     <xs:attribute name="reporting-centerID" type="xs:string"/>
-
                                     <xs:attribute name="sample-test-datetime">
                                           <xs:simpleType>
                                                 <xs:restriction base="xs:string">
@@ -112,8 +111,7 @@
                         </xs:element>
                   </xs:sequence>
                   <xs:attribute name="version" type="xs:string"/>
-<!-- in workshop version the haml version will be hardcoded. -->
-
+                  <!-- in workshop version the haml version will be hardcoded. -->
             </xs:complexType>
       </xs:element>
 </xs:schema>
