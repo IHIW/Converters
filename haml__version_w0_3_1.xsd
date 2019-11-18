@@ -8,7 +8,7 @@
             <!-- 
              Description:
              ____________
-             Version: w0.3 - The workshop haml.xsd is limited to the essential aspects thatcan directly be extracted from the vendors' export files. Requested options for full version are excluded. See Full version for these aspects
+             Version: w0.3.1 - The workshop haml.xsd is limited to the essential aspects thatcan directly be extracted from the vendors' export files. Requested options for full version are excluded. See Full version for these aspects
              Root element of the document identifying it as an HAML message. 
              Must contain the version of HAML that the modeled data in this document uses.
              
