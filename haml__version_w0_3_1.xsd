@@ -1,5 +1,5 @@
 Invalid XML: <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="urn:HAML.Namespace"
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="urn:HAML.Namespace" 
       targetNamespace="urn:HAML.Namespace" elementFormDefault="qualified"
       attributeFormDefault="unqualified">
       <!-- XML Schema Generated from XML Document on Fri May 31 2019 11:59:48 GMT-0500 (Central Daylight Time) -->
@@ -80,9 +80,11 @@ Invalid XML: <?xml version="1.0" encoding="UTF-8"?>
                                                                -->
                                                   <xs:complexType>
                                                   <xs:attribute name="ID" type="xs:int"/>
-                                                  <xs:attribute name="HLA-allele-specificity"
-                                                  type="xs:string"/>
+                                                  <xs:attribute name="HLA-allele-specificity" type="xs:string"/>
                                                   <xs:attribute name="raw-MFI" type="xs:int"/>
+                                                  </xs:complexType>
+                                                  </xs:element>
+                                                  </xs:sequence>
                                                   <xs:attribute name="kit-manufacturer">
                                                   <xs:simpleType>
                                                   <xs:restriction base="xs:string">
