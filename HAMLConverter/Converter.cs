@@ -26,7 +26,7 @@ public partial class Converter
         }
     }
 
-    public byte[] xmlFile
+    public byte[] XmlFile
     {
         get
         {
@@ -56,17 +56,17 @@ public partial class Converter
             oLReader.SetDelimiters(";");
             string[] currentRow;
             currentRow = oLReader.ReadFields();
-            int PatientID, SampleIDName, RunDate, CatalogID, BeadID, Specificity, RawData, NC2BeadID, PC2BeadID, Rxn;
-            PatientID = -1;
-            SampleIDName = -1;
-            RunDate = -1;
-            CatalogID = -1;
-            BeadID = -1;
-            Specificity = -1;
-            RawData = -1;
-            NC2BeadID = -1;
-            PC2BeadID = -1;
-            Rxn = -1;
+            int patientID, sampleIDName, runDate, catalogID, beadID, specificity, rawData, nC2BeadID, pC2BeadID, rxn;
+            patientID = -1;
+            sampleIDName = -1;
+            runDate = -1;
+            catalogID = -1;
+            beadID = -1;
+            specificity = -1;
+            rawData = -1;
+            nC2BeadID = -1;
+            pC2BeadID = -1;
+            rxn = -1;
             // 
             // Determine where the columns are
             // 
@@ -76,61 +76,61 @@ public partial class Converter
                 {
                     case "PatientID":
                         {
-                            PatientID = i;
+                            patientID = i;
                             break;
                         }
 
                     case "SampleIDName":
                         {
-                            SampleIDName = i;
+                            sampleIDName = i;
                             break;
                         }
 
                     case "RunDate":
                         {
-                            RunDate = i;
+                            runDate = i;
                             break;
                         }
 
                     case "CatalogID":
                         {
-                            CatalogID = i;
+                            catalogID = i;
                             break;
                         }
 
                     case "BeadID":
                         {
-                            BeadID = i;
+                            beadID = i;
                             break;
                         }
 
                     case "Specificity":
                         {
-                            Specificity = i;
+                            specificity = i;
                             break;
                         }
 
                     case "RawData":
                         {
-                            RawData = i;
+                            rawData = i;
                             break;
                         }
 
                     case "NC2BeadID":
                         {
-                            NC2BeadID = i;
+                            nC2BeadID = i;
                             break;
                         }
 
                     case "PC2BeadID":
                         {
-                            PC2BeadID = i;
+                            pC2BeadID = i;
                             break;
                         }
 
                     case "Rxn":
                         {
-                            Rxn = i;
+                            rxn = i;
                             break;
                         }
                 }
@@ -139,21 +139,21 @@ public partial class Converter
             // Immucor mapping
             // 
             stream.Position = 0;
-            var IMReader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
-            IMReader.TextFieldType = FieldType.Delimited;
-            IMReader.SetDelimiters(",");
-            int Sample_ID, Patient_Name, Lot_ID, Run_Date, Allele, Raw_Value, Assignment;
+            var iMReader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
+            iMReader.TextFieldType = FieldType.Delimited;
+            iMReader.SetDelimiters(",");
+            int sample_ID, patient_Name, lot_ID, run_Date, allele, raw_Value, assignment;
 
-            Sample_ID = -1;
-            Patient_Name = -1;
-            Lot_ID = -1;
-            Run_Date = -1;
-            Allele = -1;
-            Raw_Value = -1;
-            Assignment = -1;
+            sample_ID = -1;
+            patient_Name = -1;
+            lot_ID = -1;
+            run_Date = -1;
+            allele = -1;
+            raw_Value = -1;
+            assignment = -1;
             try
             {
-                currentRow = IMReader.ReadFields();
+                currentRow = iMReader.ReadFields();
             }
             catch (Exception ex)
             {
@@ -170,56 +170,56 @@ public partial class Converter
                     {
                         case "Sample ID":
                             {
-                                Sample_ID = i;
+                                sample_ID = i;
                                 break;
                             }
 
                         case "Patient Name":
                             {
-                                Patient_Name = i;
+                                patient_Name = i;
                                 break;
                             }
 
                         case "Lot ID":
                             {
-                                Lot_ID = i;
+                                lot_ID = i;
                                 break;
                             }
 
                         case "Run Date":
                             {
-                                Run_Date = i;
+                                run_Date = i;
                                 break;
                             }
 
                         case "Allele":
                             {
-                                Allele = i;
+                                allele = i;
                                 break;
                             }
 
                         case "Raw Value":
                             {
-                                Raw_Value = i;
+                                raw_Value = i;
                                 break;
                             }
 
                         case "Assignment"                            // Uitkomst: Positive, Negative of weak
                  :
                             {
-                                Assignment = i;
+                                assignment = i;
                                 break;
                             }
                     }
                 }
 
-                IMReader.Close();
-                OLReader.Close();
+                iMReader.Close();
+                oLReader.Close();
 
-                if (PatientID > -1 & SampleIDName > -1 & RunDate > -1 & CatalogID > -1 & BeadID > -1 & Specificity > -1 & RawData > -1 & NC2BeadID > -1 & PC2BeadID > -1 & Rxn > -1)
-                    _Manufacturer = "OneLambda"; // HLA Fusion, One Lambda, Sanbio
-                else if (Sample_ID > -1 & Patient_Name > -1 & Lot_ID > -1 & Run_Date > -1 & Allele > -1 & Raw_Value > -1 & Assignment > -1)
-                    _Manufacturer = "Immucor";   // MatchIt, Lifecodes
+                if (patientID > -1 & sampleIDName > -1 & runDate > -1 & catalogID > -1 & beadID > -1 & specificity > -1 & rawData > -1 & nC2BeadID > -1 & pC2BeadID > -1 & rxn > -1)
+                    _manufacturer = "OneLambda"; // HLA Fusion, One Lambda, Sanbio
+                else if (sample_ID > -1 & patient_Name > -1 & lot_ID > -1 & run_Date > -1 & allele > -1 & raw_Value > -1 & assignment > -1)
+                    _manufacturer = "Immucor";   // MatchIt, Lifecodes
             }
         }
         catch (Exception ex)
@@ -227,18 +227,18 @@ public partial class Converter
         }
     }
 
-    public void ProcessOneLambda(string Center)
+    public void ProcessOneLambda(string center)
     {
-        string SampleID;
+        string sampleID;
 
-        var stream = new MemoryStream(_File);
-        var Reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
-        Reader.TextFieldType = FieldType.Delimited;
-        Reader.SetDelimiters(";");
+        var stream = new MemoryStream(_file);
+        var reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
+        reader.TextFieldType = FieldType.Delimited;
+        reader.SetDelimiters(";");
         string[] currentRow;
-        currentRow = Reader.ReadFields();
-        int PatientID = default(int), SampleIDName = default(int), RunDate = default(int), CatalogID = default(int), BeadID = default(int), Specificity = default(int), RawData = default(int), NC2BeadID = default(int), PC2BeadID = default(int), Rxn = default(int);
-        int NegMFI = default(int), PosMFI = default(int);
+        currentRow = reader.ReadFields();
+        int patientID = default(int), sampleIDName = default(int), runDate = default(int), catalogID = default(int), beadID = default(int), specificity = default(int), rawData = default(int), nC2BeadID = default(int), pC2BeadID = default(int), rxn = default(int);
+        int negMFI = default(int), posMFI = default(int);
         // 
         // Determine where the columns are
         // 
@@ -248,118 +248,118 @@ public partial class Converter
             {
                 case "PatientID":
                     {
-                        PatientID = i;
+                        patientID = i;
                         break;
                     }
 
                 case "SampleIDName":
                     {
-                        SampleIDName = i;
+                        sampleIDName = i;
                         break;
                     }
 
                 case "RunDate":
                     {
-                        RunDate = i;
+                        runDate = i;
                         break;
                     }
 
                 case "CatalogID":
                     {
-                        CatalogID = i;
+                        catalogID = i;
                         break;
                     }
 
                 case "BeadID":
                     {
-                        BeadID = i;
+                        beadID = i;
                         break;
                     }
 
                 case "Specificity":
                     {
-                        Specificity = i;
+                        specificity = i;
                         break;
                     }
 
                 case "RawData":
                     {
-                        RawData = i;
+                        rawData = i;
                         break;
                     }
 
                 case "NC2BeadID":
                     {
-                        NC2BeadID = i;
+                        nC2BeadID = i;
                         break;
                     }
 
                 case "PC2BeadID":
                     {
-                        PC2BeadID = i;
+                        pC2BeadID = i;
                         break;
                     }
 
                 case "Rxn":
                     {
-                        Rxn = i;
+                        rxn = i;
                         break;
                     }
             }
         }
 
-        currentRow = Reader.ReadFields();
-        SampleID = currentRow[SampleIDName];
+        currentRow = reader.ReadFields();
+        sampleID = currentRow[sampleIDName];
 
         var xmlStream = new MemoryStream();
         using (var xmlBuilder = XmlWriter.Create(xmlStream))
         {
             xmlBuilder.WriteStartDocument();
             xmlBuilder.WriteStartElement("haml");
-            while (!Reader.EndOfData)
+            while (!reader.EndOfData)
             {
                 xmlBuilder.WriteStartElement("patient-antibody-assessment");
-                xmlBuilder.WriteElementString("sampleID", SampleID);
-                xmlBuilder.WriteElementString("patientID", currentRow[PatientID]);
-                xmlBuilder.WriteElementString("reporting-centerID", Center);
-                xmlBuilder.WriteElementString("sample-test-datetime", currentRow[RunDate]);
+                xmlBuilder.WriteElementString("sampleID", sampleID);
+                xmlBuilder.WriteElementString("patientID", currentRow[patientID]);
+                xmlBuilder.WriteElementString("reporting-centerID", center);
+                xmlBuilder.WriteElementString("sample-test-datetime", currentRow[runDate]);
 
                 xmlBuilder.WriteStartElement("solid-phase-panel");
-                xmlBuilder.WriteElementString("kit-manufacturer", _Manufacturer);
-                xmlBuilder.WriteElementString("lot", currentRow[CatalogID]);
+                xmlBuilder.WriteElementString("kit-manufacturer", _manufacturer);
+                xmlBuilder.WriteElementString("lot", currentRow[catalogID]);
 
-                while (!Reader.EndOfData && (SampleID ?? "") == (currentRow[SampleIDName] ?? ""))
+                while (!reader.EndOfData && (sampleID ?? "") == (currentRow[sampleIDName] ?? ""))
                 {
-                    var Specs = currentRow[Specificity].Split(",");
-                    int Raw = Conversions.ToInteger(currentRow[RawData]);
-                    if ((currentRow[BeadID] ?? "") == (currentRow[NC2BeadID] ?? ""))
-                        NegMFI = Raw;
-                    if ((currentRow[BeadID] ?? "") == (currentRow[PC2BeadID] ?? ""))
-                        PosMFI = Raw;
-                    foreach (string SingleSpec in Specs)
+                    var specs = currentRow[specificity].Split(",");
+                    int raw = Conversions.ToInteger(currentRow[rawData]);
+                    if ((currentRow[beadID] ?? "") == (currentRow[nC2BeadID] ?? ""))
+                        negMFI = raw;
+                    if ((currentRow[beadID] ?? "") == (currentRow[pC2BeadID] ?? ""))
+                        posMFI = raw;
+                    foreach (string singleSpec in specs)
                     {
-                        if ((SingleSpec ?? "") != "-")
+                        if ((singleSpec ?? "") != "-")
                         {
                             xmlBuilder.WriteStartElement("bead");
-                            xmlBuilder.WriteElementString("HLA-allele-specificity", SingleSpec);
-                            xmlBuilder.WriteElementString("raw-MFI", Conversions.ToString(Raw));
-                            xmlBuilder.WriteElementString("Ranking", currentRow[Rxn]);
+                            xmlBuilder.WriteElementString("HLA-allele-specificity", singleSpec);
+                            xmlBuilder.WriteElementString("raw-MFI", Conversions.ToString(raw));
+                            xmlBuilder.WriteElementString("Ranking", currentRow[rxn]);
                             xmlBuilder.WriteEndElement(); // Bead
                         }
                     }
 
-                    currentRow = Reader.ReadFields();
+                    currentRow = reader.ReadFields();
                 }
 
                 xmlBuilder.WriteEndElement(); // solid-phase-panel
 
-                xmlBuilder.WriteElementString("negative-control-MFI", Conversions.ToString(NegMFI));
-                xmlBuilder.WriteElementString("positive-control-MFI", Conversions.ToString(PosMFI));
+                xmlBuilder.WriteElementString("negative-control-MFI", Conversions.ToString(negMFI));
+                xmlBuilder.WriteElementString("positive-control-MFI", Conversions.ToString(posMFI));
 
                 xmlBuilder.WriteEndElement(); // patient-antibody-assessment
 
-                if (!Reader.EndOfData)
-                    SampleID = currentRow[SampleIDName];// Next sample
+                if (!reader.EndOfData)
+                    sampleID = currentRow[sampleIDName];// Next sample
             }
 
             xmlBuilder.WriteEndElement(); // haml
@@ -372,18 +372,18 @@ public partial class Converter
     }
 
 
-    public void ProcessImmucor(string Center)
+    public void ProcessImmucor(string center)
     {
-        string SampleID;
+        string sampleID;
 
-        var stream = new MemoryStream(_File);
-        var Reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
-        Reader.TextFieldType = FieldType.Delimited;
-        Reader.SetDelimiters(",");
+        var stream = new MemoryStream(_file);
+        var reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
+        reader.TextFieldType = FieldType.Delimited;
+        reader.SetDelimiters(",");
         string[] currentRow;
-        currentRow = Reader.ReadFields();
-        int Sample_ID = default(int), Patient_Name = default(int), Lot_ID = default(int), Run_Date = default(int), Allele = default(int), Raw_Value = default(int), Assignment = default(int);
-        int NegMFI = default(int), PosMFI = default(int);
+        currentRow = reader.ReadFields();
+        int sample_ID = default(int), patient_Name = default(int), lot_ID = default(int), run_Date = default(int), allele = default(int), raw_Value = default(int), assignment = default(int);
+        int negMFI = default(int), posMFI = default(int);
         // 
         // Determine where the columns are
         // 
@@ -393,122 +393,122 @@ public partial class Converter
             {
                 case "Sample ID":
                     {
-                        Sample_ID = i;
+                        sample_ID = i;
                         break;
                     }
 
                 case "Patient Name"                         // Temporay, waiting for a proper patient ID
          :
                     {
-                        Patient_Name = i;
+                        patient_Name = i;
                         break;
                     }
 
                 case "Lot ID":
                     {
-                        Lot_ID = i;
+                        lot_ID = i;
                         break;
                     }
 
                 case "Run Date":
                     {
-                        Run_Date = i;
+                        run_Date = i;
                         break;
                     }
 
                 case "Allele":
                     {
-                        Allele = i;
+                        allele = i;
                         break;
                     }
 
                 case "Raw Value":
                     {
-                        Raw_Value = i;
+                        raw_Value = i;
                         break;
                     }
 
                 case "Assignment"                           // Positive, Negative of weak
          :
                     {
-                        Assignment = i;
+                        assignment = i;
                         break;
                     }
             }
         }
 
-        currentRow = Reader.ReadFields();
-        SampleID = currentRow[Sample_ID];
+        currentRow = reader.ReadFields();
+        sampleID = currentRow[sample_ID];
 
         var xmlStream = new MemoryStream();
         using (var xmlBuilder = XmlWriter.Create(xmlStream))
         {
             xmlBuilder.WriteStartDocument();
             xmlBuilder.WriteStartElement("haml");
-            while (!Reader.EndOfData)
+            while (!reader.EndOfData)
             {
                 xmlBuilder.WriteStartElement("patient-antibody-assessment");
-                xmlBuilder.WriteElementString("sampleID", SampleID);
-                xmlBuilder.WriteElementString("patientID", currentRow[Patient_Name]);
-                xmlBuilder.WriteElementString("reporting-centerID", Center);
-                xmlBuilder.WriteElementString("sample-test-datetime", currentRow[Run_Date]);
+                xmlBuilder.WriteElementString("sampleID", sampleID);
+                xmlBuilder.WriteElementString("patientID", currentRow[patient_Name]);
+                xmlBuilder.WriteElementString("reporting-centerID", center);
+                xmlBuilder.WriteElementString("sample-test-datetime", currentRow[run_Date]);
 
                 xmlBuilder.WriteStartElement("solid-phase-panel");
-                xmlBuilder.WriteElementString("kit-manufacturer", _Manufacturer);
-                xmlBuilder.WriteElementString("lot", currentRow[Lot_ID]);
+                xmlBuilder.WriteElementString("kit-manufacturer", _manufacturer);
+                xmlBuilder.WriteElementString("lot", currentRow[lot_ID]);
 
-                while (!Reader.EndOfData && (SampleID ?? "") == (currentRow[Sample_ID] ?? ""))
+                while (!reader.EndOfData && (sampleID ?? "") == (currentRow[sample_ID] ?? ""))
                 {
                     xmlBuilder.WriteStartElement("bead");
-                    xmlBuilder.WriteElementString("HLA-allele-specificity", currentRow[Allele]);
-                    xmlBuilder.WriteElementString("raw-MFI", currentRow[Raw_Value]);
-                    int Ranking;
-                    switch (currentRow[Assignment])
+                    xmlBuilder.WriteElementString("HLA-allele-specificity", currentRow[allele]);
+                    xmlBuilder.WriteElementString("raw-MFI", currentRow[raw_Value]);
+                    int ranking;
+                    switch (currentRow[assignment])
                     {
                         case "Positive":
                             {
-                                Ranking = 8;
+                                ranking = 8;
                                 break;
                             }
 
                         case "Weak":
                             {
-                                Ranking = 6;
+                                ranking = 6;
                                 break;
                             }
 
                         case "Negative":
                             {
-                                Ranking = 2;
+                                ranking = 2;
                                 break;
                             }
 
                         default:
                             {
-                                Ranking = 2;
+                                ranking = 2;
                                 break;
                             }
                     }
-                    xmlBuilder.WriteElementString("Ranking", Conversions.ToString(Ranking));
+                    xmlBuilder.WriteElementString("Ranking", Conversions.ToString(ranking));
                     // Temporary solution for missing Pos/Neg:
-                    if (Conversions.ToDouble(currentRow[Raw_Value]) < NegMFI)
-                        NegMFI = Conversions.ToInteger(currentRow[Raw_Value]);
-                    if (Conversions.ToDouble(currentRow[Raw_Value]) > PosMFI)
-                        PosMFI = Conversions.ToInteger(currentRow[Raw_Value]);
+                    if (Conversions.ToDouble(currentRow[raw_Value]) < negMFI)
+                        negMFI = Conversions.ToInteger(currentRow[raw_Value]);
+                    if (Conversions.ToDouble(currentRow[raw_Value]) > posMFI)
+                        posMFI = Conversions.ToInteger(currentRow[raw_Value]);
                     xmlBuilder.WriteEndElement(); // Bead
 
-                    currentRow = Reader.ReadFields();
+                    currentRow = reader.ReadFields();
                 }
 
                 xmlBuilder.WriteEndElement(); // solid-phase-panel
                 // Temporary solution for missing Pos/Neg:
-                xmlBuilder.WriteElementString("negative-control-MFI", Conversions.ToString(NegMFI));
-                xmlBuilder.WriteElementString("positive-control-MFI", Conversions.ToString(PosMFI));
+                xmlBuilder.WriteElementString("negative-control-MFI", Conversions.ToString(negMFI));
+                xmlBuilder.WriteElementString("positive-control-MFI", Conversions.ToString(posMFI));
 
                 xmlBuilder.WriteEndElement(); // patient-antibody-assessment
 
-                if (!Reader.EndOfData)
-                    SampleID = currentRow[Sample_ID];// Next sample
+                if (!reader.EndOfData)
+                    sampleID = currentRow[sample_ID];// Next sample
             }
 
             xmlBuilder.WriteEndElement(); // haml
