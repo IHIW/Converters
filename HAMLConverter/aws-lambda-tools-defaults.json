@@ -9,13 +9,14 @@
     "profile"     : "IHIW",
     "region"      : "eu-central-1",
     "configuration" : "Release",
-    "framework"     : "netcoreapp2.1",
-    "function-runtime" : "dotnetcore2.1",
+    "framework"     : "netcoreapp3.0",
+    "function-runtime" : "provided",
     "function-memory-size" : 256,
     "function-timeout"     : 30,
-    "function-handler"     : "HAMLConverter::HAMLConverter.Function::FunctionHandler",
+    "function-handler"     : "not_required_for_custom_runtime",
     "function-name"        : "convertCSVToHAML",
     "function-role"        : "arn:aws:iam::342906018517:role/ihiw.management.lambda.staging",
     "tracing-mode"         : "PassThrough",
+    "msbuild-parameters"   : "--self-contained true",
     "environment-variables" : ""
 }

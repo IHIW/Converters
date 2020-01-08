@@ -2,6 +2,7 @@
 using System.IO;
 using System.Xml;
 using Microsoft.VisualBasic.CompilerServices;
+using Microsoft.VisualBasic.FileIO;
 
 public partial class Converter
 {
