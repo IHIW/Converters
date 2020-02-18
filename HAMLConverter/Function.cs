@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.Lambda.Core;
@@ -9,6 +10,7 @@ using Amazon.Lambda.RuntimeSupport;
 using Amazon.Lambda.S3Events;
 using Amazon.Lambda.Serialization.Json;
 using Amazon.S3;
+using Amazon.S3.Model;
 using Amazon.S3.Util;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
@@ -28,7 +30,7 @@ namespace HAMLConverter
         {
             s3Client = new AmazonS3Client();
 
-            Func< S3Event, ILambdaContext, Task<string>> func = FunctionHandler;
+            Func<S3Event, ILambdaContext, Task<string>> func = FunctionHandler;
             using (var handlerWrapper = HandlerWrapper.GetHandlerWrapper(func, new JsonSerializer()))
             using (var bootstrap = new LambdaBootstrap(handlerWrapper))
             {
@@ -60,8 +62,27 @@ namespace HAMLConverter
                 StreamReader reader = new StreamReader(response.ResponseStream);
 
                 String content = reader.ReadToEnd();
+                var converter = new Converter(Encoding.ASCII.GetBytes(content));
+                converter.DetermineManufacturer();
 
-                context.Logger.LogLine(content);
+                if (converter.Manufacturer == "OneLambda")
+                {
+                    converter.ProcessOneLambda("asdf");
+                }
+                else if (converter.Manufacturer == "Immucor")
+                {
+                    converter.ProcessImmucor("asdf");
+                }
+
+                context.Logger.LogLine(Encoding.UTF8.GetString(converter.XmlFile));
+
+                var putRequest = new PutObjectRequest
+                {
+                    BucketName = s3Event.Bucket.Name,
+                    Key = s3Event.Object.Key + ".haml",
+                    ContentBody = Encoding.UTF8.GetString(converter.XmlFile)
+                };
+                _ = s3Client.PutObjectAsync(putRequest);
                 return response.Headers.ContentType;
             }
             catch (Exception e)
@@ -72,6 +93,6 @@ namespace HAMLConverter
                 throw;
             }
         }
-        
+
     }
 }
