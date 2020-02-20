@@ -14,9 +14,10 @@
     "function-memory-size" : 256,
     "function-timeout"     : 30,
     "function-handler"     : "not_required_for_custom_runtime",
-    "function-name"        : "convertCSVToHAML",
-    "function-role"        : "arn:aws:iam::342906018517:role/ihiw.management.lambda.staging",
+    "function-name"        : "convertCSVToHAMLProd",
+    "function-role"        : "arn:aws:iam::342906018517:role/ihiw.management.lambda.prod",
     "tracing-mode"         : "PassThrough",
     "msbuild-parameters"   : "--self-contained true",
-    "environment-variables" : ""
+    "environment-variables" : "",
+    "function-description"  : ""
 }

@@ -73,7 +73,8 @@ public partial class Converter
             // 
             for (int i = 0, loopTo = currentRow.Length - 1; i <= loopTo; i++)
             {
-                switch (currentRow[i])
+                var switchExpr = currentRow[i];
+                switch (switchExpr)
                 {
                     case "PatientID":
                         {
@@ -144,7 +145,6 @@ public partial class Converter
             IMReader.TextFieldType = FieldType.Delimited;
             IMReader.SetDelimiters(",");
             int Sample_ID, Patient_Name, Lot_ID, Run_Date, Allele, Raw_Value, Assignment;
-
             Sample_ID = -1;
             Patient_Name = -1;
             Lot_ID = -1;
@@ -167,7 +167,8 @@ public partial class Converter
                 // 
                 for (int i = 0, loopTo = currentRow.Length - 1; i <= loopTo; i++)
                 {
-                    switch (currentRow[i])
+                    var switchExpr = currentRow[i];
+                    switch (switchExpr)
                     {
                         case "Sample ID":
                             {
@@ -205,8 +206,7 @@ public partial class Converter
                                 break;
                             }
 
-                        case "Assignment"                            // Uitkomst: Positive, Negative of weak
-                 :
+                        case "Assignment":                            // Uitkomst: Positive, Negative of weak
                             {
                                 Assignment = i;
                                 break;
@@ -216,11 +216,14 @@ public partial class Converter
 
                 IMReader.Close();
                 OLReader.Close();
-
                 if (PatientID > -1 & SampleIDName > -1 & RunDate > -1 & CatalogID > -1 & BeadID > -1 & Specificity > -1 & RawData > -1 & NC2BeadID > -1 & PC2BeadID > -1 & Rxn > -1)
+                {
                     _manufacturer = "OneLambda"; // HLA Fusion, One Lambda, Sanbio
+                }
                 else if (Sample_ID > -1 & Patient_Name > -1 & Lot_ID > -1 & Run_Date > -1 & Allele > -1 & Raw_Value > -1 & Assignment > -1)
+                {
                     _manufacturer = "Immucor";   // MatchIt, Lifecodes
+                }
             }
         }
         catch (Exception ex)
@@ -231,7 +234,6 @@ public partial class Converter
     public void ProcessOneLambda(string Center)
     {
         string SampleID;
-
         var stream = new MemoryStream(_file);
         var Reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
         Reader.TextFieldType = FieldType.Delimited;
@@ -245,7 +247,8 @@ public partial class Converter
         // 
         for (int i = 0, loopTo = currentRow.Length - 1; i <= loopTo; i++)
         {
-            switch (currentRow[i])
+            var switchExpr = currentRow[i];
+            switch (switchExpr)
             {
                 case "PatientID":
                     {
@@ -311,7 +314,6 @@ public partial class Converter
 
         currentRow = Reader.ReadFields();
         SampleID = currentRow[SampleIDName];
-
         var xmlStream = new MemoryStream();
         using (var XmlBuilder = new XmlTextWriter(xmlStream, null))
         {
@@ -329,18 +331,16 @@ public partial class Converter
                 XmlBuilder.WriteAttributeString("patientID", currentRow[PatientID]);
                 XmlBuilder.WriteAttributeString("reporting-centerID", Center);
 
-                DateTime RundateAsDate = Conversions.ToDate(currentRow[RunDate]);
-                XmlBuilder.WriteAttributeString("sample-test-date", RundateAsDate.ToString("yyyy/MM/dd"));
-
+                // Dim RundateAsDate As Date = DateTime.SpecifyKind(currentRow(RunDate), DateTimeKind.Utc)
+                // XmlBuilder.WriteAttributeString("sample-test-date", RundateAsDate.ToString("yyyy/MM/dd"))
+                XmlBuilder.WriteAttributeString("sample-test-date", currentRow[RunDate]);
                 int Positive = GetBeadValue(_file, Conversions.ToInteger(currentRow[PC2BeadID]), BeadID, SampleIDName, SampleID, RawData);
                 int Negative = GetBeadValue(_file, Conversions.ToInteger(currentRow[NC2BeadID]), BeadID, SampleIDName, SampleID, RawData);
                 XmlBuilder.WriteAttributeString("negative-control-MFI", Conversions.ToString(Negative));
                 XmlBuilder.WriteAttributeString("positive-control-MFI", Conversions.ToString(Positive));
-
                 XmlBuilder.WriteStartElement("solid-phase-panel");
                 XmlBuilder.WriteAttributeString("kit-manufacturer", _manufacturer);
                 XmlBuilder.WriteAttributeString("lot", currentRow[CatalogID]);
-
                 while (!Reader.EndOfData && (SampleID ?? "") == (currentRow[SampleIDName] ?? ""))
                 {
                     var Specs = currentRow[Specificity].Split(",");
@@ -368,9 +368,10 @@ public partial class Converter
 
                 XmlBuilder.WriteEndElement(); // solid-phase-panel
                 XmlBuilder.WriteEndElement(); // patient-antibody-assessment
-
                 if (!Reader.EndOfData)
-                    SampleID = currentRow[SampleIDName];// Next sample
+                {
+                    SampleID = currentRow[SampleIDName]; // Next sample
+                }
             }
 
             XmlBuilder.WriteEndElement(); // haml
@@ -382,11 +383,9 @@ public partial class Converter
         _xmlFile = xmlStream.ToArray();
     }
 
-
     public void ProcessImmucor(string Center)
     {
         string SampleID;
-
         var stream = new MemoryStream(_file);
         var Reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
         Reader.TextFieldType = FieldType.Delimited;
@@ -400,7 +399,8 @@ public partial class Converter
         // 
         for (int i = 0, loopTo = currentRow.Length - 1; i <= loopTo; i++)
         {
-            switch (currentRow[i])
+            var switchExpr = currentRow[i];
+            switch (switchExpr)
             {
                 case "Sample ID":
                     {
@@ -408,8 +408,7 @@ public partial class Converter
                         break;
                     }
 
-                case "Patient Name"                         // Temporay, waiting for a proper patient ID
-         :
+                case "Patient Name":                         // Temporay, waiting for a proper patient ID
                     {
                         Patient_Name = i;
                         break;
@@ -439,8 +438,7 @@ public partial class Converter
                         break;
                     }
 
-                case "Assignment"                           // Positive, Negative of weak
-         :
+                case "Assignment":                           // Positive, Negative of weak
                     {
                         Assignment = i;
                         break;
@@ -450,7 +448,6 @@ public partial class Converter
 
         currentRow = Reader.ReadFields();
         SampleID = currentRow[Sample_ID];
-
         var xmlStream = new MemoryStream();
         using (var XmlBuilder = new XmlTextWriter(xmlStream, null))
         {
@@ -467,20 +464,20 @@ public partial class Converter
                 XmlBuilder.WriteAttributeString("sampleID", SampleID);
                 XmlBuilder.WriteAttributeString("patientID", currentRow[Patient_Name]);
                 XmlBuilder.WriteAttributeString("reporting-centerID", Center);
-                DateTime RundateAsDate = Conversions.ToDate(currentRow[Run_Date]);
-                XmlBuilder.WriteAttributeString("sample-test-date", RundateAsDate.ToString("yyyy/MM/dd"));
-
+                // Dim RundateAsDate As Date = DateTime.SpecifyKind(currentRow(Run_Date), DateTimeKind.Utc)
+                // XmlBuilder.WriteAttributeString("sample-test-date", RundateAsDate.ToString("yyyy/MM/dd"))
+                XmlBuilder.WriteAttributeString("sample-test-date", currentRow[Run_Date]);
                 XmlBuilder.WriteStartElement("solid-phase-panel");
                 XmlBuilder.WriteAttributeString("kit-manufacturer", _manufacturer);
                 XmlBuilder.WriteAttributeString("lot", currentRow[Lot_ID]);
-
                 while (!Reader.EndOfData && (SampleID ?? "") == (currentRow[Sample_ID] ?? ""))
                 {
                     XmlBuilder.WriteStartElement("bead");
                     XmlBuilder.WriteAttributeString("HLA-allele-specificity", currentRow[Allele]);
                     XmlBuilder.WriteAttributeString("raw-MFI", currentRow[Raw_Value]);
                     int Ranking;
-                    switch (currentRow[Assignment])
+                    var switchExpr1 = currentRow[Assignment];
+                    switch (switchExpr1)
                     {
                         case "Positive":
                             {
@@ -506,18 +503,18 @@ public partial class Converter
                                 break;
                             }
                     }
+
                     XmlBuilder.WriteAttributeString("Ranking", Conversions.ToString(Ranking));
                     XmlBuilder.WriteEndElement(); // Bead
-
                     currentRow = Reader.ReadFields();
                 }
 
                 XmlBuilder.WriteEndElement(); // solid-phase-panel
-
                 XmlBuilder.WriteEndElement(); // patient-antibody-assessment
-
                 if (!Reader.EndOfData)
-                    SampleID = currentRow[Sample_ID];// Next sample
+                {
+                    SampleID = currentRow[Sample_ID]; // Next sample
+                }
             }
 
             XmlBuilder.WriteEndElement(); // haml
@@ -532,7 +529,6 @@ public partial class Converter
     private int GetBeadValue(byte[] Bestand, int SearchBeadID, int idxBeadID, int idxSampleIDName, string SampleID, int idxRawData)
     {
         var BeadValue = default(int);
-
         var stream = new MemoryStream(_file);
         var Reader = new Microsoft.VisualBasic.FileIO.TextFieldParser(stream);
         Reader.TextFieldType = FieldType.Delimited;
@@ -543,7 +539,10 @@ public partial class Converter
         while (!Reader.EndOfData)
         {
             if (Conversions.ToDouble(currentRow[idxBeadID]) == SearchBeadID && (currentRow[idxSampleIDName] ?? "") == (SampleID ?? ""))
+            {
                 BeadValue = Conversions.ToInteger(currentRow[idxRawData]);
+            }
+
             currentRow = Reader.ReadFields();
         }
 
