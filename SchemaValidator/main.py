@@ -1,5 +1,5 @@
 from sys import exc_info
-from SchemaValidation import validateAgainstSchema, setValidationStatus, getCredentials, getUploadID
+from SchemaValidation import validateAgainstSchema, setValidationStatus, getCredentials
 
 # Test methods for running the lambda function.
 
@@ -30,9 +30,9 @@ def testValidation():
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
 def testSetValidationResults():
-    uploadFileName = '1497_1586531990222_HML_benstesthml.xml'
-    isValid = False
-    validationFeedback = 'Validation Feedback, just because it is all wrong.'
+    uploadFileName = '1497_1586945927165_HML_benstesthml.xml'
+    isValid = True
+    validationFeedback = 'It is actually valid!'
     validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback)
     #print('ValidationResult=' + str(validationResult))
 
@@ -41,15 +41,8 @@ def testSetValidationResults():
     else:
         print('FAILED to set validation status!')
 
-def testFindUploadID():
-    uploadFileName='1497_1586531990222_HML_benstesthml.xml'
-    uploadID=getUploadID(uploadFileName=uploadFileName)
-    print('I found ID ' + str(uploadID) + ' for upload filename ' + str(uploadFileName))
-
-
 if __name__=='__main__':
     try:
-        testFindUploadID()
         testValidation()
         testSetValidationResults()
 

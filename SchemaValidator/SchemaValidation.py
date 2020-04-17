@@ -63,8 +63,7 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
     if(token is None):
         token = getToken(url=url)
 
-    uploadID = getUploadID(url=url, uploadFileName=uploadFileName, token=token)
-    validationSuccess=updateValidationStatus(uploadID=uploadID, isValid=isValid, validationFeedback=validationFeedback, url=url, token=token)
+    validationSuccess = updateValidationStatus(fileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, url=url, token=token)
 
     return validationSuccess
 
@@ -86,22 +85,28 @@ def validateAgainstSchema(schemaText=None, xmlText=None):
         print(exc_info())
         return (str(e) + '\n' + str(exc_info()))
 
-def updateValidationStatus(uploadID=None, isValid=None, validationFeedback=None, token=None, url=None):
+def updateValidationStatus(fileName=None, isValid=None, validationFeedback=None, token=None, url=None):
     if(url is None):
         url=getUrl()
+    if(fileName is None):
+        print('No filename was provided, I cannot set validation status.')
+        return False
     try:
-        fullUrl = str(url) + '/api/uploads/' + str(uploadID) + '/'
+        fullUrl = str(url) + '/api/uploads/setvalidation/'
         # TODO: Haml Files?
-        body = {'valid': isValid, 'validationFeedback': validationFeedback, 'id':uploadID, 'type':'HML'}
+        body = {'valid': isValid, 'validationFeedback': validationFeedback, 'fileName':fileName, 'type':'HML'}
         encodedJsonData = str(json.dumps(body)).encode('utf-8')
         updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
         updateRequest.add_header('Content-Type', 'application/json')
         updateRequest.add_header('Authorization', 'Bearer ' + token)
         responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+        if(responseData is None or len(responseData) < 1):
+            print('updateValidationStatus returned an empty response!')
+            return False
         response=json.loads(responseData)
 
         # The response contains the saved data, if successful. If the response matches what we expect it was a success.
-        if(str(response['id'])==str(uploadID) and str(response['valid'])==str(isValid)
+        if(str(response['fileName'])==str(fileName) and str(response['valid'])==str(isValid)
             and str(response['validationFeedback'])==str(validationFeedback)):
             return True
         else:
@@ -111,50 +116,11 @@ def updateValidationStatus(uploadID=None, isValid=None, validationFeedback=None,
         print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
         return False
     except urllib.error.HTTPError as e:
-        print('HTTP error when setting validation status for upload id ' + str(uploadID) + ' : ' + str(e))
+        print('HTTP error when setting validation status for upload file ' + str(fileName) + ' : ' + str(e))
         return False
     except Exception as e:
         print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
         return False
-
-def getUploadID(uploadFileName=None, token=None, url=None):
-    print('Trying to find upload ID for file name:' + str(uploadFileName))
-    if(url is None):
-        url=getUrl()
-    if(token is None):
-        token = getToken()
-        if token is None or len(token) < 1:
-            print('Failed to get login token.')
-            return None
-    try:
-        fullUrl = str(url) + '/api/uploads/'
-        #body = {'valid': isValid, 'validationFeedback': validationFeedback, 'id':uploadID, 'type':'HML'}
-        encodedJsonData = str(json.dumps({})).encode('utf-8')
-        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
-        updateRequest.add_header('Content-Type', 'application/json')
-        updateRequest.add_header('Authorization', 'Bearer ' + token)
-        responseData = request.urlopen(updateRequest).read().decode("UTF-8")
-        response=json.loads(responseData)
-
-        if(len(response) < 1):
-            print ('The list of uploads for filename ' + str(uploadFileName) + ' was empty! No uploads were found.')
-            return None
-        for upload in response:
-            if (str(upload['fileName']) == uploadFileName and len(uploadFileName) > 0):
-                uploadID = upload['id']
-                if(uploadID is not None and len(str(uploadID)) > 0):
-                    return uploadID
-                else:
-                    print('upload ID for file ' + str(uploadFileName) + ' is an empty string.')
-                    return None
-    except urllib.error.HTTPError as e:
-        print('HTTP error when getting upload id for file ' + str(uploadFileName) + ' : ' + str(e))
-        return None
-    except Exception as e:
-        print('Error when getting upload id:\n' + str(e) + '\n' + str(exc_info()))
-        return None
-    print('upload ID for file ' + str(uploadFileName) + ' could not be found.')
-    return None
 
 def getCredentials():
     try:
