@@ -30,7 +30,7 @@ def testValidation():
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
 def testSetValidationResults():
-    uploadFileName = '1497_1586945927165_HML_benstesthml.xml'
+    uploadFileName = '1497_1587131258204_HML_benstesthml.xml'
     isValid = True
     validationFeedback = 'It is actually valid!'
     validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback)
@@ -43,7 +43,7 @@ def testSetValidationResults():
 
 if __name__=='__main__':
     try:
-        testValidation()
+        #testValidation()
         testSetValidationResults()
 
         pass

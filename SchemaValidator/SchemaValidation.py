@@ -42,8 +42,6 @@ def validate_handler(event, context):
 
         setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults=='Valid'), validationFeedback=validationResults, url=url, token=token)
 
-        # TODO: Trigger Subsequent Data Processing (Parse XML into database tables?)
-
         return str(validationResults)
 
     except Exception as e:
@@ -92,7 +90,7 @@ def updateValidationStatus(fileName=None, isValid=None, validationFeedback=None,
         print('No filename was provided, I cannot set validation status.')
         return False
     try:
-        fullUrl = str(url) + '/api/uploads/setvalidation/'
+        fullUrl = str(url) + '/api/uploads/setvalidation'
         # TODO: Haml Files?
         body = {'valid': isValid, 'validationFeedback': validationFeedback, 'fileName':fileName, 'type':'HML'}
         encodedJsonData = str(json.dumps(body)).encode('utf-8')
