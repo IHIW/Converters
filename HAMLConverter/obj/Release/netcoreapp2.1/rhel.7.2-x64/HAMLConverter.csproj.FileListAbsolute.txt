@@ -1,0 +1,10 @@
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\obj\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.csprojAssemblyReference.cache
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\obj\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.AssemblyInfoInputs.cache
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\obj\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.AssemblyInfo.cs
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\bin\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.deps.json
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\bin\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.runtimeconfig.json
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\bin\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.runtimeconfig.dev.json
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\bin\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.dll
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\bin\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.pdb
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\obj\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.dll
+C:\Users\IEUser\source\repos\Converters\HAMLConverter\obj\Release\netcoreapp2.1\rhel.7.2-x64\HAMLConverter.pdb
