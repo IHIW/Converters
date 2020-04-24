@@ -16,12 +16,12 @@ def schema_validation_handler(event, context):
         bucket = content['Records'][0]['s3']['bucket']['name']
         xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
         xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
-        xmlText = xmlFileObject["Body"].read().decode()
+        xmlText = xmlFileObject["Body"].read()
 
         # Get the Schema file
         schemaKey = 'schema/hml-1.0.1.xsd'
         schemaFileObject = s3.get_object(Bucket=bucket, Key=schemaKey)
-        schemaText = schemaFileObject["Body"].read().decode()
+        schemaText = schemaFileObject["Body"].read()
 
         # Perform the validation.
         validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)

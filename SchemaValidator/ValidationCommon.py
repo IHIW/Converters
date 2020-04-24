@@ -22,34 +22,23 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
         token = getToken(url=url)
     if(validatorType is None):
         validatorType = 'UNKNOWN'
-    if (validationFeedback is None or len(str(validationFeedback)==0)):
+    if (validationFeedback is None or len(str(validationFeedback))==0):
         validationFeedback = 'No Feedback Provided.'
     try:
-        print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(fileName))
+        print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(uploadFileName))
 
         fullUrl = str(url) + '/api/uploads/setvalidation'
 
-        """
-        new object format is like
-        {
-        'valid': true,
-        'validationFeedback': 'asdf',
-        'validator': 'MIRING',
-        'upload': {
-        'fileName': 'asdf.hml'
-        }
-        }
-        """
-
-        #body = {'valid': isValid, 'validationFeedback': validationFeedback, 'fileName':fileName, 'type':'HML'}
         body = {
             'valid': isValid
             , 'validationFeedback': validationFeedback
             , 'validator': validatorType
             , 'upload': {
-                'fileName': fileName
+                'fileName': uploadFileName
             }
         }
+
+        print('body:' + str(body))
         encodedJsonData = str(json.dumps(body)).encode('utf-8')
         updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
         updateRequest.add_header('Content-Type', 'application/json')
@@ -61,8 +50,8 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
         response=json.loads(responseData)
 
         # The response contains the saved data, if successful. If the response matches what we expect it was a success.
-        if(str(response['fileName'])==str(fileName) and str(response['valid'])==str(isValid)
-            and str(response['validationFeedback'])==str(validationFeedback)):
+        # Probably need to make this more robust.
+        if(str(response['valid'])==str(isValid)  and str(response['validationFeedback'])==str(validationFeedback)):
             return True
         else:
             print('Could not set validation status, response:\n' + str(response))
