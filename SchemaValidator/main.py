@@ -33,16 +33,16 @@ def testSchemaValidation():
     xmlText = open(xmlPath, 'rb').read()
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
-def testMiringValidation():
+def testNmdpValidation():
 
     # Just a demo. First we validate a good HML document against the hml schema:
     xmlPath = 'xml/good.hml.1.0.1.xml'
-    print('Validating MIRING XML: ' + str(xmlPath) + '\n')
+    print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
-    print(validateMiring(xmlText=xmlText) + '\n')
+    print(validateNmdpPortal(xmlText=xmlText) + '\n')
 
 def testSetValidationResults():
-    uploadFileName = '1497_1587718598449_HML_bad.hml.1.0.1.xml'
+    uploadFileName = '1497_1587729544244_HML_bad.hml.1.0.1.xml'
     isValid = True
     validationFeedback = 'Surprisingly it is actually valid!!!'
     validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback)
@@ -56,7 +56,7 @@ def testSetValidationResults():
 if __name__=='__main__':
     try:
         testSchemaValidation()
-        testMiringValidation()
+        testNmdpValidation()
         #testSetValidationResults()
 
         pass

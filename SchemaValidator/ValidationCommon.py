@@ -6,33 +6,50 @@ import json
 from sys import exc_info
 from urllib import request
 
-def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=None, token=None, url=None):
-    print('Setting upload validation status,\t' + 'uploadFileName=' + str(uploadFileName) + '\tisValid=' + str(isValid) + '\tvalidationFeedback=(' + str(validationFeedback) + ')\turl=' + str(url))
-    if (uploadFileName is None or isValid is None or validationFeedback is None):
+def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=None, validatorType=None, token=None, url=None):
+    print('Setting upload validation status,\t' + 'uploadFileName=' + str(uploadFileName) + '\tvalidatorType=' + str(validatorType) + '\tisValid=' + str(isValid) + '\tvalidationFeedback=(' + str(validationFeedback) + ')\turl=' + str(url))
+    if (uploadFileName is None or isValid is None or validationFeedback is None or validatorType is None):
         print('Missing data, cannot set validation status:'
               + '\tuploadFileName:' + str(uploadFileName)
               + '\tisValid:' + str(isValid)
-              + '\tvalidationFeedback:' + str(validationFeedback))
+              + '\tvalidationFeedback:'
+              + str(validationFeedback)
+              + '\tvalidatorType:' + str(validatorType))
         return False
     if(url is None):
         url = getUrl()
     if(token is None):
         token = getToken(url=url)
-
-    validationSuccess = updateValidationStatus(fileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, url=url, token=token)
-
-    return validationSuccess
-
-def updateValidationStatus(fileName=None, isValid=None, validationFeedback=None, token=None, url=None):
-    if(url is None):
-        url=getUrl()
-    if(fileName is None):
-        print('No filename was provided, I cannot set validation status.')
-        return False
+    if(validatorType is None):
+        validatorType = 'UNKNOWN'
+    if (validationFeedback is None or len(str(validationFeedback)==0)):
+        validationFeedback = 'No Feedback Provided.'
     try:
+        print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(fileName))
+
         fullUrl = str(url) + '/api/uploads/setvalidation'
-        # TODO: Haml Files?
-        body = {'valid': isValid, 'validationFeedback': validationFeedback, 'fileName':fileName, 'type':'HML'}
+
+        """
+        new object format is like
+        {
+        'valid': true,
+        'validationFeedback': 'asdf',
+        'validator': 'MIRING',
+        'upload': {
+        'fileName': 'asdf.hml'
+        }
+        }
+        """
+
+        #body = {'valid': isValid, 'validationFeedback': validationFeedback, 'fileName':fileName, 'type':'HML'}
+        body = {
+            'valid': isValid
+            , 'validationFeedback': validationFeedback
+            , 'validator': validatorType
+            , 'upload': {
+                'fileName': fileName
+            }
+        }
         encodedJsonData = str(json.dumps(body)).encode('utf-8')
         updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
         updateRequest.add_header('Content-Type', 'application/json')

@@ -7,6 +7,7 @@
 PROJECT_PATH="/home/bmatern/github/Converters/SchemaValidator"
 ENVIRONMENT_PATH="/home/bmatern/schemavalidationenv"
 LAMBDA_FUNCTION="validateXmlStaging"
+HANDLER_FILE="SchemaValidation.py"
 
 cd $PROJECT_PATH
 
@@ -25,11 +26,9 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 
 # Zip Script
 cd ..
-zip -g function.zip SchemaValidation.py
-zip -g function.zip ValidationHandlers.py
+zip -g function.zip $HANDLER_FILE
 zip -g function.zip ValidationCommon.py
-zip -g function.zip MiringValidation.py
-zip -g function.zip NmdpPortalValidation.py
+
 
 # Zip Config File
 zip -g function.zip validation_config.yml
