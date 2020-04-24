@@ -1,9 +1,13 @@
 from sys import exc_info
-from SchemaValidation import validateAgainstSchema, setValidationStatus, getCredentials
+from SchemaValidation import validateAgainstSchema
+from MiringValidation import validateMiring
+from NmdpPortalValidation import validateNmdpPortal
+from HamlValidation import validateHaml
+from ValidationCommon import setValidationStatus
 
 # Test methods for running the lambda function.
 
-def testValidation():
+def testSchemaValidation():
 
     # Just a demo. First we validate a good HML document against the hml schema:
     schemaPath = 'schema/hml-1.0.1.xsd'
@@ -29,11 +33,20 @@ def testValidation():
     xmlText = open(xmlPath, 'rb').read()
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
+def testNmdpValidation():
+
+    # Just a demo. First we validate a good HML document against the hml schema:
+    xmlPath = 'xml/good.hml.1.0.1.xml'
+    print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
+    xmlText = open(xmlPath, 'rb').read()
+    print(validateNmdpPortal(xmlText=xmlText) + '\n')
+
 def testSetValidationResults():
-    uploadFileName = '1497_1587131258204_HML_benstesthml.xml'
-    isValid = True
-    validationFeedback = 'It is actually valid!'
-    validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback)
+    uploadFileName = '1497_1587729544244_HML_bad.hml.1.0.1.xml'
+    isValid = False
+    validationFeedback = 'According to NMDP rules it is fine.'
+    validatorType='NMDP'
+    validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, validatorType=validatorType)
     #print('ValidationResult=' + str(validationResult))
 
     if (validationResult):
@@ -43,7 +56,8 @@ def testSetValidationResults():
 
 if __name__=='__main__':
     try:
-        #testValidation()
+        #testSchemaValidation()
+        #testNmdpValidation()
         testSetValidationResults()
 
         pass
