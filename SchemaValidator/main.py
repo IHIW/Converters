@@ -1,9 +1,13 @@
 from sys import exc_info
-from SchemaValidation import validateAgainstSchema, setValidationStatus, getCredentials
+from SchemaValidation import validateAgainstSchema
+from MiringValidation import validateMiring
+from NmdpPortalValidation import validateNmdpPortal
+from HamlValidation import validateHaml
+from ValidationCommon import setValidationStatus
 
 # Test methods for running the lambda function.
 
-def testValidation():
+def testSchemaValidation():
 
     # Just a demo. First we validate a good HML document against the hml schema:
     schemaPath = 'schema/hml-1.0.1.xsd'
@@ -29,10 +33,18 @@ def testValidation():
     xmlText = open(xmlPath, 'rb').read()
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
+def testMiringValidation():
+
+    # Just a demo. First we validate a good HML document against the hml schema:
+    xmlPath = 'xml/good.hml.1.0.1.xml'
+    print('Validating MIRING XML: ' + str(xmlPath) + '\n')
+    xmlText = open(xmlPath, 'rb').read()
+    print(validateMiring(xmlText=xmlText) + '\n')
+
 def testSetValidationResults():
-    uploadFileName = '1497_1587131258204_HML_benstesthml.xml'
+    uploadFileName = '1497_1587718598449_HML_bad.hml.1.0.1.xml'
     isValid = True
-    validationFeedback = 'It is actually valid!'
+    validationFeedback = 'Surprisingly it is actually valid!!!'
     validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback)
     #print('ValidationResult=' + str(validationResult))
 
@@ -43,8 +55,9 @@ def testSetValidationResults():
 
 if __name__=='__main__':
     try:
-        #testValidation()
-        testSetValidationResults()
+        testSchemaValidation()
+        testMiringValidation()
+        #testSetValidationResults()
 
         pass
 
