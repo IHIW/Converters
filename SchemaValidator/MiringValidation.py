@@ -3,7 +3,8 @@ from boto3 import client
 s3 = client('s3')
 import json
 import urllib
-#from ValidationCommon import getUrl, getToken, setValidationStatus
+from urllib import request
+
 
 
 def miring_validation_handler(event, context):
@@ -15,7 +16,7 @@ def miring_validation_handler(event, context):
         bucket = content['Records'][0]['s3']['bucket']['name']
         xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
         xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
-        xmlText = xmlFileObject["Body"].read().decode()
+        xmlText = xmlFileObject["Body"].read()
 
 
         # Perform the validation.
@@ -40,7 +41,42 @@ def validateMiring(xmlText=None):
     # TODO: there's nothing here yet. send a message to miring.b12x.org and get a response.
     try:
         print('Inside the MIRING Validator, i was given xml text that looks like: ' + str(xmlText)[0:100])
-        return('MIRING validation Results')
+
+        #$ curl -X POST --data-urlencode 'xml[]=<hml>...</hml>' http://miring.b12x.org/validator/ValidateMiring/
+
+        fullUrl = 'http://miring.b12x.org/validator/ValidateMiring'
+
+        body = {
+            'xml': xmlText.decode()
+        }
+
+        print('body:' + str(body))
+        jsonDump = json.dumps(body)
+        print('jsonDump:' + jsonDump)
+        encodedJsonData = str(jsonDump).encode('utf-8')
+        print('encodedJsonData:' + str(encodedJsonData))
+        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='POST')
+
+        updateRequest.add_header('Content-Type', 'application/json')
+        #updateRequest.add_header('xml',xmlText)
+
+        print('doing request')
+        response = request.urlopen(updateRequest)
+        print('request done')
+        responseData = response.read()
+
+        print('responseData:' + str(responseData))
+
+        responseText = responseData.decode()
+
+        print('responseText:' + responseText)
+        if (responseText is None or len(responseText) < 1):
+            print('updateValidationStatus returned an empty response!')
+            return False
+        #response = json.loads(responseText)
+
+
+        return(responseText)
 
     except Exception as e:
         print('Unexpected problem during xml validation.')

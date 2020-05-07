@@ -60,7 +60,7 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
         print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
         return False
     except urllib.error.HTTPError as e:
-        print('HTTP error when setting validation status for upload file ' + str(fileName) + ' : ' + str(e))
+        print('HTTP error when setting validation status for upload file ' + str(uploadFileName) + ' : ' + str(e))
         return False
     except Exception as e:
         print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))

@@ -8,7 +8,7 @@ from ValidationCommon import setValidationStatus
 # Test methods for running the lambda function.
 
 def testSchemaValidation():
-
+    """
     # Just a demo. First we validate a good HML document against the hml schema:
     schemaPath = 'schema/hml-1.0.1.xsd'
     xmlPath = 'xml/good.hml.1.0.1.xml'
@@ -24,28 +24,36 @@ def testSchemaValidation():
     schemaText = open(schemaPath, 'rb').read()
     xmlText = open(xmlPath, 'rb').read()
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
-
+    """
     # Try it with haml.
     schemaPath = 'schema/IHIW-haml_version_w0_3_3.xsd'
-    xmlPath = 'xml/1497_1586843147576_HAML_BenTestMatchit.csv.haml'
+    xmlPath = 'xml/HamlFromNewConverter.xml'
     print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
     schemaText = open(schemaPath, 'rb').read()
     xmlText = open(xmlPath, 'rb').read()
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
 def testNmdpValidation():
-
     # Just a demo. First we validate a good HML document against the hml schema:
     xmlPath = 'xml/good.hml.1.0.1.xml'
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
     print(validateNmdpPortal(xmlText=xmlText) + '\n')
 
+
+def testMiringValidation():
+    # Just a demo. First we validate a good HML document against the hml schema:
+    xmlPath = 'xml/good.hml.1.0.1.xml'
+    print('Validating MIRING,  XML: ' + str(xmlPath) + '\n')
+    xmlText = open(xmlPath, 'rb').read()
+    print(validateMiring(xmlText=xmlText) + '\n')
+
+
 def testSetValidationResults():
-    uploadFileName = '1497_1587729544244_HML_bad.hml.1.0.1.xml'
+    uploadFileName = '1497_1587736444061_HML_bad.hml.1.0.1.xml'
     isValid = False
-    validationFeedback = 'According to NMDP rules it is fine.'
-    validatorType='NMDP'
+    validationFeedback = 'MIRING Rule 3.3 was broken'
+    validatorType='MIRING'
     validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, validatorType=validatorType)
     #print('ValidationResult=' + str(validationResult))
 
@@ -59,6 +67,7 @@ if __name__=='__main__':
         #testSchemaValidation()
         #testNmdpValidation()
         testSetValidationResults()
+        #testMiringValidation()
 
         pass
 
