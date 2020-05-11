@@ -16,8 +16,9 @@ rm function.zip
 
 # Install package(s)
 source $ENVIRONMENT_PATH"/bin/activate"
-#pip install --target ./package lxml
+pip install --target ./package lxml
 pip install --target ./package pyyaml
+pip install --target ./package pandas
 deactivate
 
 # Zip packages
