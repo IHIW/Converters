@@ -27,7 +27,15 @@ def testSchemaValidation():
 
     # Try it with haml.
     schemaPath = 'schema/IHIW-haml_version_w0_3_3.xsd'
-    xmlPath = 'xml/1497_1586843147576_HAML_BenTestMatchit.csv.haml'
+    xmlPath = 'xml/OutputImmucor.haml'
+    print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
+    schemaText = open(schemaPath, 'rb').read()
+    xmlText = open(xmlPath, 'rb').read()
+    print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
+
+    # Try it with haml.
+    schemaPath = 'schema/IHIW-haml_version_w0_3_3.xsd'
+    xmlPath = 'xml/OutputOneLambda.haml'
     print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
     schemaText = open(schemaPath, 'rb').read()
     xmlText = open(xmlPath, 'rb').read()
@@ -56,9 +64,9 @@ def testSetValidationResults():
 
 if __name__=='__main__':
     try:
-        #testSchemaValidation()
+        testSchemaValidation()
         #testNmdpValidation()
-        testSetValidationResults()
+        #testSetValidationResults()
 
         pass
 
