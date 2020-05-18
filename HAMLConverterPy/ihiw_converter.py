@@ -7,6 +7,9 @@ import pandas as pd
 import datetime
 import boto3
 import io
+import csv
+import copy
+
 ####################
 # CONVERTER CLASS
 ####################
@@ -25,10 +28,13 @@ import io
  '''
 class Converter(object):
 
-    def __init__(self, csvFile, manufacturer, xmlFile):
-        self.file = csvFile
+    def __init__(self, csvFile=None, manufacturer=None, xmlFile=None):
+        self.csvFile = csvFile
+        #self.csvText = csvText
         self.manufacturer = manufacturer
         self.xmlFile = xmlFile
+        self.xmlText = None
+        self.xmlData = None
 
     
     def DetermineManufacturer(self,):
@@ -37,10 +43,15 @@ class Converter(object):
         OLReader = ''
         try: 
             if not self.manufacturer.strip():
-                print('inside manuf', manufacturer)
+                print('Determining Manufacturer, csv file=' + str(self.csvFile))
                 try:
+                    #print('Checking if it is a Immucor File:')
+                    # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
+                    copyInputFile = copy.deepcopy(self.csvFile)
+                    #print('This is the copied object:' + str(copyInputFile))
+
                 	#pd.read_csv(io.BytesIO(obj['Body'].read()))
-                    OLReader = pd.read_csv(io.Bytes(self.file['Body'].read()),index_col = False,sep=",",engine="python")                     #try with , separator
+                    OLReader = pd.read_csv(copyInputFile,index_col = False,sep=",",engine="python")                     #try with , separator
                     OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
                    
                     colnames = [str(c.strip('"').strip().replace(' ','_')) for c in OLReader.columns.tolist()]      #list colnames 
@@ -48,19 +59,32 @@ class Converter(object):
                     
                     if (set(colnames) & set(col_Immucor)):
                         self.manufacturer = 'Immucor'                                                               # MatchIt, Lifecodes
-                except:
-                    OLReader = pd.read_csv(io.Bytes(self.file['Body'].read()),index_col = False,sep=";",engine="python")                     #try with ; separator  
-                    OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end 
+                except Exception as e:
+                    #print('Exception Parsing Immucor file:' + str(e))
+                    print('This is not an immumucor file.')
 
-                    colnames = [str(c.strip('"')) for c in OLReader.columns.tolist()]                               #list colnames file
-                    OLReader.columns = colnames
-                    
-                    if (set(colnames) & set(col_OneLambda)): 
-                        self.manufacturer = 'OneLambda' 
+                    try:
+                        #print('Checking if it is a One Lambda File:')
+
+                        copyInputFile = copy.deepcopy(self.csvFile)
+                        #print('This is the copied object:' + str(copyInputFile))
+
+                        OLReader = pd.read_csv(copyInputFile,index_col = False,sep=";",engine="python")                     #try with ; separator
+                        OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
+
+                        colnames = [str(c.strip('"')) for c in OLReader.columns.tolist()]                               #list colnames file
+                        OLReader.columns = colnames
+
+                        if (set(colnames) & set(col_OneLambda)):
+                            self.manufacturer = 'OneLambda'
+                    except Exception as e:
+                        #print('Exception Parsing OneLambda File:' + str(e))
+                        print('This is not a OneLambda file.')
+
                 
                 
-        except ValueError:
-            print('Unable to identify manufacturer')
+        except Exception as e:
+            print('Unable to identify manufacturer:' + str(e))
         return(self.manufacturer,OLReader)
     
     #########
@@ -77,16 +101,30 @@ class Converter(object):
     # Prettify xml
     ######### 
     def prettyPrintXml(self,):
-        assert self.xmlFile is not None
-        parser = etree.XMLParser(resolve_entities=False, strip_cdata=False)
-        document = etree.parse(self.xmlFile, parser)
-        document.write(self.xmlFile, pretty_print=True, encoding='utf-8')
+        # Generate xml text
+        xmlText = self.xmlData.decode()
+        self.xmlText = xmlText
+
+        if(self.xmlText is not None and len(self.xmlText) > 0):
+            #print('***xml Text:\n' + str(self.xmlText))
+            rootElement = etree.fromstring(self.xmlText)
+            prettyPrintText=etree.tostring(rootElement, pretty_print=True).decode()
+            if(prettyPrintText is not None and len(prettyPrintText) > 0):
+                self.xmlText = prettyPrintText
+
+            if (self.xmlFile is not None):
+                elementTree = etree.ElementTree(rootElement)
+                elementTree.write(self.xmlFile, pretty_print=True, encoding='utf-8')
+            else:
+                print('Not writing xml text to file, because None was provided for xmlFile parameter')
+
 
     #################
     # Parse OneLambda
     #################
     def ProcessOneLambda(self,OLReader):
-        print('OneLambda to xml...',OLReader.head())
+        #print('OneLambda to xml...',OLReader.head())
+        print('OneLambda to xml...')
       
         col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
                 
@@ -105,17 +143,30 @@ class Converter(object):
             Positive = self.GetBeadValue( row.PC2BeadID, col_OneLambda['BeadID'], col_OneLambda['SampleIDName'], SampleID, col_OneLambda['RawData'])
             Negative = self.GetBeadValue( row.NC2BeadID, col_OneLambda['BeadID'], col_OneLambda['SampleIDName'], SampleID, col_OneLambda['RawData'])
 
-            sample_test_date= datetime.datetime.strptime(row.RunDate, "%d/%m/%Y").strftime("%Y-%m-%d")   
+
+            formattedRunDate = row.RunDate
+            #print('previous RunDate:' + str(formattedRunDate))
+            # Parse the date
+            try:
+                dateObject = datetime.datetime.strptime(row.RunDate, "%d-%m-%Y")
+                formattedRunDate = dateObject.strftime("%Y-%m-%d")
+            except Exception as e:
+                print('Could not format the date properly:' + e)
+            #print('formatted RunDate:' + str(formattedRunDate))
+
+            #sample_test_date= datetime.datetime.strptime(row.RunDate, "%d/%m/%Y").strftime("%Y-%m-%d")
+
+            #print('row with manufacturer:(' + self.manufacturer + ')')
             current_row = ET.SubElement(data,'patient-antibody-assessment',
                              {'sampleID':str(row.SampleIDName),
                               'patientID':str(row.PatientID),
                               'reporting-centerID':'Center',
-                              'sample-test-date':sample_test_date,
+                              'sample-test-date':formattedRunDate,
                               'negative-control-MFI': str(Negative),
                               'positive-control-MFI': str(Positive),
                               })
             current_row_panel = ET.SubElement(current_row,'solid-phase-panel',
-                            {'kit-manufacturer':manufacturer,
+                            {'kit-manufacturer':self.manufacturer,
                             'lot':row.CatalogID
                             })
             
@@ -123,17 +174,22 @@ class Converter(object):
                 
                 Specs = row.Specificity.split(",")
                 Raw = row.RawData
+
+                # Specs might have one or two loci. The bead is specific to two alleles in a heterodimer.
+                # The other not included loci have the Spec name "-"
+                # TODO: For two loci, combine them into one entry
                 for SingleSpec in Specs:
-                    current_row_panel_bead = ET.SubElement(current_row,'bead',
+                    if(SingleSpec != '-'):
+                        current_row_panel_bead = ET.SubElement(current_row,'bead',
                             {'HLA-allele-specificity':str(SingleSpec),
                             'raw-MFI':str(Raw),
                             'Ranking':str(row.Rxn),
+                             # Is the row.Rxn really representing a ranking? or do we calculate that somehow
                             })
 
         # create a new XML file with the results
-        mydata = ET.tostring(data)       
-        myfile = open(self.xmlFile, "wb")
-        myfile.write(mydata)
+
+        self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
     ########
     # Parse Immucor
@@ -181,30 +237,35 @@ class Converter(object):
                         })
         # create a new XML file with the results
         
-        mydata = ET.tostring(data)
-        myfile = open(self.xmlFile, "wb")
-        myfile.write(mydata)
+        #mydata = ET.tostring(data)
+        self.xmlData = ET.tostring(data)
+        #myfile = open(self.xmlFile, "wb")
+        #myfile.write(mydata)
         self.prettyPrintXml()
 
     
 if __name__ == '__main__':
 
     csvFile = sys.argv[1]
-    manufacturer = sys.argv[2]
-    xmlfile = sys.argv[3]
+    #manufacturer = sys.argv[2]
+    manufacturer = ''
+    xmlFile = sys.argv[3]
+    #xmlFile = None
 
     print('csvFile:' + csvFile)
     print('manufacturer:' + manufacturer)
-    print('xmlfile:' + xmlfile)
+    print('xmlFile:' + str(xmlFile))
 
-    converter = Converter(csvFile,manufacturer,xmlfile)
-    Manufacturer,Table = converter.DetermineManufacturer()
-    print('manufacturer', Manufacturer)
-    if Manufacturer == 'OneLambda':
-        print('Manufacturer', Manufacturer)
+    converter = Converter(csvFile=csvFile,manufacturer=manufacturer,xmlFile=xmlFile)
+    manufacturer,Table = converter.DetermineManufacturer()
+    print('manufacturer', manufacturer)
+    if manufacturer == 'OneLambda':
+        print('manufacturer', manufacturer)
         converter.ProcessOneLambda(Table)
-    elif Manufacturer == 'Immucor':
-        print('Manufacturer', Manufacturer)
+    elif manufacturer == 'Immucor':
+        print('manufacturer', manufacturer)
         converter.ProcessImmucor(Table)
     else: 
         print('Not known manufacturer, unable to convert file')
+
+    print('Done. Results written to ' + str(xmlFile))
