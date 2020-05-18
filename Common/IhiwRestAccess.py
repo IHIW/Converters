@@ -1,2 +1,9 @@
-def RestHelloWorld():
-    print('Inside Rest Hello World')
+def getHMLFilenames():
+    return []
+
+def getHMLIDs():
+    return []
+
+def getHAMLFilenames():
+    return []
+

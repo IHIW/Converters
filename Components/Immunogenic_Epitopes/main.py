@@ -1,6 +1,6 @@
 from sys import exc_info
 import argparse
-from ImmunogenicEpitopes import parseExcelFile
+from ImmunogenicEpitopes import validateEpitopesDataMatrix
 
 
 
@@ -23,9 +23,25 @@ if __name__=='__main__':
         args=parseArgs()
         verbose = args.verbose
 
-
         print('Starting up the immuno epitopes methods.')
-        parseExcelFile(excelFile=args.excel)
+        immunogenicEpitopeColumnNames = [
+            'hml_id_donor'
+            ,'hml_id_recipient'
+            ,'haml_id_recipient_pre_tx'
+            ,'haml_id_recipient_post_tx'
+            ,'prozone_pre_tx'
+            ,'prozone_post_tx'
+            ,'availability_pre_tx'
+            ,'availability_post_tx'
+            ,'months_post_tx'
+            ,'gender_recipient'
+            ,'age_recipient_tx'
+            ,'pregnancies_recipient'
+            ,'immune_suppr_post_tx'
+            ]
+
+        validationResults = validateEpitopesDataMatrix(excelFile=args.excel, columnNames=immunogenicEpitopeColumnNames)
+        print('Validation Results:\n' + str(validationResults))
 
         pass
 
