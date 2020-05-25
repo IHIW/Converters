@@ -1,4 +1,6 @@
 from xlrd import open_workbook
+# We might need this in case they don't use xlsx format
+#from xlrd.book import open_workbook_xls
 from xlrd.sheet import ctype_text
 
 def parseExcelFile(excelFile=None, columnNames=None):
@@ -14,14 +16,22 @@ def parseExcelFile(excelFile=None, columnNames=None):
     columnNames = list(set([x.lower() for x in columnNames]))
     columnNames.sort()
 
-    print('Opening and Parsing excel file:' + excelFile)
+    print('Opening and Parsing excel file:' + str(excelFile))
+    print('It is of type:' + str(type(excelFile)))
     print('column names:' + str(columnNames))
 
     # Store a dictionary for each excel row
     dataEntries=[]
 
     # Open the workbook
-    xlWorkbook = open_workbook(excelFile)
+    #print('Opening Workbook...')
+    if(type(excelFile)==str):
+        xlWorkbook = open_workbook(excelFile)
+    elif(type(excelFile)==bytes):
+        xlWorkbook = open_workbook(file_contents=excelFile)
+    else:
+        print('I do not know what type of file this is:' + str(type(excelFile)))
+    #print('Workbook was opened.')
 
     # Get the first sheet.
     sheetNames = xlWorkbook.sheet_names()

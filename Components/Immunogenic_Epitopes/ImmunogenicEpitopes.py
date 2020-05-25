@@ -1,34 +1,63 @@
 from boto3 import client
 s3 = client('s3')
 #from lxml import etree
-from sys import exc_info, path
-#import json
-#import urllib
+from sys import exc_info
+import json
+import urllib
 
 # For importing common methods, may be in the same directory when deployed as a package
 try:
-    from IhiwRestAccess import getHMLFilenames, getHMLIDs, getHAMLFilenames
+    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus
     from ParseExcel import parseExcelFile
-    from Validation import validateUniqueFileEntry, validateBoolean, validateNumber, validateMaleFemale
-except Exception:
-    from Common.IhiwRestAccess import getHMLFilenames, getHMLIDs, getHAMLFilenames
+    from Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale
+except Exception as e:
+    print('Failed in importing files: ' + str(e))
+    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus
     from Common.ParseExcel import parseExcelFile
     from Common.Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale
 
 def immunogenic_epitope_handler(event, context):
-    print('I found the schema validation handler.')
+    print('I found the immunogenic epitope validation handler.')
     # This is the AWS Lambda handler function.
     try:
         # Get the uploaded file.
-        #content = json.loads(event['Records'][0]['Sns']['Message'])
+        content = json.loads(event['Records'][0]['Sns']['Message'])
 
-        #bucket = content['Records'][0]['s3']['bucket']['name']
-        #xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
-        #xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
-        #xmlText = xmlFileObject["Body"].read()
+        bucket = content['Records'][0]['s3']['bucket']['name']
+        excelKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
+        print('Excel Filename:' + excelKey)
 
+        # Determine file type
+        if (str(excelKey).lower().endswith('.xls') or str(excelKey).lower().endswith('.xlsx')):
+            fileType = 'EXCEL'
+        else:
+            fileType = 'UNKNOWN'
 
-        validationResults='Valid'
+        validationResults = None
+        # Get the Schema file
+        if (fileType == 'EXCEL'):
+            print('This is an excel file with the name:' + str(excelKey))
+
+            excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
+            print('Just got the excel file:' + str(excelFileObject))
+            # read() provides a stream of bytes. The excel reader can accept this automatically, we pass that instead of filename.
+            excelData = excelFileObject["Body"].read()
+            #print('Data:' + str(excelData))
+
+            # Perform the validation.
+            validationResults = validateEpitopesDataMatrix(excelFile=excelData)
+            print('validation results were retrieved, attempting to set status.')
+            print('ValidationResults:(\n' + str(validationResults) + '\n)')
+
+            # Request the management app to update the validation status for this file.
+            url = getUrl()
+            token = getToken(url=url)
+            setValidationStatus(uploadFileName=excelKey, isValid=(validationResults == 'Valid'),
+                validationFeedback=validationResults, url=url, token=token, validatorType='IMMUNOGENIC_EPITOPES')
+
+        else:
+            print(excelKey + ' is not an excel file so I will not validate it.')
+
         return str(validationResults)
 
     except Exception as e:
@@ -37,10 +66,26 @@ def immunogenic_epitope_handler(event, context):
 
 
 
-def validateEpitopesDataMatrix(excelFile=None, columnNames=None):
-    print('Validating Epitopes Data Matrix:' + excelFile)
+def validateEpitopesDataMatrix(excelFile=None):
+    print('Validating Epitopes Data Matrix:' + str(excelFile))
 
-    excelData = parseExcelFile(excelFile=excelFile, columnNames=columnNames)
+    immunogenicEpitopeColumnNames = [
+        'hml_id_donor'
+        , 'hml_id_recipient'
+        , 'haml_id_recipient_pre_tx'
+        , 'haml_id_recipient_post_tx'
+        , 'prozone_pre_tx'
+        , 'prozone_post_tx'
+        , 'availability_pre_tx'
+        , 'availability_post_tx'
+        , 'months_post_tx'
+        , 'gender_recipient'
+        , 'age_recipient_tx'
+        , 'pregnancies_recipient'
+        , 'immune_suppr_post_tx'
+    ]
+
+    excelData = parseExcelFile(excelFile=excelFile, columnNames=immunogenicEpitopeColumnNames)
 
     if(type(excelData) is str):
         # If it returned a string then it's an error message. Something is wrong with the data.
@@ -54,24 +99,31 @@ def validateEpitopesDataMatrix(excelFile=None, columnNames=None):
     if(len(excelData)<1):
         return('No data was found in the input excel file. Did you put any data in there?')
 
-    # Get a list of the upload HML files.
-    existingHMLFilenames = getHMLFilenames()
+    url = getUrl()
+    token = getToken(url=url)
+
+    if(token==None):
+        return('Could not aquire a login token.')
+
+    try:
+        uploadList = getUploads(token=token, url=url)
+        uploadFileList = createFileListFromUploads(uploads=uploadList)
+    except Exception as e:
+        print('Exception when getting list of uploads:\n' + str(e) + '\n' + str(exc_info()))
+        return ('Exception when getting list of uploads:\n' + str(e) )
 
     # Get list of upload HML IDs.
     # TODO: Check based on HML IDs as well. For now, just use filenames.
     #existingHMLIDs = getHMLIDs()
 
-    # Get a list of the upload HAML files.
-    existingHAMLFilenames = getHAMLFilenames()
-
     # Do more specific validation of the columns. Check that each column is valid.
     validationFeedback = ''
     for dataRow in excelData:
         # findUniqueFile returns an empty string if a single file was found.
-        validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_donor'], searchList=existingHMLFilenames, allowPartialMatch=True, columnName='hml_id_donor')
-        validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=existingHMLFilenames, allowPartialMatch=True, columnName='hml_id_recipient')
-        validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_pre_tx'], searchList=existingHAMLFilenames, allowPartialMatch=True, columnName='haml_id_recipient_pre_tx')
-        validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_post_tx'], searchList=existingHAMLFilenames, allowPartialMatch=True, columnName='haml_id_recipient_post_tx')
+        validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_donor')
+        validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient')
+        validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_pre_tx')
+        validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_post_tx')
         validationFeedback += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
         validationFeedback += validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
         validationFeedback += validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
@@ -86,6 +138,21 @@ def validateEpitopesDataMatrix(excelFile=None, columnNames=None):
         return 'Valid'
     else:
         return validationFeedback
+
+def createFileListFromUploads(uploads=None):
+    fileNameList = []
+    for upload in uploads:
+        #print('upload:' + str(upload))
+        fileName =upload['fileName']
+        fileType = upload['type']
+        #print('uploadFileName=' + fileName)
+        if(fileType=='HAML'):
+            # TODO: Shouldn't need to do this if the upload entry has been created for the converted .haml file
+            fileNameList.append(fileName + '.haml')
+        else:
+            fileNameList.append(fileName)
+
+    return fileNameList
 
 
 

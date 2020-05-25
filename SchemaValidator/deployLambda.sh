@@ -5,7 +5,7 @@
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/SchemaValidator"
-ENVIRONMENT_PATH="/home/bmatern/schemavalidationenv"
+ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 LAMBDA_FUNCTION="validateXmlStaging"
 HANDLER_FILE="SchemaValidation.py"
 
@@ -27,7 +27,7 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 # Zip Script
 cd ..
 zip -g function.zip $HANDLER_FILE
-zip -g function.zip ValidationCommon.py
+zip -j -g function.zip ../Common/IhiwRestAccess.py
 
 
 # Zip Config File
