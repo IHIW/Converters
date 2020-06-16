@@ -63,14 +63,18 @@ def schema_validation_handler(event, context):
             setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
 
         elif(fileType=='CSV'):
-                url = getUrl()
-                token=getToken(url=url)
-                setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not validate Schema of converted HAML file.', url=url, token=token, validatorType='SCHEMA')
+            pass
+            # This file should be converted and then validated. No need to do that now.
+            print('This file is a .csv, I will not perform schema validation.')
+
+            #    url = getUrl()
+            #    token=getToken(url=url)
+            #    setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not validate Schema of converted HAML file.', url=url, token=token, validatorType='SCHEMA')
 
         else:
             # If it is a different file type we should not perform validation on this file.
             pass
-
+            print('This file type is not hml or haml, I will not perform schema validation.')
             #url = getUrl()
             #token = getToken(url=url)
             #setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not determine file type of uploaded file:' + str(xmlKey), url=url, token=token, validatorType='SCHEMA')

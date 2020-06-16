@@ -62,6 +62,8 @@ def csv_to_hml_lambda_handler(event, context):
         s3 = boto3.resource("s3")
         print('saving file:' + str(xmlOutput))
         s3.Bucket(bucket).put_object(Key=xmlOutput, Body=encoded_string)
+
+        # Call the Rest enpoint to create a new Upload entry. (Actually this should be BEFORE the file is actually created.
             
     except ValueError: 
         print('Not known manufacturer, unable to convert file')
