@@ -186,7 +186,7 @@ class Converter(object):
         rowlength = OLReader.shape[0]
         for row in OLReader.itertuples():
         
-            SampleID = row.SampleIDName #NC2BeadID, BeadID, SampleIDName, SampleID,RawData
+            SampleID = row.SampleIDName#NC2BeadID, BeadID, SampleIDName, SampleID,RawData
             Positive = self.GetBeadValue( NC2BeadID=row.PC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
             Negative = self.GetBeadValue( row.NC2BeadID, col_OneLambda['BeadID'], col_OneLambda['SampleIDName'], SampleID, col_OneLambda['RawData'])
 
@@ -197,7 +197,7 @@ class Converter(object):
 
             #print('row with manufacturer:(' + self.manufacturer + ')')
             current_row = ET.SubElement(data,'patient-antibody-assessment',
-                             {'sampleID':str(row.SampleIDName),
+                             {'sampleID':str(row.SampleIDName.strip()),
                               'patientID':str(row.PatientID),
                               'reporting-centerID':'Center',
                               'sample-test-date':formattedRunDate,
@@ -251,7 +251,7 @@ class Converter(object):
             SampleID = row.Sample_ID
             sample_test_date= datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")   
             current_row = ET.SubElement(data,'patient-antibody-assessment',
-                                {'sampleID':str(SampleID),
+                                {'sampleID':str(SampleID).strip(),
                                 'patientID':str(row.Patient_Name),
                                 'reporting-centerID':'Center',
                                 'sample-test-date':sample_test_date,
@@ -271,7 +271,7 @@ class Converter(object):
                     Ranking = switcher['Negative']    
                 current_row_panel_bead = ET.SubElement(current_row,'bead',
                         {'HLA-allele-specificity':str(row.Allele),
-                          'raw-MFI':str(row.Raw_Value.replace(',','.')),
+                          'raw-MFI':str(row.Raw_Value).replace(',','.'),
                           'Ranking':str(Ranking),
                         })
         # create a new XML file with the results
