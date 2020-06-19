@@ -138,17 +138,18 @@ def createConvertedUploadObject(newUploadFileName=None, token=None, url=None, pr
         else:
             print('Could not set validation status, response:\n' + str(response))
             return False
-        '''
+        
 
         return response
+        '''
     except SyntaxError as e:
         print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
         return False
     except urllib.error.HTTPError as e:
-        print('HTTP error when setting validation status for upload file ' + str(uploadFileName) + ' : ' + str(e))
+        print('HTTP error when screating the Upload object for converted file for upload file ' + str(previousUploadFileName) + ' : ' + str(e))
         return False
     except Exception as e:
-        print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
+        print('Error when creating the Upload object for converted file:\n' + str(e) + '\n' + str(exc_info()))
         return False
 
 def getCredentials(configFileName='validation_config.yml'):
