@@ -235,3 +235,27 @@ def getUploads(token=None, url=None):
 
 
     return response
+
+def getUploadByFilename(token=None, url=None, fileName=None):
+    if(url is None):
+        url = getUrl()
+    if(token is None):
+        token = getToken(url=url)
+    print('Getting upload by filename:' + str(fileName))
+
+    fullUrl = str(url) + '/api/uploads/getbyfilename/' + fileName
+    body = {}
+
+    encodedJsonData = str(json.dumps(body)).encode('utf-8')
+    updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
+    updateRequest.add_header('Content-Type', 'application/json')
+    updateRequest.add_header('Authorization', 'Bearer ' + token)
+    responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+    #print('Response:' + str(responseData))
+    if (responseData is None or len(responseData) < 1):
+        print('updateValidationStatus returned an empty response!')
+        return False
+    response = json.loads(responseData)
+    return response
+
+

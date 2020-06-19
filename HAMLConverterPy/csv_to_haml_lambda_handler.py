@@ -8,10 +8,10 @@ import urllib
 import io
 
 try:
-    from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials
+    from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename
 except Exception as e:
     print('Failed in importing files: ' + str(e))
-    from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials
+    from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename
 
 
 
@@ -33,6 +33,27 @@ def csv_to_hml_lambda_handler(event, context):
 
         print('csvKey:' + str(csvKey))
 
+        if not (str(csvKey[len(csvKey)-4:len(csvKey)]).lower() in ['.csv','.tsv']):
+            print('Upload ' + str(csvKey) + ' is not a .csv file. I will not convert it to HAML.')
+            return None
+
+        # Login token for rest methods...
+        print('Getting a login token and URL...')
+        (user, password) = getCredentials(configFileName='converter_config.yml')
+        url = getUrl(configFileName='converter_config.yml')
+        token = getToken(user=user, password=password, url=url)
+
+        # TODO: Uncomment this when the getUploadByFilename endpoint is deployed.
+        # TODO: Or else we'll keep trying to convert files that are not HAML files.
+        '''
+        csvUploadObject = getUploadByFilename(token=token, url=url, fileName=csvKey)
+        if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
+            print('Could not find the Upload object for upload ' + str(csvKey) + '\nI will not convert it to HAML.' )
+            return None
+        elif (csvUploadObject['type'] != 'HAML'):
+            print('The upload ' + str(csvKey) + ' is type ' + csvUploadObject['type'] + '. I will not convert it to HAML.')
+            return None
+        '''
         s3 = boto3.client('s3')
 
         csvFileObject = s3.get_object(Bucket=bucket, Key=csvKey)
@@ -51,16 +72,10 @@ def csv_to_hml_lambda_handler(event, context):
         converter = Converter(s3ObjectBytestream,manufacturer,None)
         converter.convert()
 
-        # Login token for rest methods...
-        print('Getting a login token and URL...')
-        (user, password) = getCredentials(configFileName='converter_config.yml')
-        url = getUrl(configFileName='converter_config.yml')
-        token = getToken(user=user, password=password, url=url)
-
         # Somehow check if the convert was successful.
         if(converter.xmlText is not None and len(converter.xmlText) > 0):
             try:
-                # Call the Rest enpoint to create a new Upload entry. (Actually this should be BEFORE the file is actually created.
+                # Call the Rest enpoint to create a new Upload entry. This should be BEFORE the file is actually created.
                 response=createConvertedUploadObject(newUploadFileName=csvKey + '.haml', previousUploadFileName=csvKey, token=token, url=url)
 
                 # Write out the xml text
