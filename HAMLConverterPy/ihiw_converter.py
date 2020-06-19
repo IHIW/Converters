@@ -26,6 +26,11 @@ import copy
     /// If no manufacturer can be determined the manufacturer string will be empty.
     ///<summary>
  '''
+
+
+
+
+
 class Converter(object):
 
     def __init__(self, csvFile=None, manufacturer=None, xmlFile=None):
@@ -35,56 +40,97 @@ class Converter(object):
         self.xmlFile = xmlFile
         self.xmlText = None
         self.xmlData = None
+        # There are localization settings in the output files.
+        # Different files are delimited by commas and semicolons. Different files use . or , as a decimal.
+        # This needs to be accounted for.
+        self.delimiter = None
+        #self.decimal = None
+        self.dateFormat = '%d-%m-%Y'
 
-    
+    def formatRunDate(self, RunDate):
+        # format the date to the correct haml style.
+        # Parse the date
+        try:
+            dateObject = datetime.datetime.strptime(RunDate, self.dateFormat)
+            formattedRunDate = dateObject.strftime("%Y-%m-%d")
+            return formattedRunDate
+        except Exception as e:
+            print('Could not format the date properly:' + str(e))
+            self.DetermineDateFormat(RunDate)
+            if (self.dateFormat is not None):
+                dateObject = datetime.datetime.strptime(RunDate, self.dateFormat)
+                formattedRunDate = dateObject.strftime("%Y-%m-%d")
+                return formattedRunDate
+            else:
+                print('Cannot interpret date format! ' + RunDate)
+                return None
+
+    def DetermineDateFormat(self, dateString):
+        print('Determining Date format of this string:' + dateString)
+        self.dateFormat = None
+        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y']
+        for dateFormat in potentialDateFormats:
+            try:
+                dateObject = datetime.datetime.strptime(dateString, dateFormat)
+                print('Hooray, ' + dateString + ' IS this format:' + str(dateFormat))
+                self.dateFormat=dateFormat
+            except Exception as e:
+                print(dateString + ' is not this format:' + str(dateFormat))
+        if(self.dateFormat is None):
+            print('Failed at determining date format! ')
+
+    def DetermineDelimiter(self, ):
+        print('Determining delimiter.')
+        tryDelimiters=[',',';','\t']
+
+        for delimiter in tryDelimiters:
+            if(self.delimiter is None):
+                try:
+                    print('Checking if this file has a (' + str(delimiter) + ') delimiter')
+                    # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
+                    copyInputFile = copy.deepcopy(self.csvFile)
+                    OLReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, engine="python")
+                    OLReader = OLReader.loc[:,~OLReader.columns.str.contains('^Unnamed')]  # eliminate empty columns at the end
+
+                    if(len(OLReader.columns.tolist()) > 3):
+                        # If I find multiple columns, I hope this is sufficient.
+                        print('This is a (' + str(delimiter) + ') delimited file.')
+                        self.delimiter=delimiter
+                except Exception as e:
+                    print('Exception when parsing the file using a (' + str(delimiter) + ') delimiter. Guess that is not correct.')
+        if(self.delimiter is None):
+            print('I can not find the delimiter. Look into this problem.')
+
     def DetermineManufacturer(self,):
         col_OneLambda = ['PatientID', 'SampleIDName', 'RunDate', 'CatalogID', 'BeadID', 'Specificity', 'RawData','NC1BeadID','PC1BeadID', 'NC2BeadID','PC2BeadID', 'Rxn']
         col_Immucor = ['Sample_ID', 'Patient_Name', 'Lot_ID', 'Run_Date', 'Allele', 'Raw_Value', 'Assignment']
         OLReader = ''
-        try: 
-            if not self.manufacturer.strip():
-                print('Determining Manufacturer, csv file=' + str(self.csvFile))
-                try:
-                    #print('Checking if it is a Immucor File:')
-                    # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
-                    copyInputFile = copy.deepcopy(self.csvFile)
-                    #print('This is the copied object:' + str(copyInputFile))
+        if not self.manufacturer.strip():
+            print('Determining Manufacturer, csv file=' + str(self.csvFile))
+            try:
+                #print('Checking if it is a Immucor File:')
+                # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
+                copyInputFile = copy.deepcopy(self.csvFile)
+                #print('This is the copied object:' + str(copyInputFile))
 
-                	#pd.read_csv(io.BytesIO(obj['Body'].read()))
-                    OLReader = pd.read_csv(copyInputFile,index_col = False,sep=",",engine="python")                     #try with , separator
-                    OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
-                   
-                    colnames = [str(c.strip('"').strip().replace(' ','_')) for c in OLReader.columns.tolist()]      #list colnames 
-                    OLReader.columns = colnames
-                    
-                    if (set(colnames) & set(col_Immucor)):
-                        self.manufacturer = 'Immucor'                                                               # MatchIt, Lifecodes
-                except Exception as e:
-                    #print('Exception Parsing Immucor file:' + str(e))
-                    print('This is not an immumucor file.')
+                #pd.read_csv(io.BytesIO(obj['Body'].read()))
+                OLReader = pd.read_csv(copyInputFile,index_col = False,sep=self.delimiter,engine="python")                     #try with , separator
+                OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
 
-                    try:
-                        #print('Checking if it is a One Lambda File:')
+                colnames = [str(c.strip('"').strip().replace(' ','_')) for c in OLReader.columns.tolist()]      #list colnames
+                OLReader.columns = colnames
 
-                        copyInputFile = copy.deepcopy(self.csvFile)
-                        #print('This is the copied object:' + str(copyInputFile))
+                if (set(colnames) & set(col_Immucor)): # Check if there is an intersection of the sets. Overlapping is good.
+                    self.manufacturer = 'Immucor'
+                elif(set(colnames) & set(col_OneLambda)):
+                    self.manufacturer = 'OneLambda'
+                else:
+                    print('Cannot determine manufacturer! No matching column names.')
+                    self.manufacturer = None
+            except Exception as e:
+                #print('Exception Parsing Immucor file:' + str(e))
+                print('Exception determining column names. Cannot determine manufacturer!' + str(e))
 
-                        OLReader = pd.read_csv(copyInputFile,index_col = False,sep=";",engine="python")                     #try with ; separator
-                        OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
-
-                        colnames = [str(c.strip('"')) for c in OLReader.columns.tolist()]                               #list colnames file
-                        OLReader.columns = colnames
-
-                        if (set(colnames) & set(col_OneLambda)):
-                            self.manufacturer = 'OneLambda'
-                    except Exception as e:
-                        #print('Exception Parsing OneLambda File:' + str(e))
-                        print('This is not a OneLambda file.')
-
-                
-                
-        except Exception as e:
-            print('Unable to identify manufacturer:' + str(e))
         return(self.manufacturer,OLReader)
     
     #########
@@ -92,10 +138,11 @@ class Converter(object):
     #########
     def GetBeadValue(self,NC2BeadID, BeadID, SampleIDName, SampleID,RawData):
         if BeadID == NC2BeadID and SampleIDName == SampleID:
-            BeadValue = RawData
+            # Some localizations allow a comma in these as a decimal format. Just make it a period.
+            BeadValue = str(RawData).replace(',','.')
         else:
             BeadValue = 0
-        return
+        return BeadValue
 
     #########
     # Prettify xml
@@ -139,19 +186,11 @@ class Converter(object):
         rowlength = OLReader.shape[0]
         for row in OLReader.itertuples():
         
-            SampleID = row.SampleIDName
-            Positive = self.GetBeadValue( row.PC2BeadID, col_OneLambda['BeadID'], col_OneLambda['SampleIDName'], SampleID, col_OneLambda['RawData'])
+            SampleID = row.SampleIDName #NC2BeadID, BeadID, SampleIDName, SampleID,RawData
+            Positive = self.GetBeadValue( NC2BeadID=row.PC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
             Negative = self.GetBeadValue( row.NC2BeadID, col_OneLambda['BeadID'], col_OneLambda['SampleIDName'], SampleID, col_OneLambda['RawData'])
 
-
-            formattedRunDate = row.RunDate
-            #print('previous RunDate:' + str(formattedRunDate))
-            # Parse the date
-            try:
-                dateObject = datetime.datetime.strptime(row.RunDate, "%d-%m-%Y")
-                formattedRunDate = dateObject.strftime("%Y-%m-%d")
-            except Exception as e:
-                print('Could not format the date properly:' + e)
+            formattedRunDate = self.formatRunDate(row.RunDate)
             #print('formatted RunDate:' + str(formattedRunDate))
 
             #sample_test_date= datetime.datetime.strptime(row.RunDate, "%d/%m/%Y").strftime("%Y-%m-%d")
@@ -173,7 +212,7 @@ class Converter(object):
             if row.SampleIDName is not None:
                 
                 Specs = row.Specificity.split(",")
-                Raw = row.RawData
+                Raw = row.RawData.replace(',','.')
 
                 # Specs might have one or two loci. The bead is specific to two alleles in a heterodimer.
                 # The other not included loci have the Spec name "-"
@@ -232,7 +271,7 @@ class Converter(object):
                     Ranking = switcher['Negative']    
                 current_row_panel_bead = ET.SubElement(current_row,'bead',
                         {'HLA-allele-specificity':str(row.Allele),
-                          'raw-MFI':str(row.Raw_Value),
+                          'raw-MFI':str(row.Raw_Value.replace(',','.')),
                           'Ranking':str(Ranking),
                         })
         # create a new XML file with the results
@@ -243,7 +282,23 @@ class Converter(object):
         #myfile.write(mydata)
         self.prettyPrintXml()
 
-    
+
+    def convert(self):
+        global manufacturer
+        self.DetermineDelimiter()
+        manufacturer, Table = self.DetermineManufacturer()
+        print('manufacturer', manufacturer)
+        if manufacturer == 'OneLambda':
+            print('manufacturer', manufacturer)
+            self.ProcessOneLambda(Table)
+        elif manufacturer == 'Immucor':
+            print('manufacturer', manufacturer)
+            self.ProcessImmucor(Table)
+        else:
+            print('Not known manufacturer, unable to convert file')
+            return False
+
+
 if __name__ == '__main__':
 
     csvFile = sys.argv[1]
@@ -257,15 +312,6 @@ if __name__ == '__main__':
     print('xmlFile:' + str(xmlFile))
 
     converter = Converter(csvFile=csvFile,manufacturer=manufacturer,xmlFile=xmlFile)
-    manufacturer,Table = converter.DetermineManufacturer()
-    print('manufacturer', manufacturer)
-    if manufacturer == 'OneLambda':
-        print('manufacturer', manufacturer)
-        converter.ProcessOneLambda(Table)
-    elif manufacturer == 'Immucor':
-        print('manufacturer', manufacturer)
-        converter.ProcessImmucor(Table)
-    else: 
-        print('Not known manufacturer, unable to convert file')
+    converter.convert()
 
     print('Done. Results written to ' + str(xmlFile))
