@@ -258,4 +258,24 @@ def getUploadByFilename(token=None, url=None, fileName=None):
     response = json.loads(responseData)
     return response
 
+def makeEntry(token=None, url=None, fileName=None):
+     if(url is None):
+         url = getUrl()
+     if(token is None):
+         token = getToken(url=url)
+     print('Making new entry for:' + str(fileName))
 
+     fullUrl = str(url) + '/api/uploads/makeentry2/' + fileName
+     body = {}
+
+     encodedJsonData = str(json.dumps(body)).encode('utf-8')
+     updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
+     updateRequest.add_header('Content-Type', 'application/json')
+     updateRequest.add_header('Authorization', 'Bearer ' + token)
+     responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+         #print('Response:' + str(responseData))
+     if (responseData is None or len(responseData) < 1):
+          print('updateValidationStatus returned an empty response!')
+          return False
+     response = json.loads(responseData)
+     return response
