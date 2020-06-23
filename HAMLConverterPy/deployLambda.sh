@@ -5,7 +5,7 @@
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/HAMLConverterPy"
-ENVIRONMENT_PATH="/home/bmatern/schemavalidationenv"
+ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 LAMBDA_FUNCTION="convertCSVToHAMLStaging"
 HANDLER_FILE="csv_to_haml_lambda_handler.py"
 
@@ -29,6 +29,7 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 cd ..
 zip -g function.zip $HANDLER_FILE
 zip -g function.zip ihiw_converter.py
+zip -j -g function.zip ../Common/IhiwRestAccess.py
 
 
 # Zip Config File

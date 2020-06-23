@@ -6,7 +6,7 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/SchemaValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-LAMBDA_FUNCTION="validateXmlStaging"
+LAMBDA_FUNCTION="validateXmlSchemaStaging"
 HANDLER_FILE="SchemaValidation.py"
 
 cd $PROJECT_PATH

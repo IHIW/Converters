@@ -6,9 +6,9 @@ import json
 import urllib
 
 try:
-    from IhiwRestAccess import getUrl, getToken, setValidationStatus
+    from IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
 except Exception:
-    from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus
+    from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
 
 def schema_validation_handler(event, context):
     print('I found the schema validation handler.')
@@ -22,58 +22,54 @@ def schema_validation_handler(event, context):
         xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
         xmlText = xmlFileObject["Body"].read()
 
-        # Determine file type
+        # Determine file extension.
         if (str(xmlKey).lower().endswith('.hml') or str(xmlKey).lower().endswith('.xml')):
-            fileType='HML'
+            fileExtension='HML'
         elif (str(xmlKey).lower().endswith('.haml')):
-            fileType='HAML'
+            fileExtension='HAML'
         elif str(xmlKey).lower().endswith('.csv'):
-            fileType='CSV'
+            fileExtension='CSV'
         else:
-            fileType='UNKNOWN'
+            fileExtension='UNKNOWN'
+
+        # Get access stuff from the REST Endpoints
+        url = getUrl()
+        token = getToken(url=url)
+
+        # Get the FileType from the upload object
+        # TODO: Uncomment this when the getUploadByFilename endpoint is deployed.
+        # TODO: Or else we'll keep trying to convert files that are not HAML files.
+        '''
+        csvUploadObject = getUploadByFilename(token=token, url=url, fileName=xmlKey)
+        if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
+            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not convert it to HAML.' )
+            return None
+        fileType = csvUploadObject['type']
+        '''
+        fileType=fileExtension# TEMP CODE to replace that rest call
 
         validationResults = None
-        # Get the Schema file
-        if(fileType=='HML'):
-            schemaKey = 'schema/hml-1.0.1.xsd'
-            schemaFileObject = s3.get_object(Bucket=bucket, Key=schemaKey)
-            schemaText = schemaFileObject["Body"].read()
-
-            # Perform the validation.
+        if(fileType == 'HML'):
+            print('I will Validate Schema for this HML file:' + str(xmlKey))
+            schemaText = getSchemaText(schemaFileName='schema/hml-1.0.1.xsd', bucketName=bucket)
             validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
             print('ValidationResults:' + str(validationResults))
-
-            # Request the management app to update the validation status for this file.
-            url = getUrl()
-            token=getToken(url=url)
-            setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults=='Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
-
-        elif (fileType == 'HAML'):
-            schemaKey = 'schema/IHIW-haml_version_w0_3_3.xsd'
-            schemaFileObject = s3.get_object(Bucket=bucket, Key=schemaKey)
-            schemaText = schemaFileObject["Body"].read()
-
-            # Perform the validation.
-            validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
-            print('ValidationResults:' + str(validationResults))
-
-            # Request the management app to update the validation status for this file.
-            url = getUrl()
-            token = getToken(url=url)
             setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
-
-        elif(fileType=='CSV'):
-                url = getUrl()
-                token=getToken(url=url)
-                setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not validate Schema of converted HAML file.', url=url, token=token, validatorType='SCHEMA')
-
+        elif(fileType == 'HAML'):
+            if(fileExtension=='CSV'):
+                print('File ' + str(xmlKey) + ' is a .csv file, I will not perform schema validation.')
+                return None
+            elif(fileExtension=='HAML'):
+                schemaText = getSchemaText(schemaFileName='schema/IHIW-haml_version_w0_3_3.xsd', bucketName=bucket)
+                validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
+                print('ValidationResults:' + str(validationResults))
+                setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
+            else:
+                print('The file' + str(xmlKey) + ' is a HAML file but I dont understand the extension. I will not perform schema validation.')
+                return None
         else:
-            # If it is a different file type we should not perform validation on this file.
-            pass
-
-            #url = getUrl()
-            #token = getToken(url=url)
-            #setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not determine file type of uploaded file:' + str(xmlKey), url=url, token=token, validatorType='SCHEMA')
+            print('The file' + str(xmlKey) + ' is neither HML or HAML, I will not perform schema validation.')
+            return None
 
         return str(validationResults)
 
@@ -81,6 +77,11 @@ def schema_validation_handler(event, context):
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
+def getSchemaText(schemaFileName=None, bucketName=None):
+    schemaKey = schemaFileName
+    schemaFileObject = s3.get_object(Bucket=bucketName, Key=schemaKey)
+    schemaText = schemaFileObject["Body"].read()
+    return schemaText
 
 def validateAgainstSchema(schemaText=None, xmlText=None):
     try:

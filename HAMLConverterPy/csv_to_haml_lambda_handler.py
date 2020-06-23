@@ -2,9 +2,16 @@ import boto3
 #import os
 #import sys
 from ihiw_converter import Converter
+
 import json
 import urllib
 import io
+
+try:
+    from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename
+except Exception as e:
+    print('Failed in importing files: ' + str(e))
+    from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename
 
 
 
@@ -26,6 +33,27 @@ def csv_to_hml_lambda_handler(event, context):
 
         print('csvKey:' + str(csvKey))
 
+        if not (str(csvKey[len(csvKey)-4:len(csvKey)]).lower() in ['.csv','.tsv']):
+            print('Upload ' + str(csvKey) + ' is not a .csv file. I will not convert it to HAML.')
+            return None
+
+        # Login token for rest methods...
+        print('Getting a login token and URL...')
+        (user, password) = getCredentials(configFileName='converter_config.yml')
+        url = getUrl(configFileName='converter_config.yml')
+        token = getToken(user=user, password=password, url=url)
+
+        # TODO: Uncomment this when the getUploadByFilename endpoint is deployed.
+        # TODO: Or else we'll keep trying to convert files that are not HAML files.
+        '''
+        csvUploadObject = getUploadByFilename(token=token, url=url, fileName=csvKey)
+        if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
+            print('Could not find the Upload object for upload ' + str(csvKey) + '\nI will not convert it to HAML.' )
+            return None
+        elif (csvUploadObject['type'] != 'HAML'):
+            print('The upload ' + str(csvKey) + ' is type ' + csvUploadObject['type'] + '. I will not convert it to HAML.')
+            return None
+        '''
         s3 = boto3.client('s3')
 
         csvFileObject = s3.get_object(Bucket=bucket, Key=csvKey)
@@ -42,26 +70,34 @@ def csv_to_hml_lambda_handler(event, context):
 
         # Pass None to the xml output file, so it doesn't write it.
         converter = Converter(s3ObjectBytestream,manufacturer,None)
-        manufacturer,Table = converter.DetermineManufacturer()
-        print('determined manufacturer: ' + manufacturer)
-        
-        if manufacturer == 'OneLambda':
-            print('Manufacturer', manufacturer)
-            converter.ProcessOneLambda(Table)
-        elif manufacturer == 'Immucor':
-            print('Manufacturer', manufacturer)
-            converter.ProcessImmucor(Table)
-        else: 
-            print('Not known manufacturer, unable to convert file')
+        converter.convert()
 
-        print('encoding this string:' + str(type(converter.xmlText)))
-        encoded_string = converter.xmlText.encode("utf-8")
-        print('encoded text:' + str(encoded_string))
+        # Somehow check if the convert was successful.
+        if(converter.xmlText is not None and len(converter.xmlText) > 0):
+            try:
+                # Call the Rest enpoint to create a new Upload entry. This should be BEFORE the file is actually created.
+                response=createConvertedUploadObject(newUploadFileName=csvKey + '.haml', previousUploadFileName=csvKey, token=token, url=url)
 
-        #print('getting s3 resource')
-        s3 = boto3.resource("s3")
-        print('saving file:' + str(xmlOutput))
-        s3.Bucket(bucket).put_object(Key=xmlOutput, Body=encoded_string)
+                # Write out the xml text
+                # This should trigger the XML validation.
+                print('encoding this string:' + str(type(converter.xmlText)))
+                encoded_string = converter.xmlText.encode("utf-8")
+                print('encoded text:' + str(encoded_string))
+                s3 = boto3.resource("s3")
+                print('saving file:' + str(xmlOutput))
+                s3.Bucket(bucket).put_object(Key=xmlOutput, Body=encoded_string)
+
+                # Set validation status of the .csv file
+                setValidationStatus(uploadFileName=csvKey, isValid=True, validationFeedback='Converted to HAML.', validatorType='HAML_CONVERT', token=token, url=url)
+            except Exception:
+                print('Cannot save file to S3 Storage')
+                setValidationStatus(uploadFileName=csvKey, isValid=False, validationFeedback='Failed to save Converted HAML File!', validatorType='HAML_CONVERT', token=token, url=url)
+        else:
+            print('Failed to convert the CSV File')
+            setValidationStatus(uploadFileName=csvKey, isValid=False, validationFeedback='Failed to Convert CSV to HAML File!', validatorType='HAML_CONVERT', token=token, url=url)
+
+
             
     except ValueError: 
         print('Not known manufacturer, unable to convert file')
+        setValidationStatus
