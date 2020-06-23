@@ -4,10 +4,10 @@
 # You need to provide the config file validation_config.yml with entries url: {} username: {} password: {}
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/bmatern/github/Converters/SchemaValidator"
+PROJECT_PATH="/home/bmatern/github/Converters/Components/Immunogenic_Epitopes"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-LAMBDA_FUNCTION="validateXmlStaging"
-HANDLER_FILE="SchemaValidation.py"
+LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
+HANDLER_FILE="ImmunogenicEpitopes.py"
 
 cd $PROJECT_PATH
 
@@ -16,7 +16,7 @@ rm function.zip
 
 # Install package(s)
 source $ENVIRONMENT_PATH"/bin/activate"
-pip install --target ./package lxml
+pip install --target ./package xlrd
 pip install --target ./package pyyaml
 deactivate
 
@@ -27,8 +27,11 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 # Zip Script
 cd ..
 zip -g function.zip $HANDLER_FILE
-zip -j -g function.zip ../Common/IhiwRestAccess.py
 
+# Zip supporting files. -j flag will junk the relative paths.
+zip -j -g function.zip ../../Common/Validation.py
+zip -j -g function.zip ../../Common/ParseExcel.py
+zip -j -g function.zip ../../Common/IhiwRestAccess.py
 
 # Zip Config File
 zip -g function.zip validation_config.yml

@@ -3,7 +3,11 @@ from SchemaValidation import validateAgainstSchema
 from MiringValidation import validateMiring
 from NmdpPortalValidation import validateNmdpPortal
 from HamlValidation import validateHaml
-from ValidationCommon import setValidationStatus
+
+try:
+    from IhiwRestAccess import setValidationStatus
+except Exception:
+    from Common.IhiwRestAccess import setValidationStatus
 
 # Test methods for running the lambda function.
 

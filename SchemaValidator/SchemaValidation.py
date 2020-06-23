@@ -4,7 +4,11 @@ from lxml import etree
 from sys import exc_info
 import json
 import urllib
-from ValidationCommon import getUrl, getToken, setValidationStatus
+
+try:
+    from IhiwRestAccess import getUrl, getToken, setValidationStatus
+except Exception:
+    from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus
 
 def schema_validation_handler(event, context):
     print('I found the schema validation handler.')
@@ -64,9 +68,12 @@ def schema_validation_handler(event, context):
                 setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not validate Schema of converted HAML file.', url=url, token=token, validatorType='SCHEMA')
 
         else:
-            url = getUrl()
-            token = getToken(url=url)
-            setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not determine file type of uploaded file:' + str(xmlKey), url=url, token=token, validatorType='SCHEMA')
+            # If it is a different file type we should not perform validation on this file.
+            pass
+
+            #url = getUrl()
+            #token = getToken(url=url)
+            #setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback='Could not determine file type of uploaded file:' + str(xmlKey), url=url, token=token, validatorType='SCHEMA')
 
         return str(validationResults)
 
