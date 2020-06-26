@@ -54,10 +54,10 @@ def testNmdpValidation():
     print(validateNmdpPortal(xmlText=xmlText) + '\n')
 
 def testSetValidationResults():
-    uploadFileName = '1497_1587729544244_HML_bad.hml.1.0.1.xml'
-    isValid = False
+    uploadFileName = '1_1592339213839_HAML_HLAM_Fusion.csv'
+    isValid = True
     validationFeedback = 'According to NMDP rules it is fine.'
-    validatorType='NMDP'
+    validatorType='LOL'
     validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, validatorType=validatorType)
     #print('ValidationResult=' + str(validationResult))
 
@@ -68,9 +68,9 @@ def testSetValidationResults():
 
 if __name__=='__main__':
     try:
-        testSchemaValidation()
+        #testSchemaValidation()
         #testNmdpValidation()
-        #testSetValidationResults()
+        testSetValidationResults()
 
         pass
 

@@ -276,8 +276,7 @@ class Converter(object):
                         })
         # create a new XML file with the results
         
-        #mydata = ET.tostring(data)
-        self.xmlData = ET.tostring(data)
+        #mydata = ET.tostring( = ET.tostring(data)
         #myfile = open(self.xmlFile, "wb")
         #myfile.write(mydata)
         self.prettyPrintXml()

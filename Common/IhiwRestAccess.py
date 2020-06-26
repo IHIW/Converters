@@ -73,20 +73,15 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
         print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
         return False
 
-def createConvertedUploadObject(newUploadFileName=None, token=None, url=None, previousUploadFileName=None):
-    print('Creating new upload object,\t' + 'newUploadFileName=' + str(newUploadFileName))
-
-    # TODO: Do I need to give the method the previous upload filename? Or do I give it a userID and a projectName
-    # TODO: Project name might not be available. Maybe the previous upload file name can be supplied.
-    # TODO: In that case, don't pass the new userID or Project ID. Check that this is how the rest method works.
-    #, userID=None, projectID=None
-
+def createConvertedUploadObject(newUploadFileType=None, token=None, url=None, previousUploadFileName=None):
+    print('Creating new upload object,\t' + 'newUploadFileType=' + str(newUploadFileType))
     if(previousUploadFileName is not None and len(previousUploadFileName)>1):
         print('previousConvertedUploadFileName=' + str(previousUploadFileName))
     #elif(userID is not None and len(userID) > 1 and projectID is not None and len(projectID) > 1):
     #    print('userID=' + str(userID) + '& projectID=' + str(projectID))
     else:
-        print('No previous upload file name!')
+        print('No previous upload file name! Cannot Continue!')
+        return None
 
 
     '''if (uploadFileName is None or isValid is None or validationFeedback is None or validatorType is None):
@@ -106,47 +101,47 @@ def createConvertedUploadObject(newUploadFileName=None, token=None, url=None, pr
         #print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(uploadFileName))
 
         # TODO: Is this the right path? currently it's /makeentry, could change to /copyUpload or something like that.
-        fullUrl = str(url) + '/api/uploads/makeentry'
+        fullUrl = str(url) + '/api/uploads/copyupload'
 
         # This body is the "upload" object that is passed into the method. We can supply information about the previous upload here.
         body = {
-            'fileName': previousUploadFileName
-            # TODO: add upload userID and/or project name here. Otherwise, provide the previous upload that were copying from.
+           # 'oldfileName': previousUploadFileName
+           # ,'newType': 'HAML'
+            # TODO: add uploadurl userID and/or project name here. Otherwise, provide the previous upload that were copying from.
 
         }
 
+        #url = "http://example.com"
+        params = {'oldfileName': previousUploadFileName
+            ,'newType': newUploadFileType}
+        query_string = urllib.parse.urlencode(params)
+        fullUrl = fullUrl + "?" + query_string
+
         print('body:' + str(body))
+        print('fullurl:' + str(fullUrl))
+
         encodedJsonData = str(json.dumps(body)).encode('utf-8')
         updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
         updateRequest.add_header('Content-Type', 'application/json')
         updateRequest.add_header('Authorization', 'Bearer ' + token)
-        '''
+
         # TODO: Doesn't work yet so this is commented for now
         responseData = request.urlopen(updateRequest).read().decode("UTF-8")
         if(responseData is None or len(responseData) < 1):
             print('updateValidationStatus returned an empty response!')
             return False
         response=json.loads(responseData)
-        '''
-
-        # TODO: Interpret response
-        '''
-        # The response contains the saved data, if successful. If the response matches what we expect it was a success.
-        # Probably need to make this more robust.
-        if(str(response['valid'])==str(isValid)  and str(response['validationFeedback'])==str(validationFeedback)):
-            return True
+        if str(response['id']) is not None:
+            return response
         else:
-            print('Could not set validation status, response:\n' + str(response))
-            return False
-        
+            print('No response was found when creating the new object, returning None.')
+            return None
 
-        return response
-        '''
     except SyntaxError as e:
         print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
         return False
     except urllib.error.HTTPError as e:
-        print('HTTP error when screating the Upload object for converted file for upload file ' + str(previousUploadFileName) + ' : ' + str(e))
+        print('HTTP error when creating the Upload object for converted file for upload file ' + str(previousUploadFileName) + ' : ' + str(e))
         return False
     except Exception as e:
         print('Error when creating the Upload object for converted file:\n' + str(e) + '\n' + str(exc_info()))
@@ -236,7 +231,8 @@ def getUploads(token=None, url=None):
 
     return response
 
-def getUploadByFilename(token=None, url=None, fileName=None):
+
+def getUploadByFilename2(token=None, url=None, fileName=None):
     if(url is None):
         url = getUrl()
     if(token is None):
@@ -257,5 +253,21 @@ def getUploadByFilename(token=None, url=None, fileName=None):
         return False
     response = json.loads(responseData)
     return response
+
+
+def getUploadByFilename(token=None, url=None, fileName=None):
+    # TODO: Workaround method. Because I forgot to add the correct file in this last deploy
+    # TODO: I can remove this method with the next deploy.
+    # Not confident how this will work for other users, it might not find the upoad properly.
+    response = getUploads(token=token, url=url)
+
+    for responseEntry in response:
+        print('Checking this one:' + str(responseEntry['fileName']))
+        if str(responseEntry['fileName']) == fileName:
+            print('Found the file.')
+            return responseEntry
+
+    print ('I could not find the file!' )
+    return None
 
 
