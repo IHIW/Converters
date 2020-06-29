@@ -27,56 +27,52 @@ def immunogenic_epitope_handler(event, context):
         excelKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
         print('Excel Filename:' + excelKey)
 
-        # Determine file type
-        if (str(excelKey).lower().endswith('.xls') or str(excelKey).lower().endswith('.xlsx')):
-            fileType = 'EXCEL'
-        else:
-            fileType = 'UNKNOWN'
-
         validationResults = None
-        # Get the Schema file
-        if (fileType == 'EXCEL'):
+        # Is this an excel file? It should have the xlsx extension.
+        if (str(excelKey).lower().endswith('.xls') or str(excelKey).lower().endswith('.xlsx')):
             print('This is an excel file with the name:' + str(excelKey))
 
+            # Get the upload information.
             url = getUrl()
             token = getToken(url=url)
 
-            # Is it for our project?
-            uploadFile = getUploadByFilename(fileName=excelKey,url=url, token=token)
+            uploadFile = getUploadByFilename(fileName=excelKey, url=url, token=token)
             print('I found this upload object:' + str(uploadFile))
-            projectName=uploadFile['project']['name']
+            projectName = uploadFile['project']['name']
             print('The upload is for this project:' + str(projectName))
-            # TODO: Checking by the name of the project is probably not the best. It changes between Staging and Production.
-            if(projectName == 'Definition of immunogenic epitopes'):
-                print('This is the Immunogenic Epitopes project!')
+            fileType = uploadFile['type']
+            print('this upload is file type:' + str(fileType))
 
-                fileType = uploadFile['type']
-                if(fileType != 'PROJECT_DATA_MATRIX'):
-                    print('the file type ' + str(fileType) + ' is not a project data matrix, i will not validate it.')
-                else:
+            # Is this a data Matrix?
+            if (fileType != 'PROJECT_DATA_MATRIX'):
+                print('the file type ' + str(fileType) + ' is not a project data matrix, i will not validate it.')
+            else:
+                # TODO: Checking by the name of the project is probably not the best. It changes between Staging and Production. It changes if the project is edited.
+                immunogenicEpitopeProjectName='Definition of immunogenic epitopes'
+                nonImmunogenicEpitopeProjectName='Project name: Definition of non-immunogenic epitopes edit'
+
+                if (projectName == immunogenicEpitopeProjectName):
+                    print('This is the Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
-                    print('Just got the excel file:' + str(excelFileObject))
-                    # read() provides a stream of bytes. The excel reader can accept this automatically, we pass that instead of filename.
                     excelData = excelFileObject["Body"].read()
-                    # print('Data:' + str(excelData))
-
-                    # Perform the validation.
-                    validationResults = validateEpitopesDataMatrix(excelFile=excelData)
+                    validationResults = validateEpitopesDataMatrix(excelFile=excelData, isImmunogenic=True)
                     print('validation results were retrieved, attempting to set status.')
                     print('ValidationResults:(\n' + str(validationResults) + '\n)')
-
-                    # Request the management app to update the validation status for this file.
-
                     setValidationStatus(uploadFileName=excelKey, isValid=(validationResults == 'Valid'),
-                                        validationFeedback=validationResults, url=url, token=token,
-                                        validatorType='IMMUNOGENIC_EPITOPES')
-
-            else:
-                print('This is Not the Immunogenic Epitopes project! I will not validate it.')
-
-
-
-
+                        validationFeedback=validationResults, url=url, token=token,
+                        validatorType='IMMUNOGENIC_EPITOPES')
+                elif (projectName == nonImmunogenicEpitopeProjectName):
+                    print('This is the Non Immunogenic Epitopes project!')
+                    excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
+                    excelData = excelFileObject["Body"].read()
+                    validationResults = validateEpitopesDataMatrix(excelFile=excelData, isImmunogenic=False)
+                    print('validation results were retrieved, attempting to set status.')
+                    print('ValidationResults:(\n' + str(validationResults) + '\n)')
+                    setValidationStatus(uploadFileName=excelKey, isValid=(validationResults == 'Valid'),
+                        validationFeedback=validationResults, url=url, token=token,
+                        validatorType='NON_IMMUNOGENIC_EPITOPES')
+                else:
+                    print('This is not the (Non) Immunogenic Epitopes project! I will not validate it. Double-check the project names')
         else:
             print(excelKey + ' is not an excel file so I will not validate it.')
 
@@ -88,26 +84,39 @@ def immunogenic_epitope_handler(event, context):
 
 
 
-def validateEpitopesDataMatrix(excelFile=None):
+def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     print('Validating Epitopes Data Matrix:' + str(excelFile))
+    if(isImmunogenic == None):
+        print('Please pass isImmunogenic=True/False, to specify whether we should validatate Immunogenic or NonImmunogenic epitopes.')
+        return('Cannot determine if this is a immunogenic or non immunogenic matrix. Please pass isImmunogenic=True/False')
+    elif(isImmunogenic):
+        print('Validating Immunogenic Epitopes.')
+        epitopeColumnNames = [
+            'hml_id_donor'
+            , 'hml_id_recipient'
+            , 'haml_id_recipient_pre_tx'
+            , 'haml_id_recipient_post_tx'
+            , 'prozone_pre_tx'
+            , 'prozone_post_tx'
+            , 'availability_pre_tx'
+            , 'availability_post_tx'
+            , 'months_post_tx'
+            , 'gender_recipient'
+            , 'age_recipient_tx'
+            , 'pregnancies_recipient'
+            , 'immune_suppr_post_tx'
+        ]
+    else:
+        print('Validating Non Immunogenic Epitopes.')
+        epitopeColumnNames= ['hml_id_recipient'
+            ,'haml_id_recipient'
+            ,'prozone'
+            ,'availability'
+            ,'gender_recipient'
+            ,'age_recipient_tx'
+        ]
 
-    immunogenicEpitopeColumnNames = [
-        'hml_id_donor'
-        , 'hml_id_recipient'
-        , 'haml_id_recipient_pre_tx'
-        , 'haml_id_recipient_post_tx'
-        , 'prozone_pre_tx'
-        , 'prozone_post_tx'
-        , 'availability_pre_tx'
-        , 'availability_post_tx'
-        , 'months_post_tx'
-        , 'gender_recipient'
-        , 'age_recipient_tx'
-        , 'pregnancies_recipient'
-        , 'immune_suppr_post_tx'
-    ]
-
-    excelData = parseExcelFile(excelFile=excelFile, columnNames=immunogenicEpitopeColumnNames)
+    excelData = parseExcelFile(excelFile=excelFile, columnNames=epitopeColumnNames)
 
     if(type(excelData) is str):
         # If it returned a string then it's an error message. Something is wrong with the data.
@@ -140,21 +149,32 @@ def validateEpitopesDataMatrix(excelFile=None):
 
     # Do more specific validation of the columns. Check that each column is valid.
     validationFeedback = ''
-    for dataRow in excelData:
-        # findUniqueFile returns an empty string if a single file was found.
-        validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_donor')
-        validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient')
-        validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_pre_tx')
-        validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_post_tx')
-        validationFeedback += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
-        validationFeedback += validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
-        validationFeedback += validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
-        validationFeedback += validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx')
-        validationFeedback += validateNumber(query=dataRow['months_post_tx'], columnName='months_post_tx')
-        validationFeedback += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
-        validationFeedback += validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
-        validationFeedback += validateBoolean(query=dataRow['pregnancies_recipient'], columnName='pregnancies_recipient')
-        validationFeedback += validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx')
+    if(isImmunogenic):
+        for dataRow in excelData:
+            # findUniqueFile returns an empty string if a single file was found.
+            validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_donor')
+            validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient')
+            validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_pre_tx')
+            validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_post_tx')
+            validationFeedback += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
+            validationFeedback += validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
+            validationFeedback += validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
+            validationFeedback += validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx')
+            validationFeedback += validateNumber(query=dataRow['months_post_tx'], columnName='months_post_tx')
+            validationFeedback += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
+            validationFeedback += validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
+            validationFeedback += validateBoolean(query=dataRow['pregnancies_recipient'], columnName='pregnancies_recipient')
+            validationFeedback += validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx')
+    else:
+        for dataRow in excelData:
+            # findUniqueFile returns an empty string if a single file was found.
+            validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient')
+            validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient')
+            validationFeedback += validateBoolean(query=dataRow['prozone'], columnName='prozone')
+            validationFeedback += validateBoolean(query=dataRow['availability'], columnName='availability')
+            validationFeedback += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
+            validationFeedback += validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
+
 
     if len(validationFeedback) < 1:
         return 'Valid'

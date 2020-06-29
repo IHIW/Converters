@@ -9,17 +9,23 @@ except Exception:
 
 def parseArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", help="verbose operation", action="store_true")
+    parser.add_argument("-v", "--validator", help="validator type", type=str)
     parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
 
     return parser.parse_args()
 
 
-def testValidateImmunogenicEpitopes(args=None):
+def testValidateImmunogenicEpitopes(excelFile=None):
     print('Starting up the immuno epitopes methods.')
 
-    validationResults = validateEpitopesDataMatrix(excelFile=args.excel)
+    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True)
+    print('Validation Results:\n' + str(validationResults))
+
+def testValidateNonImmunogenicEpitopes(excelFile=None):
+    print('Starting up the non immunogenic epitopes methods.')
+
+    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False)
     print('Validation Results:\n' + str(validationResults))
 
 def testSetValidationResults(args=None):
@@ -53,10 +59,14 @@ def testSetValidationResults(args=None):
 if __name__=='__main__':
     try:
         args=parseArgs()
-        verbose = args.verbose
-
-        testValidateImmunogenicEpitopes(args=args)
-        #testSetValidationResults(args=args)
+        validatorType =args.validator
+        if(validatorType=='IMMUNOGENIC_EPITOPES'):
+            testValidateImmunogenicEpitopes(excelFile=args.excel)
+        elif(validatorType=='NON_IMMUNOGENIC_EPITOPES'):
+            testValidateNonImmunogenicEpitopes(excelFile=args.excel)
+        else:
+            # TODO: This isn't a very good "else" case. Be smarter about that.
+            testSetValidationResults(args=args)
 
 
     except Exception:
