@@ -4,6 +4,7 @@ from lxml import etree
 from sys import exc_info
 import json
 import urllib
+import os
 
 try:
     from IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
@@ -23,30 +24,21 @@ def schema_validation_handler(event, context):
         xmlText = xmlFileObject["Body"].read()
 
         # Determine file extension.
-        if (str(xmlKey).lower().endswith('.hml') or str(xmlKey).lower().endswith('.xml')):
-            fileExtension='HML'
-        elif (str(xmlKey).lower().endswith('.haml')):
-            fileExtension='HAML'
-        elif str(xmlKey).lower().endswith('.csv'):
-            fileExtension='CSV'
-        else:
-            fileExtension='UNKNOWN'
+        # I read an internet comment that this will treat the file as having no extension if it indeed does not have an extension.
+        fileName, fileExtension = os.path.splitext(str(xmlKey).upper())
+        fileExtension = fileExtension.replace('.','')
+        print('This file has the extension:' + fileExtension)
 
         # Get access stuff from the REST Endpoints
         url = getUrl()
         token = getToken(url=url)
 
         # Get the FileType from the upload object
-        # TODO: Uncomment this when the getUploadByFilename endpoint is deployed.
-        # TODO: Or else we'll keep trying to convert files that are not HAML files.
-        '''
         csvUploadObject = getUploadByFilename(token=token, url=url, fileName=xmlKey)
         if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
-            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not convert it to HAML.' )
+            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate it by schema.' )
             return None
         fileType = csvUploadObject['type']
-        '''
-        fileType=fileExtension# TEMP CODE to replace that rest call
 
         validationResults = None
         if(fileType == 'HML'):
@@ -59,7 +51,7 @@ def schema_validation_handler(event, context):
             if(fileExtension=='CSV'):
                 print('File ' + str(xmlKey) + ' is a .csv file, I will not perform schema validation.')
                 return None
-            elif(fileExtension=='HAML'):
+            elif(fileExtension=='HAML' or fileExtension=='XML'):
                 schemaText = getSchemaText(schemaFileName='schema/IHIW-haml_version_w0_3_3.xsd', bucketName=bucket)
                 validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
                 print('ValidationResults:' + str(validationResults))
