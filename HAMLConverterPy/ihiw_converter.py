@@ -279,6 +279,7 @@ class Converter(object):
         #mydata = ET.tostring( = ET.tostring(data)
         #myfile = open(self.xmlFile, "wb")
         #myfile.write(mydata)
+        self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
 
 
