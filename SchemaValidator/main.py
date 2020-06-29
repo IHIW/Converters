@@ -3,6 +3,7 @@ from SchemaValidation import validateAgainstSchema
 from MiringValidation import validateMiring
 from NmdpPortalValidation import validateNmdpPortal
 from HamlValidation import validateHaml
+import argparse
 
 try:
     from IhiwRestAccess import setValidationStatus
@@ -10,40 +11,32 @@ except Exception:
     from Common.IhiwRestAccess import setValidationStatus
 
 # Test methods for running the lambda function.
+def parseArgs():
+    parser = argparse.ArgumentParser()
+    #parser.add_argument("-v", "--verbose", help="verbose operation", action="store_true")
+    #parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
+    #parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
+    parser.add_argument("-x", "--xml",  help="xml file to validate", type=str)
+    parser.add_argument("-s", "--schema", help="schema file to validate against", type=str)
 
-def testSchemaValidation():
+    return parser.parse_args()
 
+
+def testSchemaValidation(xmlFileName=None, schemaFileName=None):
     # Just a demo. First we validate a good HML document against the hml schema:
-    schemaPath = 'schema/hml-1.0.1.xsd'
-    xmlPath = 'xml/good.hml.1.0.1.xml'
-    print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
-    schemaText = open(schemaPath, 'rb').read()
-    xmlText = open(xmlPath, 'rb').read()
+    # Test Cases, try passing these to the method:
+    # schemaPath = 'schema/hml-1.0.1.xsd'
+    # xmlPath = 'xml/good.hml.1.0.1.xml'
+    # schemaPath = 'schema/hml-1.0.1.xsd'
+    # xmlPath = 'xml/bad.hml.1.0.1.xml'
+    # schemaPath = 'schema/IHIW-haml_version_w0_3_3.xsd'
+    # xmlPath = 'xml/OutputImmucor.haml'
+    print('Validating XML: ' + str(xmlFileName) + '\nagainst Schema: ' + str(schemaFileName) + '\n')
+    schemaText = open(schemaFileName, 'rb').read()
+    xmlText = open(xmlFileName, 'rb').read()
     print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
-    # Then validate a bad hml document, and print the errors. Same thing.
-    schemaPath = 'schema/hml-1.0.1.xsd'
-    xmlPath = 'xml/bad.hml.1.0.1.xml'
-    print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
-    schemaText = open(schemaPath, 'rb').read()
-    xmlText = open(xmlPath, 'rb').read()
-    print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
-    # Try it with haml.
-    schemaPath = 'schema/IHIW-haml_version_w0_3_3.xsd'
-    xmlPath = 'xml/OutputImmucor.haml'
-    print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
-    schemaText = open(schemaPath, 'rb').read()
-    xmlText = open(xmlPath, 'rb').read()
-    print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
-
-    # Try it with haml.
-    schemaPath = 'schema/IHIW-haml_version_w0_3_3.xsd'
-    xmlPath = 'xml/OutputOneLambda.haml'
-    print('Validating XML: ' + str(xmlPath) + '\nagainst Schema: ' + str(schemaPath) + '\n')
-    schemaText = open(schemaPath, 'rb').read()
-    xmlText = open(xmlPath, 'rb').read()
-    print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
 def testNmdpValidation():
 
@@ -68,10 +61,14 @@ def testSetValidationResults():
 
 if __name__=='__main__':
     try:
-        #testSchemaValidation()
-        #testNmdpValidation()
-        testSetValidationResults()
+        args = parseArgs()
+        xmlFilename = args.xml
+        schemaFileName = args.schema
 
+
+        testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
+        #testNmdpValidation()
+        #testSetValidationResults()
         pass
 
     except Exception:

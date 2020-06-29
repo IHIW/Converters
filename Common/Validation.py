@@ -24,11 +24,21 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
     elif(len(matchList) == 0):
         return 'In data column ' + str(columnName) + ' I could not find an uploaded file with the name (' + str(query) + '); '
     else:
-        resultsText = 'In data column ' + str(columnName) + ' For file entry (' + str(query) + '), ' + str(len(matchList)) + ' matching files were found:('
-        for match in matchList:
-            resultsText += match + ') , ('
-        resultsText = resultsText[0:len(resultsText) - 2] + '; '
-        return resultsText
+        # We will sometimes find 2 entries for a single file. This is the case for converted HAML files.
+        # They are called "ABCD.csv" and "ABCD.csv.haml"
+        # We should allow this.
+        if(len(matchList) == 2 and (matchList[0] in matchList[1] or matchList[1] in matchList[0])):
+            print('In data column ' + str(columnName) + ' For file entry (' + str(query) + '), '
+                + str(len(matchList)) + ' matching files were found, and they appear to be the same converted file:('
+                + str(matchList[0] + '),(' + matchList[1]) + ')')
+            return ''
+
+        else:
+            resultsText = 'In data column ' + str(columnName) + ' For file entry (' + str(query) + '), ' + str(len(matchList)) + ' matching files were found:('
+            for match in matchList:
+                resultsText += match + ') , ('
+            resultsText = resultsText[0:len(resultsText) - 2] + '; '
+            return resultsText
 
 def validateBoolean(query=None, columnName='?'):
     queryText=str(query).lower()

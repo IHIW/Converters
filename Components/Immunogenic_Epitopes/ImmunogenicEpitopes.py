@@ -7,12 +7,12 @@ import urllib
 
 # For importing common methods, may be in the same directory when deployed as a package
 try:
-    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus
+    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename
     from ParseExcel import parseExcelFile
     from Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale
 except Exception as e:
     print('Failed in importing files: ' + str(e))
-    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus
+    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename
     from Common.ParseExcel import parseExcelFile
     from Common.Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale
 
@@ -38,22 +38,44 @@ def immunogenic_epitope_handler(event, context):
         if (fileType == 'EXCEL'):
             print('This is an excel file with the name:' + str(excelKey))
 
-            excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
-            print('Just got the excel file:' + str(excelFileObject))
-            # read() provides a stream of bytes. The excel reader can accept this automatically, we pass that instead of filename.
-            excelData = excelFileObject["Body"].read()
-            #print('Data:' + str(excelData))
-
-            # Perform the validation.
-            validationResults = validateEpitopesDataMatrix(excelFile=excelData)
-            print('validation results were retrieved, attempting to set status.')
-            print('ValidationResults:(\n' + str(validationResults) + '\n)')
-
-            # Request the management app to update the validation status for this file.
             url = getUrl()
             token = getToken(url=url)
-            setValidationStatus(uploadFileName=excelKey, isValid=(validationResults == 'Valid'),
-                validationFeedback=validationResults, url=url, token=token, validatorType='IMMUNOGENIC_EPITOPES')
+
+            # Is it for our project?
+            uploadFile = getUploadByFilename(fileName=excelKey,url=url, token=token)
+            print('I found this upload object:' + str(uploadFile))
+            projectName=uploadFile['project']['name']
+            print('The upload is for this project:' + str(projectName))
+            # TODO: Checking by the name of the project is probably not the best. It changes between Staging and Production.
+            if(projectName == 'Definition of immunogenic epitopes'):
+                print('This is the Immunogenic Epitopes project!')
+
+                fileType = uploadFile['type']
+                if(fileType != 'PROJECT_DATA_MATRIX'):
+                    print('the file type ' + str(fileType) + ' is not a project data matrix, i will not validate it.')
+                else:
+                    excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
+                    print('Just got the excel file:' + str(excelFileObject))
+                    # read() provides a stream of bytes. The excel reader can accept this automatically, we pass that instead of filename.
+                    excelData = excelFileObject["Body"].read()
+                    # print('Data:' + str(excelData))
+
+                    # Perform the validation.
+                    validationResults = validateEpitopesDataMatrix(excelFile=excelData)
+                    print('validation results were retrieved, attempting to set status.')
+                    print('ValidationResults:(\n' + str(validationResults) + '\n)')
+
+                    # Request the management app to update the validation status for this file.
+
+                    setValidationStatus(uploadFileName=excelKey, isValid=(validationResults == 'Valid'),
+                                        validationFeedback=validationResults, url=url, token=token,
+                                        validatorType='IMMUNOGENIC_EPITOPES')
+
+            else:
+                print('This is Not the Immunogenic Epitopes project! I will not validate it.')
+
+
+
 
         else:
             print(excelKey + ' is not an excel file so I will not validate it.')
@@ -146,11 +168,12 @@ def createFileListFromUploads(uploads=None):
         fileName =upload['fileName']
         fileType = upload['type']
         #print('uploadFileName=' + fileName)
-        if(fileType=='HAML'):
-            # TODO: Shouldn't need to do this if the upload entry has been created for the converted .haml file
-            fileNameList.append(fileName + '.haml')
-        else:
-            fileNameList.append(fileName)
+        #if(fileType=='HAML'):
+        #    # TODO: Shouldn't need to do this if the upload entry has been created for the converted .haml file
+        #    fileNameList.append(fileName + '.haml')
+        #else:
+        #    fileNameList.append(fileName)
+        fileNameList.append(fileName)
 
     return fileNameList
 

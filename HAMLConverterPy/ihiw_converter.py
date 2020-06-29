@@ -212,7 +212,7 @@ class Converter(object):
             if row.SampleIDName is not None:
                 
                 Specs = row.Specificity.split(",")
-                Raw = row.RawData.replace(',','.')
+                Raw = str(row.RawData).replace(',','.')
 
                 # Specs might have one or two loci. The bead is specific to two alleles in a heterodimer.
                 # The other not included loci have the Spec name "-"
