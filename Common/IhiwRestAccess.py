@@ -29,8 +29,7 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
 
         fullUrl = str(url) + '/api/uploads/setvalidation'
 
-        # TODO: I changed the maximum to 3000, whenever we redeploy i can fix it here.
-        maxValidationLength=255
+        maxValidationLength=10000
         if(len(validationFeedback) > maxValidationLength):
             print('Warning, validator feedback length is greater than the maximum (' + str(maxValidationLength)
                   + ') so I will truncate the feedback to ' + str(maxValidationLength) + ' characters.')
@@ -231,7 +230,6 @@ def getUploads(token=None, url=None):
 
     return response
 
-
 def getUploadByFilename2(token=None, url=None, fileName=None):
     if(url is None):
         url = getUrl()
@@ -253,7 +251,6 @@ def getUploadByFilename2(token=None, url=None, fileName=None):
         return False
     response = json.loads(responseData)
     return response
-
 
 def getUploadByFilename(token=None, url=None, fileName=None):
     # TODO: Workaround method. Because I forgot to add the correct file in this last deploy

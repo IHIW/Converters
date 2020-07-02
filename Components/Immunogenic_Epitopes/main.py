@@ -1,6 +1,7 @@
 from sys import exc_info
 import argparse
 from ImmunogenicEpitopes import validateEpitopesDataMatrix
+from Common.S3_Access import writeFileToS3
 
 try:
     from IhiwRestAccess import setValidationStatus
@@ -55,6 +56,10 @@ def testSetValidationResults(args=None):
     else:
         print('FAILED to set validation status!')
 
+def testWriteFileS3(args=None):
+    writeFileToS3()
+
+
 if __name__=='__main__':
     try:
         args=parseArgs()
@@ -63,6 +68,10 @@ if __name__=='__main__':
             testValidateImmunogenicEpitopes(excelFile=args.excel)
         elif(validatorType=='NON_IMMUNOGENIC_EPITOPES'):
             testValidateNonImmunogenicEpitopes(excelFile=args.excel)
+        elif(validatorType=='SET_VALIDATION_RESULTS'):
+            testSetValidationResults(args=args)
+        elif(validatorType=='WRITE_FILE_S3'):
+            testWriteFileS3(args=args)
         else:
             # TODO: This isn't a very good "else" case. Be smarter about that.
             testSetValidationResults(args=args)
