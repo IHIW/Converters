@@ -5,6 +5,14 @@ from sys import exc_info
 import json
 import urllib
 
+from io import StringIO
+import sys
+
+# pip install git+https://github.com/nmdp-bioinformatics/pyglstring
+from glstring import check
+
+
+
 # For importing common methods, may be in the same directory when deployed as a package
 try:
     from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename
@@ -136,6 +144,9 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     if(token==None):
         return('Could not aquire a login token.')
 
+    uploadList = None
+    hmlList = None
+
     try:
         uploadList = getUploads(token=token, url=url)
         uploadFileList = createFileListFromUploads(uploads=uploadList)
@@ -152,8 +163,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     if(isImmunogenic):
         for dataRow in excelData:
             # findUniqueFile returns an empty string if a single file was found.
-            validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_donor')
-            validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient')
+            validationFeedback += validateHlaGenotypeEntry(query=dataRow['hml_id_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_donor', uploadList=uploadList)
+            validationFeedback += validateHlaGenotypeEntry(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient', uploadList=uploadList)
             validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_pre_tx')
             validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_post_tx')
             validationFeedback += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
@@ -168,7 +179,7 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     else:
         for dataRow in excelData:
             # findUniqueFile returns an empty string if a single file was found.
-            validationFeedback += validateUniqueEntryInList(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient')
+            validationFeedback += validateHlaGenotypeEntry(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient', uploadList=uploadList)
             validationFeedback += validateUniqueEntryInList(query=dataRow['haml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient')
             validationFeedback += validateBoolean(query=dataRow['prozone'], columnName='prozone')
             validationFeedback += validateBoolean(query=dataRow['availability'], columnName='availability')
@@ -180,6 +191,55 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         return 'Valid'
     else:
         return validationFeedback
+
+def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None, uploadList=None):
+    # For these projects, and HLA Genotype can be one of 3 things
+    # 1) A filename of an HML file.
+    # 2) A HML ID.
+    # 3) A GL String
+    print('Checking this HLA Genotype:' + str(query))
+
+    # Is it a filename? These will be HML files, with extension XML or HML.
+    if (str(query).lower().endswith('.xml') or str(query).lower().endswith('.hml')):
+        print(str(query) + ' looks like a file name.')
+        listValidationResult=validateUniqueEntryInList(query=query, searchList=searchList, allowPartialMatch=allowPartialMatch, columnName=columnName)
+        print('list validation results:' + str(listValidationResult))
+        return listValidationResult
+    # Otherwise, is it in our HML-ID list?
+    print('Checking HML ID.')
+    hmlIdList = getHmlIDsListFromUploads(uploadList=uploadList)
+    if(query in hmlIdList):
+        print(str(query) + ' is in the HML ID list! Next, check if it is unique.')
+        hmlIdValidationResults=validateUniqueEntryInList(query=query, searchList=hmlIdList, allowPartialMatch=False, columnName=columnName)
+        print('hml validation results:' + str(hmlIdValidationResults))
+        return hmlIdValidationResults
+
+    # If not, validate GL String.
+    print('Checking if this is a sane glstring:' + str(query))
+    glStringValidationResults = validateGlString(glString=query)
+    print('glstring validation results:' + str(glStringValidationResults))
+    return glStringValidationResults
+
+
+
+    # Does it match a filename on our list?
+
+
+    #if(listValidationResult == ''):
+    # list validation will return empty string if it's valid, return it.
+
+    # Then we're done.
+    # Does it match one of our HMLIDs?
+        # Then we're done.
+    # Check a GL String
+        # Return results.
+
+    return 'NOT SURE THE RESULTS HERE!'
+
+def getHmlIDsListFromUploads(uploadList=None):
+    # TODO: Implement this. Get each upload
+    # Only wanna do this once, check if it's "None"
+    return []
 
 def createFileListFromUploads(uploads=None):
     fileNameList = []
@@ -198,7 +258,36 @@ def createFileListFromUploads(uploads=None):
     return fileNameList
 
 
+def validateGlString(glString=None):
+    print('validating Gl String:' + str(glString))
+    with Capturing() as output:
+        # TODO: This is not working. I need to borrow the main method logic.
+        check.main()
+    output=list(output)
+
+    validationResults=''
+    for validationLineIndex in range(0,len(output)):
+        glStringValidationLine=output[validationLineIndex]
+
+        #print('GLSTRING****' + str(glStringValidationLine))
+        if ('WARNING' in glStringValidationLine.upper()):
+            print('I DETECTED A Warning!')
+            validationResults += (glStringValidationLine) + '\n'
 
 
+    if(len(validationResults) == 0):
+        return validationResults
+    else:
+        return 'GLString (' + str(glString) + ') had these validation problem:\n' + validationResults
 
-
+# Borrowed code to capture standard out
+# https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout

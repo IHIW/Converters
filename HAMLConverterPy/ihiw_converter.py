@@ -175,20 +175,46 @@ class Converter(object):
       
         col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
                 
-        #// Determine where the columns are, position 
+        # Determine where the columns are, position
         colnames = [c.strip('"') for c in OLReader.columns.tolist()] #list colnames file
         for c in range(0,len(colnames)): 
             name = colnames[c]
             col_OneLambda[name] =  c 
         
-        #for each sample id/row start converting
+        # Data is the root element.
         data = ET.Element("haml",xmlns='urn:HAML.Namespace')
-        rowlength = OLReader.shape[0]
+        # OLReader is a pandas DataFrame.
+        # Each row is a namedtuple
+        # Each sample should have only one patient-antibody-assessment and solid-phase-panel
+        # The first row contains the negative control info.
+        # The second row contains positive control info.
+
+        negativeControlRow = OLReader.iloc[0]
+        print('negativeControlRow:' + str(negativeControlRow))
+        negativeControlRawData = str(negativeControlRow.RawData)
+        print('negativeControlRawData:' + str(negativeControlRawData))
+        positiveControlRow = OLReader.iloc[0]
+        print('positiveControlRow:' + str(positiveControlRow))
+        positiveControlRawData = str(positiveControlRow.RawData)
+        print('negativeControlRawData:' + str(positiveControlRawData))
+        '''
+        patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+            {'sampleID': str(row.SampleIDName.strip()),
+            'patientID': str(row.PatientID),
+            'reporting-centerID': 'Center',
+            'sample-test-date': formattedRunDate,
+            'negative-control-MFI': str(Negative),
+            'positive-control-MFI': str(Positive),
+            })
+        '''
+        #rowlength = OLReader.shape[0]
         for row in OLReader.itertuples():
+            print('Looking at this row:' + str(row))
         
             SampleID = row.SampleIDName#NC2BeadID, BeadID, SampleIDName, SampleID,RawData
+            # TODO: looks like i'm assigning the negative control as the positive control bead id, is that right? Probably fine, that's the positive bead. But i think the NC2BeadID parameter is named wrong.
             Positive = self.GetBeadValue( NC2BeadID=row.PC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
-            Negative = self.GetBeadValue( row.NC2BeadID, col_OneLambda['BeadID'], col_OneLambda['SampleIDName'], SampleID, col_OneLambda['RawData'])
+            Negative = self.GetBeadValue( NC2BeadID=row.NC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
 
             formattedRunDate = self.formatRunDate(row.RunDate)
             #print('formatted RunDate:' + str(formattedRunDate))
@@ -196,7 +222,7 @@ class Converter(object):
             #sample_test_date= datetime.datetime.strptime(row.RunDate, "%d/%m/%Y").strftime("%Y-%m-%d")
 
             #print('row with manufacturer:(' + self.manufacturer + ')')
-            current_row = ET.SubElement(data,'patient-antibody-assessment',
+            patientAntibodyAssmtElement = ET.SubElement(data,'patient-antibody-assessment',
                              {'sampleID':str(row.SampleIDName.strip()),
                               'patientID':str(row.PatientID),
                               'reporting-centerID':'Center',
@@ -204,7 +230,7 @@ class Converter(object):
                               'negative-control-MFI': str(Negative),
                               'positive-control-MFI': str(Positive),
                               })
-            current_row_panel = ET.SubElement(current_row,'solid-phase-panel',
+            current_row_panel = ET.SubElement(patientAntibodyAssmtElement,'solid-phase-panel',
                             {'kit-manufacturer':self.manufacturer,
                             'lot':row.CatalogID
                             })
@@ -219,7 +245,7 @@ class Converter(object):
                 # TODO: For two loci, combine them into one entry
                 for SingleSpec in Specs:
                     if(SingleSpec != '-'):
-                        current_row_panel_bead = ET.SubElement(current_row,'bead',
+                        current_row_panel_bead = ET.SubElement(patientAntibodyAssmtElement,'bead',
                             {'HLA-allele-specificity':str(SingleSpec),
                             'raw-MFI':str(Raw),
                             'Ranking':str(row.Rxn),

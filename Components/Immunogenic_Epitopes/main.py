@@ -15,7 +15,6 @@ def parseArgs():
 
     return parser.parse_args()
 
-
 def testValidateImmunogenicEpitopes(excelFile=None):
     print('Starting up the immuno epitopes methods.')
 
