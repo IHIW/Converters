@@ -10,7 +10,7 @@ except Exception:
 
 def parseArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--validator", help="validator type", type=str)
+    parser.add_argument("-v", "--validator", required=True, help="validator type", type=str)
     parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
 
@@ -57,7 +57,13 @@ def testSetValidationResults(args=None):
         print('FAILED to set validation status!')
 
 def testWriteFileS3(args=None):
-    writeFileToS3()
+    # Read the Excel File locally.
+
+    # Annotate something.
+
+    # Write the Excel File to S3 storage.
+
+    writeFileToS3(newFileName=args.upload)
 
 
 if __name__=='__main__':
@@ -73,8 +79,7 @@ if __name__=='__main__':
         elif(validatorType=='WRITE_FILE_S3'):
             testWriteFileS3(args=args)
         else:
-            # TODO: This isn't a very good "else" case. Be smarter about that.
-            testSetValidationResults(args=args)
+            print('I do not understand the validator type.')
 
 
     except Exception:
