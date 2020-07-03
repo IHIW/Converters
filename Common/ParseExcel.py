@@ -89,8 +89,7 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
             currentDataRow[columnName] = cellValue
         dataEntries.append(currentDataRow)
 
-    # TODO: I probably want to return the header row here as well. This shows the original order that the headers were in.
-    return dataEntries
+    return (dataEntries, headerRow)
 
 def parseExcelFile(excelFile=None):
     # I'm determining the headers on the fly here, instead of validating against a list of expected headers.
@@ -197,13 +196,13 @@ def createExcelValidationReport(errors=None, inputWorkbookData=None):
         outputWorksheet.write(cellIndex, header, headerStyle)
     # Loop input Workbook data
     for dataLineIndex, dataLine in enumerate(inputWorkbookData):
-        print('Copying this line:' + str(dataLine))
+        #print('Copying this line:' + str(dataLine))
 
         for headerIndex, header in enumerate(sheetHeaders):
             cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + str(dataLineIndex + 2)
 
             # Was there an error in this cell? Highlight it red and add error message
-            if (header in errors[dataLineIndex].keys()):
+            if (header in errors[dataLineIndex].keys() and len(str(errors[dataLineIndex][header]))>0):
                 outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
                 outputWorksheet.write_comment(cellIndex, errors[dataLineIndex][header])
             else:

@@ -18,6 +18,8 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package xlrd
 pip install --target ./package pyyaml
+pip install --target ./package xlsxwriter
+pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
 deactivate
 
 # Zip packages
@@ -32,6 +34,7 @@ zip -g function.zip $HANDLER_FILE
 zip -j -g function.zip ../../Common/Validation.py
 zip -j -g function.zip ../../Common/ParseExcel.py
 zip -j -g function.zip ../../Common/IhiwRestAccess.py
+zip -j -g function.zip ../../Common/S3_Access.py
 
 # Zip Config File
 zip -g function.zip validation_config.yml

@@ -1,6 +1,6 @@
 from sys import exc_info
 import argparse
-import io
+from os.path import split
 
 from ImmunogenicEpitopes import validateEpitopesDataMatrix
 
@@ -31,8 +31,20 @@ def testValidateImmunogenicEpitopes(excelFile=None):
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
-    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False)
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False)
     print('Validation Results:\n' + str(validationResults))
+
+    # Bug: Need to parse out the path and just use the report name.
+    head, tail = split(excelFile)
+    # TODO: I prefer if this file had a _report.xlsx instead of .xlsx.
+    #  But I think this is not possible with our current CopyUpload rest endpoint.
+    #  I think I should modify the copyupload rest endpoint to allow arbitrary filenames.
+    reportFileName = tail + '.xlsx'
+
+    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
+    writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+    #createExcelValidationReport(errors=errorResultsPerRow,inputWorkbookData=inputExcelFileData, reportFileName=reportFileName)
 
 def testSetValidationResults(args=None):
     uploadFileName = args.upload
