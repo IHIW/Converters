@@ -1,18 +1,24 @@
 from sys import exc_info
 import argparse
+import io
+
 from ImmunogenicEpitopes import validateEpitopesDataMatrix
-from Common.S3_Access import writeFileToS3
 
 try:
     from IhiwRestAccess import setValidationStatus
+    from S3_Access import writeFileToS3
+    from ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
 except Exception:
     from Common.IhiwRestAccess import setValidationStatus
+    from Common.S3_Access import writeFileToS3
+    from Common.ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--validator", required=True, help="validator type", type=str)
     parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
+    parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
 
     return parser.parse_args()
 
@@ -57,13 +63,27 @@ def testSetValidationResults(args=None):
         print('FAILED to set validation status!')
 
 def testWriteFileS3(args=None):
-    # Read the Excel File locally.
+    print('Opening Input Workbook...')
+    excelFile=args.excel
+    inputWorkbookData = parseExcelFile(excelFile=excelFile)
+    if(inputWorkbookData is None or len(inputWorkbookData) < 1):
+        print('I failed to open the input workbook data. Cannot continue.')
+        return None
+    else:
+        pass
+        print('Workbook was opened, this is the data:' + str(inputWorkbookData))
 
-    # Annotate something.
+    # Some test errors. The column headers with errors are stored for each line
+    errors = [{'prozone_post_tx':'This cell is missing data'},{'availability_pre_tx':'File is wrong format or whatever.'}]
+
+    # Create output files
+    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errors, inputWorkbookData=inputWorkbookData)
 
     # Write the Excel File to S3 storage.
+    writeFileToS3(newFileName=args.upload, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
-    writeFileToS3(newFileName=args.upload)
+
+
 
 
 if __name__=='__main__':

@@ -21,7 +21,7 @@ try:
 except Exception as e:
     print('Failed in importing files: ' + str(e))
     from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename
-    from Common.ParseExcel import parseExcelFile
+    from Common.ParseExcel import parseExcelFileWithColumns
     from Common.Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale
 
 def immunogenic_epitope_handler(event, context):
@@ -90,8 +90,6 @@ def immunogenic_epitope_handler(event, context):
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
-
-
 def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     print('Validating Epitopes Data Matrix:' + str(excelFile))
     if(isImmunogenic == None):
@@ -124,7 +122,7 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
             ,'age_recipient_tx'
         ]
 
-    excelData = parseExcelFile(excelFile=excelFile, columnNames=epitopeColumnNames)
+    excelData = parseExcelFileWithColumns(excelFile=excelFile, columnNames=epitopeColumnNames)
 
     if(type(excelData) is str):
         # If it returned a string then it's an error message. Something is wrong with the data.
@@ -193,6 +191,7 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         return validationFeedback
 
 def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None, uploadList=None):
+    # TODO: Should this be under Common.Validation? This method can be re-used..
     # For these projects, and HLA Genotype can be one of 3 things
     # 1) A filename of an HML file.
     # 2) A HML ID.
@@ -238,6 +237,7 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
 
 def getHmlIDsListFromUploads(uploadList=None):
     # TODO: Implement this. Get each upload
+    # TODO: Move to Common.Validation
     # Only wanna do this once, check if it's "None"
     return []
 
@@ -257,8 +257,8 @@ def createFileListFromUploads(uploads=None):
 
     return fileNameList
 
-
 def validateGlString(glString=None):
+    # TODO: This should probably move to Common.Validation
     print('validating Gl String:' + str(glString))
     with Capturing() as output:
         # TODO: This is not working. I need to borrow the main method logic.
