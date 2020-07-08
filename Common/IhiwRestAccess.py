@@ -72,47 +72,31 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
         print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
         return False
 
-def createConvertedUploadObject(newUploadFileType=None, token=None, url=None, previousUploadFileName=None):
+def createConvertedUploadObject(newUploadFileName=None, newUploadFileType=None, token=None, url=None, previousUploadFileName=None):
     print('Creating new upload object,\t' + 'newUploadFileType=' + str(newUploadFileType))
     if(previousUploadFileName is not None and len(previousUploadFileName)>1):
         print('previousConvertedUploadFileName=' + str(previousUploadFileName))
-    #elif(userID is not None and len(userID) > 1 and projectID is not None and len(projectID) > 1):
-    #    print('userID=' + str(userID) + '& projectID=' + str(projectID))
     else:
         print('No previous upload file name! Cannot Continue!')
         return None
 
-
-    '''if (uploadFileName is None or isValid is None or validationFeedback is None or validatorType is None):
-        print('Missing data, cannot set validation status:'
-              + '\tuploadFileName:' + str(uploadFileName)
-              + '\tisValid:' + str(isValid)
-              + '\tvalidationFeedback:'
-              + str(validationFeedback)
-              + '\tvalidatorType:' + str(validatorType))
-        return False'''
     if(url is None):
         url = getUrl()
     if(token is None):
         token = getToken(url=url)
 
     try:
-        #print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(uploadFileName))
-
-        # TODO: Is this the right path? currently it's /makeentry, could change to /copyUpload or something like that.
         fullUrl = str(url) + '/api/uploads/copyupload'
 
-        # This body is the "upload" object that is passed into the method. We can supply information about the previous upload here.
-        body = {
-           # 'oldfileName': previousUploadFileName
-           # ,'newType': 'HAML'
-            # TODO: add uploadurl userID and/or project name here. Otherwise, provide the previous upload that were copying from.
+        # Body is empty, we're passing the interesting stuff in the parameters.
+        body = {}
 
-        }
-
-        #url = "http://example.com"
-        params = {'oldfileName': previousUploadFileName
-            ,'newType': newUploadFileType}
+        params = {
+            'oldFileName': previousUploadFileName
+            #'oldfileName': previousUploadFileName
+            ,'newType': newUploadFileType
+            ,'newFileName':newUploadFileName
+            }
         query_string = urllib.parse.urlencode(params)
         fullUrl = fullUrl + "?" + query_string
 
@@ -124,7 +108,6 @@ def createConvertedUploadObject(newUploadFileType=None, token=None, url=None, pr
         updateRequest.add_header('Content-Type', 'application/json')
         updateRequest.add_header('Authorization', 'Bearer ' + token)
 
-        # TODO: Doesn't work yet so this is commented for now
         responseData = request.urlopen(updateRequest).read().decode("UTF-8")
         if(responseData is None or len(responseData) < 1):
             print('updateValidationStatus returned an empty response!')
@@ -230,7 +213,7 @@ def getUploads(token=None, url=None):
 
     return response
 
-def getUploadByFilename2(token=None, url=None, fileName=None):
+def getUploadByFilename(token=None, url=None, fileName=None):
     if(url is None):
         url = getUrl()
     if(token is None):
@@ -252,6 +235,7 @@ def getUploadByFilename2(token=None, url=None, fileName=None):
     response = json.loads(responseData)
     return response
 
+'''
 def getUploadByFilename(token=None, url=None, fileName=None):
     # TODO: Workaround method. Because I forgot to add the correct file in this last deploy
     # TODO: I can remove this method with the next deploy.
@@ -266,5 +250,5 @@ def getUploadByFilename(token=None, url=None, fileName=None):
 
     print ('I could not find the file!' )
     return None
-
+'''
 

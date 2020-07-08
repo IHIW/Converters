@@ -219,6 +219,7 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
 def createValidationReport(uploadFileName=None,errors=None, inputWorkbookData=None, bucket=None, token=None, url=None, validatorType=None):
     print('Creating a validation Report.')
 
+    # TODO: Assign a new filename to show this is a validation report.
     reportFileName = uploadFileName + '.xlsx'
 
     outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errors, inputWorkbookData=inputWorkbookData)

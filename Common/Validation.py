@@ -143,7 +143,8 @@ def createFileListFromUploads(uploads=None):
 def validateGlString(glString=None):
     print('validating Gl String:' + str(glString))
     with Capturing() as output:
-        # TODO: This is not working. I need to borrow the main method logic from the GL String module
+        # TODO: This is not working. I need to borrow the main method logic from the GL String modulet
+
         check.main()
     output=list(output)
 
