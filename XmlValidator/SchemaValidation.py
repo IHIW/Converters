@@ -1,13 +1,13 @@
 from boto3 import client
 s3 = client('s3')
-from lxml import etree
+from pip._vendor.html5lib.treebuilders import etree
 from sys import exc_info
 import json
 import urllib
 import os
 
 try:
-    from IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
+    from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
 except Exception:
     from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
 

@@ -1,12 +1,15 @@
 from sys import exc_info
-from SchemaValidation import validateAgainstSchema
-from MiringValidation import validateMiring
-from NmdpPortalValidation import validateNmdpPortal
+#from SchemaValidation import validateAgainstSchema
+from XmlValidator.SchemaValidation import validateAgainstSchema
+#from MiringValidation import validateMiring
+from XmlValidator.MiringValidation import validateMiring
+#from NmdpPortalValidation import validateNmdpPortal
+from XmlValidator.NmdpPortalValidation import validateNmdpPortal
 from HamlValidation import validateHaml
 import argparse
 
 try:
-    from IhiwRestAccess import setValidationStatus
+    from Common.IhiwRestAccess import setValidationStatus
 except Exception:
     from Common.IhiwRestAccess import setValidationStatus
 
@@ -70,9 +73,9 @@ if __name__=='__main__':
         xmlFilename = args.xml
         schemaFileName = args.schema
 
-        testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
-        #testMiringValidation(xmlFileName=xmlFilename)
-        #testNmdpValidation()
+        #testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
+        #testMiringValidation()
+        testNmdpValidation()
         #testSetValidationResults()
         pass
 
