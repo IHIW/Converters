@@ -2,16 +2,19 @@ from sys import exc_info
 import argparse
 from os.path import split
 
-from ImmunogenicEpitopes import validateEpitopesDataMatrix
+
 
 try:
     from IhiwRestAccess import setValidationStatus
     from S3_Access import writeFileToS3
     from ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
+    from ImmunogenicEpitopes import validateEpitopesDataMatrix
+    from Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 except Exception:
     from Common.IhiwRestAccess import setValidationStatus
     from Common.S3_Access import writeFileToS3
     from Common.ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
+    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -94,6 +97,12 @@ def testWriteFileS3(args=None):
     # Write the Excel File to S3 storage.
     writeFileToS3(newFileName=args.upload, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
+def testCreateImmunogenicEpitopesProjectReport(args=None):
+    print('Creating Immunogenic Epitopes Project Report')
+    createImmunogenicEpitopesReport(bucket=args.bucket)
+
+
+
 
 
 
@@ -104,8 +113,10 @@ if __name__=='__main__':
         validatorType =args.validator
         if(validatorType=='IMMUNOGENIC_EPITOPES'):
             testValidateImmunogenicEpitopes(excelFile=args.excel)
-        elif(validatorType=='NON_IMMUNOGENIC_EPITOPES'):
+        elif (validatorType == 'NON_IMMUNOGENIC_EPITOPES'):
             testValidateNonImmunogenicEpitopes(excelFile=args.excel)
+        elif (validatorType == 'IMMUNOGENIC_EPITOPES_PROJECT_REPORT'):
+            testCreateImmunogenicEpitopesProjectReport(args=args)
         elif(validatorType=='SET_VALIDATION_RESULTS'):
             testSetValidationResults(args=args)
         elif(validatorType=='WRITE_FILE_S3'):

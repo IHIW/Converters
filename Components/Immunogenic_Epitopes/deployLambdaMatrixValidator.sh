@@ -7,7 +7,7 @@
 PROJECT_PATH="/home/bmatern/github/Converters/Components/Immunogenic_Epitopes"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
-HANDLER_FILE="ImmunogenicEpitopes.py"
+HANDLER_FILE="ImmunogenicEpitopesValidator.py"
 
 cd $PROJECT_PATH
 

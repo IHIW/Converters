@@ -70,7 +70,10 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     # TODO: What happens if excel files have multiple columns with the same name? That might not be detected by this.
     for iteratorIndex, excelColumnIndex in enumerate(excelColumnIndexes):
         if(excelColumnIndex is None):
-            return ('Error when parsing input excel document. The excel file does not contain this column:' + str(columnNames[iteratorIndex]))
+            print('Error when parsing input excel document. The excel file does not contain this column:' + str(columnNames[iteratorIndex]))
+            # TODO: Returning None is not correct here. I'm supposed to be returning some better values than this.
+            #  This happens if a column is missing. I have to put on the report that there is no value for this.
+            return None
 
     print('All column headers were found in the excel file.')
 

@@ -45,6 +45,7 @@ def immunogenic_epitope_handler(event, context):
             url = getUrl()
             token = getToken(url=url)
 
+            # TODO: What if there is no  upload? This will currently probaly just crash. I should detect if the upload doesnt exist and write something nice.
             uploadFile = getUploadByFilename(fileName=excelKey, url=url, token=token)
             print('I found this upload object:' + str(uploadFile))
             projectName = uploadFile['project']['name']
@@ -109,30 +110,10 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         return('Cannot determine if this is a immunogenic or non immunogenic matrix. Please pass isImmunogenic=True/False', inputExcelData, validationErrors)
     elif(isImmunogenic):
         print('Validating Immunogenic Epitopes.')
-        epitopeColumnNames = [
-            'hml_id_donor'
-            , 'hml_id_recipient'
-            , 'haml_id_recipient_pre_tx'
-            , 'haml_id_recipient_post_tx'
-            , 'prozone_pre_tx'
-            , 'prozone_post_tx'
-            , 'availability_pre_tx'
-            , 'availability_post_tx'
-            , 'months_post_tx'
-            , 'gender_recipient'
-            , 'age_recipient_tx'
-            , 'pregnancies_recipient'
-            , 'immune_suppr_post_tx'
-        ]
+        epitopeColumnNames = getColumnNames(isImmunogenic=True)
     else:
         print('Validating Non Immunogenic Epitopes.')
-        epitopeColumnNames= ['hml_id_recipient'
-            ,'haml_id_recipient'
-            ,'prozone'
-            ,'availability'
-            ,'gender_recipient'
-            ,'age_recipient_tx'
-        ]
+        epitopeColumnNames = getColumnNames(isImmunogenic=False)
 
     inputExcelData, originalColumnHeaders = parseExcelFileWithColumns(excelFile=excelFile, columnNames=epitopeColumnNames)
 
@@ -215,6 +196,32 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         return ('Valid', inputExcelData, validationErrors)
     else:
         return (validationFeedback, inputExcelData, validationErrors)
+
+def getColumnNames(isImmunogenic=True):
+    if (isImmunogenic):
+        return [
+            'hml_id_donor'
+            , 'hml_id_recipient'
+            , 'haml_id_recipient_pre_tx'
+            , 'haml_id_recipient_post_tx'
+            , 'prozone_pre_tx'
+            , 'prozone_post_tx'
+            , 'availability_pre_tx'
+            , 'availability_post_tx'
+            , 'months_post_tx'
+            , 'gender_recipient'
+            , 'age_recipient_tx'
+            , 'pregnancies_recipient'
+            , 'immune_suppr_post_tx'
+        ]
+    else:
+        return ['hml_id_recipient'
+            , 'haml_id_recipient'
+            , 'prozone'
+            , 'availability'
+            , 'gender_recipient'
+            , 'age_recipient_tx'
+        ]
 
 def createValidationReport(uploadFileName=None,errors=None, inputWorkbookData=None, bucket=None, token=None, url=None, validatorType=None):
     print('Creating a validation Report.')

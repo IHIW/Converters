@@ -95,7 +95,9 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
 
     # If not, validate GL String.
     print('Checking if this is a sane glstring:' + str(query))
-    glStringValidationResults = validateGlString(glString=query)
+    # TODO:
+    #  glStringValidationResults = validateGlString(glString=query)
+    glStringValidationResults = '' # Temporary results from glstring validator, because it does not work yet
     print('glstring validation results:' + str(glStringValidationResults))
     return glStringValidationResults
 
