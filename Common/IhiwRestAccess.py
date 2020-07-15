@@ -235,20 +235,18 @@ def getUploadByFilename(token=None, url=None, fileName=None):
     response = json.loads(responseData)
     return response
 
-'''
-def getUploadByFilename(token=None, url=None, fileName=None):
-    # TODO: Workaround method. Because I forgot to add the correct file in this last deploy
-    # TODO: I can remove this method with the next deploy.
-    # Not confident how this will work for other users, it might not find the upoad properly.
-    response = getUploads(token=token, url=url)
+def getProjectID(configFileName='validation_config.yml', projectName=None):
+    if(projectName is None):
+        raise Exception('getProjectID: projectName is undefined.')
 
-    for responseEntry in response:
-        print('Checking this one:' + str(responseEntry['fileName']))
-        if str(responseEntry['fileName']) == fileName:
-            print('Found the file.')
-            return responseEntry
-
-    print ('I could not find the file!' )
-    return None
-'''
-
+    # Get the project ID from the config
+    try:
+        print('Fetching project ID of ' + str(projectName) + ' from ' + str(configFileName))
+        configStream = open(configFileName, 'r')
+        configDict = yaml.load(configStream, Loader=yaml.FullLoader)
+        #print('configDict:' + str(configDict)) # Dont print this, it contains passwords.
+        projectID = configDict['project_id'][projectName]
+        return projectID
+    except Exception as e:
+        print('Exception when loading project ID from config, does the config contain an entry for project_id:' + str(projectName) + '?:\n' + str(e) + '\n' + str(exc_info()))
+        return str(e)

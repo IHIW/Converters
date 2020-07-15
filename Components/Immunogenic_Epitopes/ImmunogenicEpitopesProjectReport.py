@@ -8,8 +8,11 @@ s3 = client('s3')
 from sys import exc_info
 import yaml
 
-from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject
+import zipfile
+import io
+#from StringIO import StringIO
 
+from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID
 
 
 def immunogenic_epitope_project_report_handler(event, context):
@@ -32,36 +35,14 @@ def createImmunogenicEpitopesReport(bucket=None):
 
     url=getUrl()
     token=getToken(url=url)
+    projectID = getProjectID(projectName='immunogenic_epitopes')
+    summaryFileName = 'Project.' + str(projectID) + '.Report.xlsx'
+    zipFileName = 'Project.' + str(projectID) + '.Report.zip'
 
-    # Get the project ID from the config
-    try:
-        configStream = open('validation_config.yml', 'r')
-        configDict = yaml.load(configStream, Loader=yaml.FullLoader)
-        projectID = configDict['project_id']['immunogenic_epitopes']
-    except Exception as e:
-        print('Exception when loading project ID from config, does the config contain an entry for this?:\n' + str(e) + '\n' + str(exc_info()))
-        return str(e)
-
-    # collect all data matrix files.
-    uploadList = getUploads(token=token, url=url)
-    print('This is my upload list:' + str(uploadList))
-    print('Parsing ' + str(len(uploadList)) + ' uploads to find data matrices for project ' + str(projectID) + '..')
-    dataMatrixUploadList = []
-    for upload in uploadList:
-        if(projectID == upload['project']['id']):
-            if(upload['type'] == 'PROJECT_DATA_MATRIX'):
-                dataMatrixUploadList.append(upload)
-            else:
-                #print('Disregarding this upload because it is not a data matrix.')
-                pass
-        else:
-            #print('Disregarding this upload because it is not in our project.')
-            pass
-    print('I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectID) + '.\n')
+    dataMatrixUploadList = getDataMatrixUploads(projectID=projectID, token=token, url=url)
 
     # Create Spreadsheet, Define Headers?
     outputWorkbook, outputWorkbookbyteStream = createBytestreamExcelOutputFile()
-    # TODO: Support multiple sheets. This is just a single sheet.
     outputWorksheet = outputWorkbook.add_worksheet()
     # Define Styles
     headerStyle = outputWorkbook.add_format({'bold': True})
@@ -69,22 +50,22 @@ def createImmunogenicEpitopesReport(bucket=None):
     # Write headers on new sheet.
     #sheetHeaders = inputWorkbookData[0].keys()
     sheetHeaders=getColumnNames(isImmunogenic=True)
+
+    extraHeaders=['hml']
+
     print('These are the headers:' + str(sheetHeaders))
     for headerIndex, header in enumerate(sheetHeaders):
         cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + '1'
         outputWorksheet.write(cellIndex, header, headerStyle)
 
+    reportLineIndex = 1
 
+    #supportingFiles = []
+    supportingFiles = ['1497_1593502560693_HML_HmlRecipient.xml'] # Test data.
 
-
-
-
-
-    # Combine them together.
+    # Combine data matrices together.
     for dataMatrixUpload in dataMatrixUploadList:
         print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
-
-
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
         inputExcelBytes = excelFileObject["Body"].read()
@@ -92,49 +73,83 @@ def createImmunogenicEpitopesReport(bucket=None):
         (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True)
         #print('This file has this validation status:' + validationResults)
 
-        reportLineIndex=1
         # Loop input Workbook data
         for dataLineIndex, dataLine in enumerate(inputExcelFileData):
         # print('Copying this line:' + str(dataLine))
             reportLineIndex += 1
 
-
             for headerIndex, header in enumerate(sheetHeaders):
                 cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + str(reportLineIndex)
 
+                #  TODO: Keep a list of HML files to zip. If this cell doesn't have validation errors I can add the HML filename to a list.
                 # Was there an error in this cell? Highlight it red and add error message
                 if (header in errorResultsPerRow[dataLineIndex].keys() and len(str(errorResultsPerRow[dataLineIndex][header])) > 0):
                     # TODO: Make the error styles optional.
                     outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
                     outputWorksheet.write_comment(cellIndex, errorResultsPerRow[dataLineIndex][header])
                 else:
+                    # TODO: What if a dataline is missing a bit of information? Handle if this is missing in the input file.
                     outputWorksheet.write(cellIndex, dataLine[header])
 
+                # TODO: Add extra columns. Submitter. Lab. Date/TimeStamps?
 
+                # TODO: Fetch GLString from the HML file.
 
-
-
-
-        # Print the validation status on the entered spreadsheet information.
-        # First step, just put the validation comments as a first comment in th
-
-    # Keep a list of HML files to zip.
-
-    # write excel summary.
 
     # Widen the columns a bit so we can read them.
     outputWorksheet.set_column('A:' + getColumnNumberAsString(len(sheetHeaders) - 1), 30)
     # Freeze the header row.
     outputWorksheet.freeze_panes(1, 0)
     outputWorkbook.close()
-
-    writeFileToS3(newFileName='ImmunogenicEpitopesReport.xlsx', bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+    writeFileToS3(newFileName=summaryFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
     # create zip file
-    # add excel summary
+    zipFileStream = io.BytesIO()
+    supportingFileZip = zipfile.ZipFile(zipFileStream, 'a', zipfile.ZIP_DEFLATED, False)
 
-    # for hml and haml files
-        # add to zip
+    #supportingFileZip.writestr('HelloWorld.txt', 'Hello World!')
+    supportingFileZip.writestr(summaryFileName, outputWorkbookbyteStream.getvalue())
+
+    for supportingFile in supportingFiles:
+        print('Adding file ' + str(supportingFile) + ' to ' + str(zipFileName))
+
+        supportingFileObject = s3.get_object(Bucket=bucket, Key=supportingFile)
+        # TODO: We're writing a string in the zip file.
+        #  I think that's fine for hml & text-like files but this might cause problems with some file types.
+        supportingFileZip.writestr(supportingFile, supportingFileObject["Body"].read())
+
+    supportingFileZip.close()
+    writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
+
+
+
+    print('Done. Summary is here: ' + str(summaryFileName) + '\nSupporting zip is here: ' + str(zipFileName)
+          + '\nin bucket: ' + str(bucket))
+
+
+def getDataMatrixUploads(projectID=None, token=None, url=None):
+    # collect all data matrix files.
+    uploadList = getUploads(token=token, url=url)
+    print('This is my upload list:' + str(uploadList))
+    #print('Parsing ' + str(len(uploadList)) + ' uploads to find data matrices for project ' + str(projectID) + '..')
+    dataMatrixUploadList = []
+    for upload in uploadList:
+        if (projectID == upload['project']['id']):
+            if (upload['type'] == 'PROJECT_DATA_MATRIX'):
+                dataMatrixUploadList.append(upload)
+            else:
+                # print('Disregarding this upload because it is not a data matrix.')
+                pass
+        else:
+            # print('Disregarding this upload because it is not in our project.')
+            pass
+    print(
+        'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectID) + '.\n')
+    return dataMatrixUploadList
+
+
+
+
 
 
 

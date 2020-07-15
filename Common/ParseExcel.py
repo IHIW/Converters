@@ -8,17 +8,20 @@ import io
 
 def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     # Parse and validate excel file against a list of expected column names.
-    # Return: A list of dictionaries representing a line of data. Keys are the column headers
-    # TODO: Also return the original headers so we can maintain the original order if necessary.
-    # TODO: Also return some error messages. This might be a dictionary of some sort. But i want to know what
-    #  line and column they are in.
+    # Return: a tuple containing:
+    # 1) A list of dictionaries representing a line of data. Keys are the column headers
+    # 2) The original headers so we can maintain the original order if necessary.
+    # 3) a list of dictionaries representing row&column-specific error results
+
+    dataEntries=[]
+    headerRow=[]
+    validationErrors=[]
 
     if(excelFile is None):
-        print('No excel file was provided! I cannot parse nothing!')
-        return None
+        raise Exception('No excel file was provided! I cannot parse nothing!')
+
     if(columnNames is None or len(columnNames) < 1):
-        print('No column names were provided! I cannot parse the excel file.')
-        return None
+        raise Exception('No column names were provided! I cannot parse the excel file.')
 
     # list->set->list will get the unique values in a list. No duplicates.
     # Convert to lowercase and sort.
@@ -26,11 +29,8 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     columnNames.sort()
 
     print('Opening and Parsing excel file:' + str(excelFile))
-    print('It is of type:' + str(type(excelFile)))
-    print('column names:' + str(columnNames))
-
-    # Store a dictionary for each excel row
-    dataEntries=[]
+    #print('It is of type:' + str(type(excelFile)))
+    print('Comparing against column names:' + str(columnNames))
 
     # Open the workbook
     xlWorkbook = openWorkbook(excelFile)
@@ -49,50 +49,74 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     # Empty List. this stores the column # in THE EXCEL FILE where the data lives.
     # Because the excel file might have data in different order for some reason.
     excelColumnIndexes=[None] * len(columnNames)
-
+    headerRowErrors= {}
     for excelColumnIndex, cell in enumerate(headerRow):
         cellType = ctype_text.get(cell.ctype, 'unknown type')
         if(cellType != 'text'):
             print('Warning! I expected the column header to be of type "text" but instead it is:' + cellType)
 
         excelColumnName = str(cell.value).lower()
+        headerRow[excelColumnIndex]=excelColumnName # Store the name instead of the cell object for easier parsing.
         try:
             columnIndex = columnNames.index(excelColumnName)
+            excelColumnIndexes[columnIndex] = excelColumnIndex
         except ValueError:
-            return ('Error when parsing input excel document. Spreadsheet has an extra column:' + str(excelColumnName))
-
-        excelColumnIndexes[columnIndex] = excelColumnIndex
-        #print('column name:' + excelColumnName)
-        #print('column number in excel document:' + str(excelColumnIndex))
-        #print('column number in sorted input column list:' + str(columnIndex))
+            headerRowErrors[excelColumnName] = ('Warning! Spreadsheet has an extra column:' + str(excelColumnName))
+    #print('Header Row Error Messages:' + str(headerRowErrors))
 
     # Check that found all columns. The indexes should not be None, because they were found in the excel document.
     # TODO: What happens if excel files have multiple columns with the same name? That might not be detected by this.
+    #  Make a test case for this.
+    missingColumns = []
     for iteratorIndex, excelColumnIndex in enumerate(excelColumnIndexes):
         if(excelColumnIndex is None):
-            print('Error when parsing input excel document. The excel file does not contain this column:' + str(columnNames[iteratorIndex]))
-            # TODO: Returning None is not correct here. I'm supposed to be returning some better values than this.
-            #  This happens if a column is missing. I have to put on the report that there is no value for this.
-            return None
+            print('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
+            missingColumns.append(columnNames[iteratorIndex])
+            headerRowErrors[columnNames[iteratorIndex]] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
 
-    print('All column headers were found in the excel file.')
+            '''
+            # Column is missing, so we can store this feedback in the first column.
+            firstExcelColumnName = str(headerRow[0])
+            print('This is the first column name:' + str(firstExcelColumnName))
+            headerRowErrors[firstExcelColumnName] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
+            '''
+            # TODO: Store a blank in the data for this column.
+
+
+    #validationErrors.append(headerRowErrors)
+    #print('All column headers were found in the excel file.')
 
     # Iterate and Store the row data.
     # Skip the first row, those are headers.
+    # TODO: Store any validation errors? I don't think I found any in here. If there is data missing?
     for rowIndex in range(1, xlSheet.nrows):
         #print('Processing excel row (0-based):' + str(rowIndex))
         currentDataRow = {}
+        currentErrors = {}
 
         for columnIndex in range(0, xlSheet.ncols):
             cell = xlSheet.cell(rowIndex, columnIndex)  # Get cell object by row, col
-            columnName = columnNames[excelColumnIndexes.index(columnIndex)]
             cellValue = cell.value
             cellType = ctype_text.get(cell.ctype, 'unknown type')
-            #print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
-            currentDataRow[columnName] = cellValue
+            if(columnIndex not in excelColumnIndexes):
+                print('WARNING!!!!!!! i dont have that index(' + str(columnIndex) + '), This probably means that this column contains data with a wrong header.')
+                columnName = headerRow[columnIndex]
+                #print('This is in column ' + str(columnName))
+                currentErrors[columnName] = ('I did not expect to find data for a column named ' + str(columnName))
+                currentDataRow[columnName] = cellValue
+            else:
+                columnName = columnNames[excelColumnIndexes.index(columnIndex)]
+                #print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
+                currentDataRow[columnName] = cellValue
+
+        # TODO: Loop thru missing data, and put a blank there.
+        for missingColumn in missingColumns:
+            currentDataRow[missingColumn] = ''
+            currentErrors[missingColumn] = ('Missing data for column ' + str(missingColumn))
+
         dataEntries.append(currentDataRow)
 
-    return (dataEntries, headerRow)
+    return (dataEntries, headerRow, validationErrors)
 
 def parseExcelFile(excelFile=None):
     # I'm determining the headers on the fly here, instead of validating against a list of expected headers.

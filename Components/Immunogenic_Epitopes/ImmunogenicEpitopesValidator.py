@@ -102,7 +102,7 @@ def immunogenic_epitope_handler(event, context):
 
 def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     # This method returns a tuple, with (text validation status, inputExcelData, and a list of dictionaries representing row&column-specific error results)
-    print('Validating Epitopes Data Matrix:' + str(excelFile))
+    #print('Validating Epitopes Data Matrix:' + str(excelFile))
     validationErrors=[]
     inputExcelData = None
     if(isImmunogenic == None):
@@ -115,11 +115,12 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         print('Validating Non Immunogenic Epitopes.')
         epitopeColumnNames = getColumnNames(isImmunogenic=False)
 
-    inputExcelData, originalColumnHeaders = parseExcelFileWithColumns(excelFile=excelFile, columnNames=epitopeColumnNames)
+    #print('Parsing Excel File with Columns...')
+    (inputExcelData, originalColumnHeaders, validationErrors) = parseExcelFileWithColumns(excelFile=excelFile, columnNames=epitopeColumnNames)
 
     if(type(inputExcelData) is str):
         # If it returned a string then it's an error message. Something is wrong with the data.
-        return('Invalid Excel Document: ' + str(inputExcelData), inputExcelData, validationErrors)
+        raise Exception ('Invalid Excel Document: ' + str(inputExcelData) + str(inputExcelData) + str(validationErrors))
     elif(type(inputExcelData) is list):
         print('So far so good after parsing excel file, ' + str(len(inputExcelData)) + ' entries found.')
     else:
@@ -156,10 +157,10 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         for dataRow in inputExcelData:
             currentRowValidationResults={}
             # findUniqueFile returns an empty string if a single file was found.
-            currentRowValidationResults['hml_id_donor'] = validateHlaGenotypeEntry(query=dataRow['hml_id_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_donor', uploadList=uploadList)
-            currentRowValidationResults['hml_id_recipient'] = validateHlaGenotypeEntry(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_id_recipient_pre_tx'] = validateUniqueEntryInList(query=dataRow['haml_id_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_pre_tx')
-            currentRowValidationResults['haml_id_recipient_post_tx'] = validateUniqueEntryInList(query=dataRow['haml_id_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient_post_tx')
+            currentRowValidationResults['hla_donor'] = validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
+            currentRowValidationResults['hla_recipient'] = validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['haml_recipient_pre_tx'] = validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
+            currentRowValidationResults['haml_recipient_post_tx'] = validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
             currentRowValidationResults['prozone_pre_tx'] = validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
             currentRowValidationResults['prozone_post_tx'] = validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
             currentRowValidationResults['availability_pre_tx'] = validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
@@ -175,8 +176,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
         for dataRow in inputExcelData:
             currentRowValidationResults = {}
             # findUniqueFile returns an empty string if a single file was found.
-            currentRowValidationResults['hml_id_recipient'] = validateHlaGenotypeEntry(query=dataRow['hml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hml_id_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_id_recipient'] = validateUniqueEntryInList(query=dataRow['haml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient')
+            currentRowValidationResults['hla_recipient'] = validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['haml_recipient'] = validateUniqueEntryInList(query=dataRow['haml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient')
             currentRowValidationResults['prozone'] = validateBoolean(query=dataRow['prozone'], columnName='prozone')
             currentRowValidationResults['availability'] = validateBoolean(query=dataRow['availability'], columnName='availability')
             currentRowValidationResults['gender_recipient'] = validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
@@ -200,10 +201,10 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
 def getColumnNames(isImmunogenic=True):
     if (isImmunogenic):
         return [
-            'hml_id_donor'
-            , 'hml_id_recipient'
-            , 'haml_id_recipient_pre_tx'
-            , 'haml_id_recipient_post_tx'
+            'hla_donor'
+            , 'hla_recipient'
+            , 'haml_recipient_pre_tx'
+            , 'haml_recipient_post_tx'
             , 'prozone_pre_tx'
             , 'prozone_post_tx'
             , 'availability_pre_tx'
@@ -215,8 +216,8 @@ def getColumnNames(isImmunogenic=True):
             , 'immune_suppr_post_tx'
         ]
     else:
-        return ['hml_id_recipient'
-            , 'haml_id_recipient'
+        return ['hla_recipient'
+            , 'haml_recipient'
             , 'prozone'
             , 'availability'
             , 'gender_recipient'

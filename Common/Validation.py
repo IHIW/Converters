@@ -10,6 +10,11 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
 
     # Sometimes there is extra whitespace in the excel entries.
     query = query.strip()
+
+    if(len(query)<1):
+        return 'No data provided for column ' + str(columnName)
+
+
     matchList = []
     for searchTerm in searchList:
         #print('Checking (' + query + '),(' + searchTerm + ')')
@@ -33,6 +38,7 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
         # We will sometimes find 2 entries for a single file. This is the case for converted HAML files.
         # They are called "ABCD.csv" and "ABCD.csv.haml"
         # We should allow this.
+        # TODO: These uploads have a parent/child relationship. I should be checking this instead of by the text filename.
         if(len(matchList) == 2 and (matchList[0] in matchList[1] or matchList[1] in matchList[0])):
             print('In data column ' + str(columnName) + ' For file entry (' + str(query) + '), '
                 + str(len(matchList)) + ' matching files were found, and they appear to be the same converted file:('
@@ -117,28 +123,20 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
 
     return 'NOT SURE THE RESULTS HERE!'
 
-
-
 def getHmlIDsListFromUploads(uploadList=None):
     # TODO: Implement this. Get each upload
     # Only wanna do this once, check if it's "None" first.
     return []
 
-
-
-def createFileListFromUploads(uploads=None):
+def createFileListFromUploads(uploads=None, fileTypeFilter=None):
     fileNameList = []
     for upload in uploads:
         #print('upload:' + str(upload))
         fileName =upload['fileName']
         fileType = upload['type']
-        #print('uploadFileName=' + fileName)
-        #if(fileType=='HAML'):
-        #    # TODO: Shouldn't need to do this if the upload entry has been created for the converted .haml file
-        #    fileNameList.append(fileName + '.haml')
-        #else:
-        #    fileNameList.append(fileName)
-        fileNameList.append(fileName)
+        # TODO: Also other optional filters?
+        if(fileTypeFilter is None or fileType==fileTypeFilter):
+            fileNameList.append(fileName)
 
     return fileNameList
 
