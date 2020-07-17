@@ -73,7 +73,7 @@ def csv_to_hml_lambda_handler(event, context):
         if(converter.xmlText is not None and len(converter.xmlText) > 0):
             try:
                 # Call the Rest enpoint to create a new Upload entry. This should be BEFORE the file is actually created.
-                response=createConvertedUploadObject(newUploadFileType= 'HAML', previousUploadFileName=csvKey, token=token, url=url)
+                response=createConvertedUploadObject(newUploadFileName=xmlOutput,  newUploadFileType= 'HAML', previousUploadFileName=csvKey, token=token, url=url)
                 print('response from new upload:' + str(response))
 
                 # Write out the xml text

@@ -189,70 +189,85 @@ class Converter(object):
         # The first row contains the negative control info.
         # The second row contains positive control info.
 
-        negativeControlRow = OLReader.iloc[0]
-        print('negativeControlRow:' + str(negativeControlRow))
-        negativeControlRawData = str(negativeControlRow.RawData)
-        print('negativeControlRawData:' + str(negativeControlRawData))
-        positiveControlRow = OLReader.iloc[0]
-        print('positiveControlRow:' + str(positiveControlRow))
-        positiveControlRawData = str(positiveControlRow.RawData)
-        print('negativeControlRawData:' + str(positiveControlRawData))
-        '''
-        patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-            {'sampleID': str(row.SampleIDName.strip()),
-            'patientID': str(row.PatientID),
-            'reporting-centerID': 'Center',
-            'sample-test-date': formattedRunDate,
-            'negative-control-MFI': str(Negative),
-            'positive-control-MFI': str(Positive),
-            })
-        '''
+
+        #negativeControlIndex = 0
+        #positiveControlIndex = 1
+        #negativeControlRow = OLReader.iloc[negativeControlIndex]
+        #positiveControlRow = OLReader.iloc[positiveControlIndex]
+        #patientID = negativeControlRow.PatientID.strip()
+        #currentPatientID = None
+
+        # State variable to iterate through. States cycle through negative_control->positive_control->bead_values
+        readerState = 'negative_control'
+        negativeControlRow=None
+        positiveControlRow=None
+        patientID=None
+
         #rowlength = OLReader.shape[0]
         for row in OLReader.itertuples():
-            print('Looking at this row:' + str(row))
-        
-            SampleID = row.SampleIDName#NC2BeadID, BeadID, SampleIDName, SampleID,RawData
-            # TODO: looks like i'm assigning the negative control as the positive control bead id, is that right? Probably fine, that's the positive bead. But i think the NC2BeadID parameter is named wrong.
-            Positive = self.GetBeadValue( NC2BeadID=row.PC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
-            Negative = self.GetBeadValue( NC2BeadID=row.NC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
+            if(readerState=='negative_control'):
+                negativeControlRow = row
+                readerState='positive_control'
 
-            formattedRunDate = self.formatRunDate(row.RunDate)
-            #print('formatted RunDate:' + str(formattedRunDate))
+            elif(readerState=='positive_control'):
+                positiveControlRow = row
+                patientID = positiveControlRow.PatientID.strip()
 
-            #sample_test_date= datetime.datetime.strptime(row.RunDate, "%d/%m/%Y").strftime("%Y-%m-%d")
+                # the first time through, and for each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
+                # While currentPatientID==patientID
+                patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                {'sampleID': str(negativeControlRow.SampleIDName.strip()),
+                 'patientID': str(negativeControlRow.PatientID.strip()),
+                 'reporting-centerID': 'Center',
+                 'sample-test-date': self.formatRunDate(negativeControlRow.RunDate),
+                 'negative-control-MFI': str(int(round(float(str(negativeControlRow.RawData).replace(',','.'))))),
+                 'positive-control-MFI': str(int(round(float(str(positiveControlRow.RawData).replace(',','.')))))
+                 })
+                current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                  {'kit-manufacturer': self.manufacturer,
+                   'lot': negativeControlRow.CatalogID
+                   })
+                readerState = 'bead_values'
+            elif(readerState=='bead_values'):
+                #SampleID = row.SampleIDName#NC2BeadID, BeadID, SampleIDName, SampleID,RawData
+                # TODO: looks like i'm assigning the negative control as the positive control bead id, is that right? Probably fine, that's the positive bead. But i think the NC2BeadID parameter is named wrong.
+                #Positive = self.GetBeadValue( NC2BeadID=row.PC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
+                #Negative = self.GetBeadValue( NC2BeadID=row.NC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
 
-            #print('row with manufacturer:(' + self.manufacturer + ')')
-            patientAntibodyAssmtElement = ET.SubElement(data,'patient-antibody-assessment',
-                             {'sampleID':str(row.SampleIDName.strip()),
-                              'patientID':str(row.PatientID),
-                              'reporting-centerID':'Center',
-                              'sample-test-date':formattedRunDate,
-                              'negative-control-MFI': str(Negative),
-                              'positive-control-MFI': str(Positive),
-                              })
-            current_row_panel = ET.SubElement(patientAntibodyAssmtElement,'solid-phase-panel',
-                            {'kit-manufacturer':self.manufacturer,
-                            'lot':row.CatalogID
-                            })
-            
-            if row.SampleIDName is not None:
-                
-                Specs = row.Specificity.split(",")
-                Raw = str(row.RawData).replace(',','.')
+                if row.PatientID is None:
+                    print('Reached the end of the input csv, breaking the loop')
+                    break
 
-                # Specs might have one or two loci. The bead is specific to two alleles in a heterodimer.
-                # The other not included loci have the Spec name "-"
-                # TODO: For two loci, combine them into one entry
-                for SingleSpec in Specs:
-                    if(SingleSpec != '-'):
-                        current_row_panel_bead = ET.SubElement(patientAntibodyAssmtElement,'bead',
-                            {'HLA-allele-specificity':str(SingleSpec),
-                            'raw-MFI':str(Raw),
-                            'Ranking':str(row.Rxn),
-                             # Is the row.Rxn really representing a ranking? or do we calculate that somehow
-                            })
+                elif row.PatientID.strip() == patientID:
+                    # We're still on the same patient.
 
-        # create a new XML file with the results
+                    # TODO: Are they going to be split by something other than commas?
+                    Specs = row.Specificity.split(",")
+                    Raw = int(round(float(str(row.RawData).replace(',','.'))))
+                    # TODO: We're not assigning the ranking correctly.
+                    #  Should i calculate the ranking of the MFIs?
+                    #print('converting this ranking, raw='+ str(Raw) + ':' + str(row.Rxn))
+                    #Ranking = int(round(float(str(row.Rxn).replace(',','.'))))
+                    Ranking=0
+
+                    # Specs might have one or two loci. The bead is specific to two alleles in a heterodimer.
+                    # The other not included loci have the Spec name "-"
+                    # TODO: For two loci, combine them into one entry
+                    for SingleSpec in Specs:
+                        if(SingleSpec != '-'):
+                            current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
+                                {'HLA-allele-specificity':str(SingleSpec),
+                                'raw-MFI':str(Raw),
+                                'Ranking':str(Ranking),
+                                 # Is the row.Rxn really representing a ranking? or do we calculate that somehow
+                                })
+
+
+                else:
+                    # The patient ID is different now, lets re-assign the positive and negative controls. We're currently on the negative Control Row.
+                    negativeControlRow = row
+                    readerState = 'positive_control'
+            # create a new XML file with the results
 
         self.xmlData = ET.tostring(data)
         self.prettyPrintXml()

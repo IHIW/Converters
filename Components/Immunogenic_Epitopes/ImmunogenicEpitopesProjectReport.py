@@ -3,6 +3,7 @@ from boto3 import client
 from Common.ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
 from Common.S3_Access import writeFileToS3
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
+from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID
 
 s3 = client('s3')
 from sys import exc_info
@@ -12,7 +13,7 @@ import zipfile
 import io
 #from StringIO import StringIO
 
-from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID
+
 
 
 def immunogenic_epitope_project_report_handler(event, context):

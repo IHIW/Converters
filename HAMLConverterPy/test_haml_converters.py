@@ -13,7 +13,7 @@ def testRestAccess():
     token = getToken(user=user, password=password, url=url)
 
     response = createConvertedUploadObject(newUploadFileName='childfilename4.xlsx', newUploadFileType='XLSX'
-        , previousUploadFileName='2_1594048328404_PROJECT_DATA_MATRIX_nonimmunogenic_bad4.xlsx', token=token, url=url)
+        , previousUploadFileName='1497_1594975386935_HAML_Recipient_56789_Post.csv', token=token, url=url)
     print('Response from createConvertedUploadObject:' + str(response))
 
     #response = getUploadByFilename(fileName='1_1592339213839_HAML_HLAM_Fusion.csv.haml', token=token, url=url)
