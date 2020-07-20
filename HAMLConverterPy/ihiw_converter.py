@@ -198,40 +198,42 @@ class Converter(object):
 
         #rowlength = OLReader.shape[0]
         for row in OLReader.itertuples():
-            # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
-            # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
-            if (row.SampleIDName.strip() != sampleID or row.PatientID.strip() != patientID):
-                readerState = 'negative_control'
-                sampleID = row.SampleIDName.strip()
-                patientID = row.PatientID.strip()
-                print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(patientID) + ' and catalogID:' + str(catalogID))
-
-                # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
-                patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                {'sampleID': str(sampleID),
-                 'patientID': str(patientID),
-                 'reporting-centerID': 'ReportingCenterID', # TODO No reporting center in the input file. Should we pass that in somehow?
-                 'sample-test-date': self.formatRunDate(row.RunDate),
-                 'negative-control-MFI': str(int(round(float(str(row.RawData).replace(',','.'))))),
-                 'positive-control-MFI': str(int(round(float(str(row.RawData).replace(',','.')))))
-                 })
-            # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
-            if (row.SampleIDName.strip() != sampleID or row.PatientID.strip() != patientID or row.CatalogID.strip() != catalogID):
-                readerState = 'negative_control'
-                catalogID = row.CatalogID.strip()
-                print('Found a new bead catalog: ' + str(catalogID))
-
-                current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
-                  {'kit-manufacturer': self.manufacturer,
-                   'lot': catalogID
-                   })
-
             if(readerState=='negative_control'):
                 negativeControlRow = row
                 readerState='positive_control'
             elif(readerState=='positive_control'):
                 positiveControlRow = row
                 readerState = 'bead_values'
+
+                # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
+                # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+                if (row.SampleIDName.strip() != sampleID or str(row.PatientID).strip() != patientID):
+                    sampleID = str(row.SampleIDName).strip()
+                    patientID = str(row.PatientID).strip()
+                    print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
+                        patientID) + ' and catalogID:' + str(catalogID))
+
+                    # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
+                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                        {'sampleID': str(sampleID),
+                         'patientID': str(patientID),
+                         'reporting-centerID': 'ReportingCenterID',
+                         # TODO No reporting center in the input file. Should we pass that in somehow?
+                         'sample-test-date': self.formatRunDate(row.RunDate),
+                         'negative-control-MFI': str(int(round(float(str(negativeControlRow.RawData).replace(',', '.'))))),
+                         'positive-control-MFI': str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
+                         # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
+                         })
+                # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
+                if (str(row.SampleIDName).strip() != sampleID or str(row.PatientID).strip() != patientID or str(row.CatalogID).strip() != catalogID):
+                    catalogID = str(row.CatalogID).strip()
+                    print('Found a new bead catalog: ' + str(catalogID))
+
+                    current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                          {'kit-manufacturer': self.manufacturer,
+                           'lot': catalogID
+                           })
+
             elif(readerState=='bead_values'):
                 if row.PatientID is None:
                     # If we get here then there actually might be a problem.
@@ -294,8 +296,8 @@ class Converter(object):
         for row in OLReader.itertuples():
             # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
             # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
-            if (row.Sample_ID.strip() != sampleID or str(row.Patient_Name).strip() != patientID):
-                sampleID = row.Sample_ID.strip()
+            if (str(row.Sample_ID).strip() != sampleID or str(row.Patient_Name).strip() != patientID):
+                sampleID = str(row.Sample_ID).strip()
                 patientID = str(row.Patient_Name).strip()
                 print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
                     patientID) + ' and catalogID:' + str(catalogID))
