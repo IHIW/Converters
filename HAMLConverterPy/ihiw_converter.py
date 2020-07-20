@@ -185,90 +185,88 @@ class Converter(object):
         data = ET.Element("haml",xmlns='urn:HAML.Namespace')
         # OLReader is a pandas DataFrame.
         # Each row is a namedtuple
-        # Each sample should have only one patient-antibody-assessment and solid-phase-panel
         # The first row contains the negative control info.
         # The second row contains positive control info.
-
-
-        #negativeControlIndex = 0
-        #positiveControlIndex = 1
-        #negativeControlRow = OLReader.iloc[negativeControlIndex]
-        #positiveControlRow = OLReader.iloc[positiveControlIndex]
-        #patientID = negativeControlRow.PatientID.strip()
-        #currentPatientID = None
 
         # State variable to iterate through. States cycle through negative_control->positive_control->bead_values
         readerState = 'negative_control'
         negativeControlRow=None
         positiveControlRow=None
-        patientID=None
+        patientID=''
+        sampleID = ''
+        catalogID = ''
 
         #rowlength = OLReader.shape[0]
         for row in OLReader.itertuples():
+            # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
+            # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+            if (row.SampleIDName.strip() != sampleID or row.PatientID.strip() != patientID):
+                readerState = 'negative_control'
+                sampleID = row.SampleIDName.strip()
+                patientID = row.PatientID.strip()
+                print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(patientID) + ' and catalogID:' + str(catalogID))
+
+                # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
+                patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                {'sampleID': str(sampleID),
+                 'patientID': str(patientID),
+                 'reporting-centerID': 'ReportingCenterID', # TODO No reporting center in the input file. Should we pass that in somehow?
+                 'sample-test-date': self.formatRunDate(row.RunDate),
+                 'negative-control-MFI': str(int(round(float(str(row.RawData).replace(',','.'))))),
+                 'positive-control-MFI': str(int(round(float(str(row.RawData).replace(',','.')))))
+                 })
+            # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
+            if (row.SampleIDName.strip() != sampleID or row.PatientID.strip() != patientID or row.CatalogID.strip() != catalogID):
+                readerState = 'negative_control'
+                catalogID = row.CatalogID.strip()
+                print('Found a new bead catalog: ' + str(catalogID))
+
+                current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                  {'kit-manufacturer': self.manufacturer,
+                   'lot': catalogID
+                   })
+
             if(readerState=='negative_control'):
                 negativeControlRow = row
                 readerState='positive_control'
-
             elif(readerState=='positive_control'):
                 positiveControlRow = row
-                patientID = positiveControlRow.PatientID.strip()
-
-                # the first time through, and for each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
-                # While currentPatientID==patientID
-                patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                {'sampleID': str(negativeControlRow.SampleIDName.strip()),
-                 'patientID': str(negativeControlRow.PatientID.strip()),
-                 'reporting-centerID': 'Center',
-                 'sample-test-date': self.formatRunDate(negativeControlRow.RunDate),
-                 'negative-control-MFI': str(int(round(float(str(negativeControlRow.RawData).replace(',','.'))))),
-                 'positive-control-MFI': str(int(round(float(str(positiveControlRow.RawData).replace(',','.')))))
-                 })
-                current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
-                  {'kit-manufacturer': self.manufacturer,
-                   'lot': negativeControlRow.CatalogID
-                   })
                 readerState = 'bead_values'
             elif(readerState=='bead_values'):
-                #SampleID = row.SampleIDName#NC2BeadID, BeadID, SampleIDName, SampleID,RawData
-                # TODO: looks like i'm assigning the negative control as the positive control bead id, is that right? Probably fine, that's the positive bead. But i think the NC2BeadID parameter is named wrong.
-                #Positive = self.GetBeadValue( NC2BeadID=row.PC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
-                #Negative = self.GetBeadValue( NC2BeadID=row.NC2BeadID, BeadID=col_OneLambda['BeadID'], SampleIDName=col_OneLambda['SampleIDName'], SampleID=SampleID, RawData=col_OneLambda['RawData'])
-
                 if row.PatientID is None:
-                    print('Reached the end of the input csv, breaking the loop')
+                    # If we get here then there actually might be a problem.
+                    print('Reached the end of the input csv, breaking the loop. This means there was a newline at the end of the .csv, possibly malformed data.')
                     break
 
-                elif row.PatientID.strip() == patientID:
-                    # We're still on the same patient.
-
-                    # TODO: Are they going to be split by something other than commas?
+                else:
+                    # TODO: Are they going to be delimited by something other than commas? Is that possible?
                     Specs = row.Specificity.split(",")
                     Raw = int(round(float(str(row.RawData).replace(',','.'))))
                     # TODO: We're not assigning the ranking correctly.
-                    #  Should i calculate the ranking of the MFIs?
-                    #print('converting this ranking, raw='+ str(Raw) + ':' + str(row.Rxn))
-                    #Ranking = int(round(float(str(row.Rxn).replace(',','.'))))
+                    #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
                     Ranking=0
 
-                    # Specs might have one or two loci. The bead is specific to two alleles in a heterodimer.
-                    # The other not included loci have the Spec name "-"
-                    # TODO: For two loci, combine them into one entry
-                    for SingleSpec in Specs:
-                        if(SingleSpec != '-'):
-                            current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
-                                {'HLA-allele-specificity':str(SingleSpec),
-                                'raw-MFI':str(Raw),
-                                'Ranking':str(Ranking),
-                                 # Is the row.Rxn really representing a ranking? or do we calculate that somehow
-                                })
+                    # What locus is this data row for?
+                    locusDataRow=''
+                    for currentLocus in Specs:
+                        if(currentLocus != '-'):
+                            if(locusDataRow==''):
+                                # The only (or first) locus encountered.
+                                locusDataRow=currentLocus
+                            else:
+                                # The second locus encountered for the heterodimer.
+                                locusDataRow=locusDataRow+ '~' + currentLocus
+                        else:
+                            pass
+
+                    current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
+                        {'HLA-allele-specificity':str(locusDataRow),
+                            'raw-MFI':str(Raw),
+                            'Ranking':str(Ranking),
+                        })
 
 
-                else:
-                    # The patient ID is different now, lets re-assign the positive and negative controls. We're currently on the negative Control Row.
-                    negativeControlRow = row
-                    readerState = 'positive_control'
-            # create a new XML file with the results
-
+        # create a new XML file with the results
         self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
     ########
@@ -277,6 +275,7 @@ class Converter(object):
     def ProcessImmucor(self,OLReader):
         print('Immucor to xml...')
 
+        # TODO: These rankings are assigned based on whether the bead is positive. Is 8/6/2 arbitrary? I do not know where that came from.
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
         col_Immucor = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1,'Allele':-1, 'Raw_Value':-1, 'Assignment ':-1}
         #// Determine where the columns are
@@ -288,38 +287,58 @@ class Converter(object):
         #for each sample id/row start converting
         data = ET.Element("haml",xmlns='urn:HAML.Namespace')
 
+        patientID=''
+        sampleID = ''
+        catalogID = ''
+
         for row in OLReader.itertuples():
-            SampleID = row.Sample_ID
-            sample_test_date= datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")   
-            current_row = ET.SubElement(data,'patient-antibody-assessment',
-                                {'sampleID':str(SampleID).strip(),
-                                'patientID':str(row.Patient_Name),
-                                'reporting-centerID':'Center',
-                                'sample-test-date':sample_test_date,
-                                })
-            current_row_panel = ET.SubElement(current_row,'solid-phase-panel',
-                                {'kit-manufacturer':self.manufacturer,
-                                'lot':str(row.Lot_ID),
-                                })
+            # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
+            # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+            if (row.Sample_ID.strip() != sampleID or str(row.Patient_Name).strip() != patientID):
+                sampleID = row.Sample_ID.strip()
+                patientID = str(row.Patient_Name).strip()
+                print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
+                    patientID) + ' and catalogID:' + str(catalogID))
+
+                sample_test_date = datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")
+                # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
+                patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                    {'sampleID': str(sampleID),
+                     'patientID': str(patientID),
+                     'reporting-centerID': 'ReportingCenterID',
+                     # TODO No reporting center in the input file. Should we pass that in somehow?
+                     'sample-test-date': self.formatRunDate(sample_test_date),
+                     #'negative-control-MFI': str(int(round(float(str(row.RawData).replace(',', '.'))))),
+                     #'positive-control-MFI': str(int(round(float(str(row.RawData).replace(',', '.')))))
+                     })
+            # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
+            if (row.Sample_ID.strip() != sampleID or str(row.Patient_Name).strip() != patientID or row.Lot_ID.strip() != catalogID):
+                catalogID = row.Lot_ID.strip()
+                print('Found a new bead catalog: ' + str(catalogID))
+
+                current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                    {'kit-manufacturer': self.manufacturer,
+                    'lot': catalogID
+                    })
 
             if row.Sample_ID is not None:
-                Ranking = 2  #default value
-                if row.Assignment == 'Positive':
+                Ranking = 2  #default value, this is negative
+                beadAssignment=str(row.Assignment).strip()
+                if beadAssignment == 'Positive':
                     Ranking = switcher['Positive']
-                elif row.Assignment == 'Weak':
+                elif beadAssignment == 'Weak':
                     Ranking = switcher['Weak']
-                elif row.Assignment == 'Negative':
-                    Ranking = switcher['Negative']    
-                current_row_panel_bead = ET.SubElement(current_row,'bead',
-                        {'HLA-allele-specificity':str(row.Allele),
-                          'raw-MFI':str(row.Raw_Value).replace(',','.'),
-                          'Ranking':str(Ranking),
-                        })
-        # create a new XML file with the results
-        
-        #mydata = ET.tostring( = ET.tostring(data)
-        #myfile = open(self.xmlFile, "wb")
-        #myfile.write(mydata)
+                elif beadAssignment == 'Negative':
+                    Ranking = switcher['Negative']
+                else:
+                    raise Exception('Problem, What is this bead assignment? I expected Positive/Negative:' + str(beadAssignment))
+                # TODO: Heterodimers are split here. It seems the A and B have the same MFI. Should we combine them into one bead element?
+                current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
+                {'HLA-allele-specificity':str(row.Allele),
+                    'raw-MFI':str(row.Raw_Value).replace(',','.'),
+                    'Ranking':str(Ranking),
+                })
+
         self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
 
