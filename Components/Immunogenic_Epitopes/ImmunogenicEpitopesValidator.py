@@ -37,8 +37,8 @@ def immunogenic_epitope_handler(event, context):
             url = getUrl()
             token = getToken(url=url)
 
-            # TODO: What if there is no  upload? This will currently probaly just crash. I should detect if the upload doesnt exist and write something nice.
-            uploadFile = getUploadByFilename(fileName=excelKey, url=url, token=token)
+            # TODO: What if there is no  upload? This will currently probaly just crash. Check if uploadFile is None.
+            uploadFile = getUploadIfExists(fileName=excelKey, url=url, token=token)
             print('I found this upload object:' + str(uploadFile))
             projectName = uploadFile['project']['name']
             projectID =  uploadFile['project']['id']
@@ -65,17 +65,8 @@ def immunogenic_epitope_handler(event, context):
                     setValidationStatus(uploadFileName=excelKey, isValid=isValid,
                         validationFeedback=validationResults, url=url, token=token,
                         validatorType='IMMUNOGENIC_EPITOPES')
-                    if(isValid):
-                        print('File is valid, checking if a report file exists...')
-                        reportName = excelKey+ '.Validation_Report.xlsx'
-                        reportUploadObject = getUploadIfExists(token=token, url=url, fileName=reportName)
-                        if(reportUploadObject is None):
-                            print('There is no existing report so I do not need to delete it.')
-                        else:
-                            # TODO: Figure out how to delete the child report here.
-                            print('A validation report already exists for this valid file, I must remove it:' + str(reportName))
-                    else:
-                        createValidationReport(uploadFileName=excelKey,errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData, bucket=bucket, url=url, token=token,validatorType='IMMUNOGENIC_EPITOPES')
+
+                    createValidationReport(isReportValid=isValid, uploadFileName=excelKey,errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData, bucket=bucket, url=url, token=token,validatorType='IMMUNOGENIC_EPITOPES')
                 elif (projectID == nonImmunogenicEpitopeProjectNumber):
                     print('This is the Non Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
@@ -87,18 +78,8 @@ def immunogenic_epitope_handler(event, context):
                     setValidationStatus(uploadFileName=excelKey, isValid=isValid,
                         validationFeedback=validationResults, url=url, token=token,
                         validatorType='NON_IMMUNOGENIC_EPITOPES')
+                    createValidationReport(isReportValid=isValid, uploadFileName=excelKey, errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData, bucket=bucket, url=url, token=token, validatorType='NON_IMMUNOGENIC_EPITOPES')
 
-                    if (isValid):
-                        print('File is valid, checking if a report file exists...')
-                        reportName = excelKey + '.Validation_Report.xlsx'
-                        reportUploadObject = getUploadIfExists(token=token, url=url, fileName=reportName)
-                        if (reportUploadObject is None):
-                            print('There is no existing report so I do not need to delete it.')
-                        else:
-                            # TODO: Figure out how to delete the child report here.
-                            print('A validation report already exists for this valid file, I must remove it:' + str(reportName))
-                    else:
-                        createValidationReport(uploadFileName=excelKey,errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData, bucket=bucket, url=url, token=token, validatorType='NON_IMMUNOGENIC_EPITOPES')
                 else:
                     print('This is not the (Non) Immunogenic Epitopes project! I will not validate it. Double-check the project names')
         else:
@@ -232,7 +213,7 @@ def getColumnNames(isImmunogenic=True):
             , 'age_recipient_tx'
         ]
 
-def createValidationReport(uploadFileName=None,errors=None, inputWorkbookData=None, bucket=None, token=None, url=None, validatorType=None):
+def createValidationReport(isReportValid=None, uploadFileName=None,errors=None, inputWorkbookData=None, bucket=None, token=None, url=None, validatorType=None):
     print('Creating a validation Report.')
 
     reportFileName = uploadFileName + '.Validation_Report.xlsx'
@@ -248,7 +229,7 @@ def createValidationReport(uploadFileName=None,errors=None, inputWorkbookData=No
     else:
         print('There is already a child upload(' + str(existingUpload) + ') for report file ' + str(reportFileName) + ' so I will not create one.')
 
-    setValidationStatus(uploadFileName=reportFileName, isValid=True, validationFeedback='Download this report for Detailed Validation Results.'
+    setValidationStatus(uploadFileName=reportFileName, isValid=isReportValid, validationFeedback='Download this report for Detailed Validation Results.'
         , validatorType=validatorType+'_REPORT',token=token,url=url)
 
     writeFileToS3(newFileName=reportFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)

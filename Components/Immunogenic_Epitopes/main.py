@@ -1,6 +1,7 @@
 from sys import exc_info
 import argparse
-from os.path import split
+from os.path import split, join
+from io import BytesIO
 
 
 
@@ -25,6 +26,7 @@ def parseArgs():
     parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
     parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
+    parser.add_argument("-i", "--input", required=False, help="Input Folder", type=str)
 
     return parser.parse_args()
 
@@ -100,11 +102,26 @@ def testWriteFileS3(args=None):
     # Write the Excel File to S3 storage.
     writeFileToS3(newFileName=args.upload, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
+def testCreateSchemaFilesS3(args=None):
+    inputFolder = args.input
+    bucket = args.bucket
+    print('Uploading schema files from ' + str(inputFolder) + ' to bucket ' + str(bucket))
+
+    schemaRemoteOutputFolder = 'schema'
+    # Write it to S3.
+    for fileName in ['hml-1.0.1.xsd', 'IHIW-haml_version_w0_3_3.xsd']:
+        localPath = join(inputFolder, fileName)
+        remotePath = join(schemaRemoteOutputFolder, fileName)
+        print('writing file ' + str (localPath) + ' to remote ' + str(remotePath))
+        fileByteStream = open(localPath,'rb')
+        bytesIOObject = BytesIO(fileByteStream.read())
+        #writeFileToS3(newFileName=remotePath, bucket=bucket, s3ObjectBytestream=bytesIOObject)
+
+
+
 def testCreateImmunogenicEpitopesProjectReport(args=None):
     print('Creating Immunogenic Epitopes Project Report')
     createImmunogenicEpitopesReport(bucket=args.bucket)
-
-
 
 
 
@@ -122,8 +139,10 @@ if __name__=='__main__':
             testCreateImmunogenicEpitopesProjectReport(args=args)
         elif(validatorType=='SET_VALIDATION_RESULTS'):
             testSetValidationResults(args=args)
-        elif(validatorType=='WRITE_FILE_S3'):
+        elif (validatorType == 'WRITE_FILE_S3'):
             testWriteFileS3(args=args)
+        elif(validatorType=='CREATE_SCHEMA_FILES'):
+            testCreateSchemaFilesS3(args=args)
         else:
             print('I do not understand the validator type.')
 
