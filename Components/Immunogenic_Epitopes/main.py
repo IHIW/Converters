@@ -5,16 +5,19 @@ from os.path import split
 
 
 try:
-    from IhiwRestAccess import setValidationStatus
-    from S3_Access import writeFileToS3
-    from ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
-    from ImmunogenicEpitopes import validateEpitopesDataMatrix
-    from Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
+    from Common.IhiwRestAccess import setValidationStatus
+    from Common.S3_Access import writeFileToS3
+    from Common.ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
+    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
+    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 except Exception:
+    raise Exception ('COULD NOT IMPORT!!!!')
+    '''
     from Common.IhiwRestAccess import setValidationStatus
     from Common.S3_Access import writeFileToS3
     from Common.ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
     from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
+    '''
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -42,7 +45,7 @@ def testValidateNonImmunogenicEpitopes(excelFile=None):
     # TODO: I prefer if this file had a _report.xlsx instead of .xlsx.
     #  But I think this is not possible with our current CopyUpload rest endpoint.
     #  I think I should modify the copyupload rest endpoint to allow arbitrary filenames.
-    reportFileName = tail + '.xlsx'
+    reportFileName = tail + '.validation_report.xlsx'
 
     outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
     writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)

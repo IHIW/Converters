@@ -2,19 +2,19 @@ import boto3
 #import os
 #import sys
 from ihiw_converter import Converter
+from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
 
 import json
 import urllib
 import io
 
+'''
 try:
-    from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename
+    from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
 except Exception as e:
     print('Failed in importing files: ' + str(e))
-    from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename
-
-
-
+    from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
+'''
 
 ''' <summary>
     /// Handler was converted to Python by Teresa Tavella
@@ -43,7 +43,7 @@ def csv_to_hml_lambda_handler(event, context):
         url = getUrl(configFileName='converter_config.yml')
         token = getToken(user=user, password=password, url=url)
 
-        csvUploadObject = getUploadByFilename(token=token, url=url, fileName=csvKey)
+        csvUploadObject = getUploadIfExists(token=token, url=url, fileName=csvKey)
         if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
             print('Could not find the Upload object for upload ' + str(csvKey) + '\nI will not convert it to HAML.' )
             return None
@@ -73,8 +73,13 @@ def csv_to_hml_lambda_handler(event, context):
         if(converter.xmlText is not None and len(converter.xmlText) > 0):
             try:
                 # Call the Rest enpoint to create a new Upload entry. This should be BEFORE the file is actually created.
-                response=createConvertedUploadObject(newUploadFileName=xmlOutput,  newUploadFileType= 'HAML', previousUploadFileName=csvKey, token=token, url=url)
-                print('response from new upload:' + str(response))
+                existingUpload = getUploadIfExists(token=token, url=url, fileName=xmlOutput)
+                if (existingUpload is None):
+                    print('There is no child upload for the haml file ' + str(xmlOutput) + ' so I will create one.')
+                    response=createConvertedUploadObject(newUploadFileName=xmlOutput,  newUploadFileType= 'HAML', previousUploadFileName=csvKey, token=token, url=url)
+                    print('response from new upload:' + str(response))
+                else:
+                    print('There is already a child upload(' + str(existingUpload) + ') for haml file ' + str(xmlOutput) + ' so I will not create one.')
 
                 # Write out the xml text
                 # This should trigger the XML validation.
@@ -87,8 +92,9 @@ def csv_to_hml_lambda_handler(event, context):
 
                 # Set validation status of the .csv file
                 setValidationStatus(uploadFileName=csvKey, isValid=True, validationFeedback='Converted to HAML.', validatorType='HAML_CONVERT', token=token, url=url)
-            except Exception:
-                print('Cannot save file to S3 Storage')
+            except Exception as e:
+                print('Cannot save file to S3 Storage:')
+                print(str(e))
                 setValidationStatus(uploadFileName=csvKey, isValid=False, validationFeedback='Failed to save Converted HAML File!', validatorType='HAML_CONVERT', token=token, url=url)
         else:
             print('Failed to convert the CSV File')

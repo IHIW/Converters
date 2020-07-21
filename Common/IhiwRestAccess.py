@@ -235,6 +235,23 @@ def getUploadByFilename(token=None, url=None, fileName=None):
     response = json.loads(responseData)
     return response
 
+def getUploadIfExists(token=None, url=None, fileName=None):
+    try:
+        existingUpload = getUploadByFilename(token=token, url=url, fileName=fileName)
+        return existingUpload
+    except urllib.error.HTTPError as err:
+        if err.code == 404:
+            return None
+        else:
+            raise
+
+def deleteUpload(token=None, url=None, fileName=None):
+    if(url is None):
+        url = getUrl()
+    if(token is None):
+        token = getToken(url=url)
+    print('deleting upload by filename:' + str(fileName))
+
 def getProjectID(configFileName='validation_config.yml', projectName=None):
     if(projectName is None):
         raise Exception('getProjectID: projectName is undefined.')
@@ -250,3 +267,5 @@ def getProjectID(configFileName='validation_config.yml', projectName=None):
     except Exception as e:
         print('Exception when loading project ID from config, does the config contain an entry for project_id:' + str(projectName) + '?:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
+
+

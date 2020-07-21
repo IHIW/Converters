@@ -6,13 +6,13 @@ import urllib
 
 # For importing common methods, may be in the same directory when deployed as a package
 try:
-    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject
+    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, createConvertedUploadObject, getProjectID, getUploadIfExists
     from ParseExcel import parseExcelFileWithColumns, createExcelValidationReport
     from Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale, createFileListFromUploads, validateHlaGenotypeEntry
     from S3_Access import writeFileToS3
 except Exception as e:
     print('Failed in importing files: ' + str(e))
-    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject
+    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, createConvertedUploadObject, getProjectID, getUploadIfExists
     from Common.ParseExcel import parseExcelFileWithColumns, createExcelValidationReport
     from Common.Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale, createFileListFromUploads, validateHlaGenotypeEntry
     from Common.S3_Access import writeFileToS3
@@ -30,15 +30,7 @@ def immunogenic_epitope_handler(event, context):
 
         validationResults = None
         # Is this an excel file? It should have the xlsx extension.
-        if(str(excelKey).lower().endswith('.xlsx.xlsx')):
-            # TODO: I think this is actually pretty dangerous.
-            #  I might be creating an infinite loop if i am not careful. I dont want to re-validate the report file.
-            #  Good solutions: check if there is a parent upload, and skip the validation
-            #  Or Skip validation if there is already a valdiation status.
-            #  The current file type is XLSX for this upload.
-            print('This is a report file! Not validating it.')
-
-        elif (str(excelKey).lower().endswith('.xls') or str(excelKey).lower().endswith('.xlsx')):
+        if (str(excelKey).lower().endswith('.xls') or str(excelKey).lower().endswith('.xlsx')):
             print('This is an excel file with the name:' + str(excelKey))
 
             # Get the upload information.
@@ -49,7 +41,8 @@ def immunogenic_epitope_handler(event, context):
             uploadFile = getUploadByFilename(fileName=excelKey, url=url, token=token)
             print('I found this upload object:' + str(uploadFile))
             projectName = uploadFile['project']['name']
-            print('The upload is for this project:' + str(projectName))
+            projectID =  uploadFile['project']['id']
+            print('The upload is for this project:' + str(projectName) + ',id=' + str(projectID))
             fileType = uploadFile['type']
             print('this upload is file type:' + str(fileType))
 
@@ -57,12 +50,10 @@ def immunogenic_epitope_handler(event, context):
             if (fileType != 'PROJECT_DATA_MATRIX'):
                 print('the file type ' + str(fileType) + ' is not a project data matrix, i will not validate it.')
             else:
-                # TODO: Checking by the name of the project is probably not the best. It changes between Staging and Production. It changes if the project is edited.
-                # TODO: Add the project IDs as configuration values in validation_config.yml
-                immunogenicEpitopeProjectName='Definition of immunogenic epitopes'
-                nonImmunogenicEpitopeProjectName='Project name: Definition of non-immunogenic epitopes edit'
+                immunogenicEpitopeProjectNumber=getProjectID(projectName='immunogenic_epitopes')
+                nonImmunogenicEpitopeProjectNumber=getProjectID(projectName='non_immunogenic_epitopes')
 
-                if (projectName == immunogenicEpitopeProjectName):
+                if (projectID == immunogenicEpitopeProjectNumber):
                     print('This is the Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
@@ -74,9 +65,18 @@ def immunogenic_epitope_handler(event, context):
                     setValidationStatus(uploadFileName=excelKey, isValid=isValid,
                         validationFeedback=validationResults, url=url, token=token,
                         validatorType='IMMUNOGENIC_EPITOPES')
-                    if(not isValid):
+                    if(isValid):
+                        print('File is valid, checking if a report file exists...')
+                        reportName = excelKey+ '.Validation_Report.xlsx'
+                        reportUploadObject = getUploadIfExists(token=token, url=url, fileName=reportName)
+                        if(reportUploadObject is None):
+                            print('There is no existing report so I do not need to delete it.')
+                        else:
+                            # TODO: Figure out how to delete the child report here.
+                            print('A validation report already exists for this valid file, I must remove it:' + str(reportName))
+                    else:
                         createValidationReport(uploadFileName=excelKey,errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData, bucket=bucket, url=url, token=token,validatorType='IMMUNOGENIC_EPITOPES')
-                elif (projectName == nonImmunogenicEpitopeProjectName):
+                elif (projectID == nonImmunogenicEpitopeProjectNumber):
                     print('This is the Non Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
@@ -87,7 +87,17 @@ def immunogenic_epitope_handler(event, context):
                     setValidationStatus(uploadFileName=excelKey, isValid=isValid,
                         validationFeedback=validationResults, url=url, token=token,
                         validatorType='NON_IMMUNOGENIC_EPITOPES')
-                    if(not isValid):
+
+                    if (isValid):
+                        print('File is valid, checking if a report file exists...')
+                        reportName = excelKey + '.Validation_Report.xlsx'
+                        reportUploadObject = getUploadIfExists(token=token, url=url, fileName=reportName)
+                        if (reportUploadObject is None):
+                            print('There is no existing report so I do not need to delete it.')
+                        else:
+                            # TODO: Figure out how to delete the child report here.
+                            print('A validation report already exists for this valid file, I must remove it:' + str(reportName))
+                    else:
                         createValidationReport(uploadFileName=excelKey,errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData, bucket=bucket, url=url, token=token, validatorType='NON_IMMUNOGENIC_EPITOPES')
                 else:
                     print('This is not the (Non) Immunogenic Epitopes project! I will not validate it. Double-check the project names')
@@ -152,46 +162,44 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
 
 
     # Do more specific validation of the columns. Check that each column is valid.
-
-    if(isImmunogenic):
-        for dataRow in inputExcelData:
-            currentRowValidationResults={}
-            # findUniqueFile returns an empty string if a single file was found.
-            currentRowValidationResults['hla_donor'] = validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
-            currentRowValidationResults['hla_recipient'] = validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_recipient_pre_tx'] = validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
-            currentRowValidationResults['haml_recipient_post_tx'] = validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
-            currentRowValidationResults['prozone_pre_tx'] = validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
-            currentRowValidationResults['prozone_post_tx'] = validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
-            currentRowValidationResults['availability_pre_tx'] = validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
-            currentRowValidationResults['availability_post_tx'] = validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx')
-            currentRowValidationResults['months_post_tx'] = validateNumber(query=dataRow['months_post_tx'], columnName='months_post_tx')
-            currentRowValidationResults['gender_recipient'] = validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
-            currentRowValidationResults['age_recipient_tx'] = validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
-            currentRowValidationResults['pregnancies_recipient'] = validateBoolean(query=dataRow['pregnancies_recipient'], columnName='pregnancies_recipient')
-            currentRowValidationResults['immune_suppr_post_tx'] = validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx')
-
-            validationErrors.append(currentRowValidationResults)
-    else:
-        for dataRow in inputExcelData:
-            currentRowValidationResults = {}
-            # findUniqueFile returns an empty string if a single file was found.
-            currentRowValidationResults['hla_recipient'] = validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_recipient'] = validateUniqueEntryInList(query=dataRow['haml_id_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_id_recipient')
-            currentRowValidationResults['prozone'] = validateBoolean(query=dataRow['prozone'], columnName='prozone')
-            currentRowValidationResults['availability'] = validateBoolean(query=dataRow['availability'], columnName='availability')
-            currentRowValidationResults['gender_recipient'] = validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
-            currentRowValidationResults['age_recipient_tx'] = validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
-
-            validationErrors.append(currentRowValidationResults)
-
+    # This is project-specific so there are different validations for each column.
+    for dataRowIndex, dataRow in enumerate(inputExcelData):
+        currentRowValidationResults = validationErrors[dataRowIndex]
+        if (isImmunogenic):
+            # set default values
+            for key in getColumnNames(isImmunogenic=isImmunogenic):
+                currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
+            # set individual validation things.
+            currentRowValidationResults['hla_donor'] += validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
+            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['haml_recipient_pre_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
+            currentRowValidationResults['haml_recipient_post_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
+            currentRowValidationResults['prozone_pre_tx'] += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
+            currentRowValidationResults['prozone_post_tx'] += validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
+            currentRowValidationResults['availability_pre_tx'] += validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
+            currentRowValidationResults['availability_post_tx'] += validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx')
+            currentRowValidationResults['months_post_tx'] += validateNumber(query=dataRow['months_post_tx'], columnName='months_post_tx')
+            currentRowValidationResults['gender_recipient'] += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
+            currentRowValidationResults['age_recipient_tx'] += validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
+            currentRowValidationResults['pregnancies_recipient'] += validateBoolean(query=dataRow['pregnancies_recipient'], columnName='pregnancies_recipient')
+            currentRowValidationResults['immune_suppr_post_tx'] += validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx')
+        else:
+            # set default values
+            for key in getColumnNames(isImmunogenic=isImmunogenic):
+                currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
+            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['haml_recipient'] += validateUniqueEntryInList(query=dataRow['haml_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient')
+            currentRowValidationResults['prozone'] += validateBoolean(query=dataRow['prozone'], columnName='prozone')
+            currentRowValidationResults['availability'] += validateBoolean(query=dataRow['availability'], columnName='availability')
+            currentRowValidationResults['gender_recipient'] += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
+            currentRowValidationResults['age_recipient_tx'] += validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
+        validationErrors[dataRowIndex] = currentRowValidationResults
     validationFeedback = ''
     for validationErrorRow in validationErrors:
         for validationColumnName in validationErrorRow.keys():
             currentValidationResult = validationErrorRow[validationColumnName]
             if(currentValidationResult is not None and len(currentValidationResult) > 0):
                 validationFeedback = validationFeedback + currentValidationResult + ';\n'
-
 
     if len(validationFeedback) < 1:
         return ('Valid', inputExcelData, validationErrors)
@@ -227,13 +235,20 @@ def getColumnNames(isImmunogenic=True):
 def createValidationReport(uploadFileName=None,errors=None, inputWorkbookData=None, bucket=None, token=None, url=None, validatorType=None):
     print('Creating a validation Report.')
 
-    # TODO: Assign a new filename to show this is a validation report.
-    reportFileName = uploadFileName + '.xlsx'
-
+    reportFileName = uploadFileName + '.Validation_Report.xlsx'
     outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errors, inputWorkbookData=inputWorkbookData)
 
-    createConvertedUploadObject(newUploadFileType='XLSX', token=token, url=url, previousUploadFileName=uploadFileName)
+    # if it already exists, we don't need to create the upload object for the report.
+    # This throws a HTTP Error 404 if the file doesn't exist
+    # I think it's not great to use try/catch for program logic, maybe there's a better solution
+    existingUpload = getUploadIfExists(token=token, url=url, fileName=reportFileName)
+    if(existingUpload is None):
+        print('There is no child upload for the report file ' + str(reportFileName) + ' so I will create one.')
+        createConvertedUploadObject(newUploadFileName=reportFileName, newUploadFileType='XLSX', token=token, url=url,previousUploadFileName=uploadFileName)
+    else:
+        print('There is already a child upload(' + str(existingUpload) + ') for report file ' + str(reportFileName) + ' so I will not create one.')
+
     setValidationStatus(uploadFileName=reportFileName, isValid=True, validationFeedback='Download this report for Detailed Validation Results.'
-        , validatorType=validatorType,token=token,url=url)
+        , validatorType=validatorType+'_REPORT',token=token,url=url)
 
     writeFileToS3(newFileName=reportFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)

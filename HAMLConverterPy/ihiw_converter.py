@@ -27,10 +27,6 @@ import copy
     ///<summary>
  '''
 
-
-
-
-
 class Converter(object):
 
     def __init__(self, csvFile=None, manufacturer=None, xmlFile=None):

@@ -115,7 +115,9 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
             currentErrors[missingColumn] = ('Missing data for column ' + str(missingColumn))
 
         dataEntries.append(currentDataRow)
+        validationErrors.append(currentErrors)
 
+    print('returning these validationErrors:\n' + str(validationErrors))
     return (dataEntries, headerRow, validationErrors)
 
 def parseExcelFile(excelFile=None):
@@ -123,12 +125,6 @@ def parseExcelFile(excelFile=None):
     if(excelFile is None):
         print('No excel file was provided! I cannot parse nothing!')
         return None
-
-
-    # list->set->list will get the unique values in a list. No duplicates.
-    # Convert to lowercase and sort.
-    #columnNames = list(set([x.lower() for x in columnNames]))
-    #columnNames.sort()
 
     print('Opening and Parsing excel file:' + str(excelFile))
     print('It is of type:' + str(type(excelFile)))

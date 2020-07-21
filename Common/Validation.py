@@ -78,12 +78,20 @@ def validateNumber(query=None, columnName='?'):
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Number.')
 
 def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None, uploadList=None):
+
+
     # For these projects, and HLA Genotype can be one of 3 things
     # 1) A filename of an HML file.
     # 2) A HML ID.
     # 3) A GL String
     print('Checking this HLA Genotype:' + str(query))
 
+    # TODO: I temporarily disabled everything except filename search.
+    listValidationResult = validateUniqueEntryInList(query=query, searchList=searchList,allowPartialMatch=allowPartialMatch, columnName=columnName)
+    print('list validation results:' + str(listValidationResult))
+    return listValidationResult
+
+    '''
     # Is it a filename? These will be HML files, with extension XML or HML.
     if (str(query).lower().endswith('.xml') or str(query).lower().endswith('.hml')):
         print(str(query) + ' looks like a file name.')
@@ -122,6 +130,7 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
         # Return results.
 
     return 'NOT SURE THE RESULTS HERE!'
+    '''
 
 def getHmlIDsListFromUploads(uploadList=None):
     # TODO: Implement this. Get each upload
