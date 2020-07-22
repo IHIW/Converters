@@ -1,9 +1,20 @@
+from io import StringIO
+import sys
+
+# pip install git+https://github.com/nmdp-bioinformatics/pyglstring
+from glstring import check
+
 def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?'):
     # Return an empty string if there is a single file found.
     # Or else return text describing the problem.
 
     # Sometimes there is extra whitespace in the excel entries.
     query = query.strip()
+
+    if(len(query)<1):
+        return 'No data provided for column ' + str(columnName)
+
+
     matchList = []
     for searchTerm in searchList:
         #print('Checking (' + query + '),(' + searchTerm + ')')
@@ -22,11 +33,12 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
         # Perfect. only a single file was found.
         return ''
     elif(len(matchList) == 0):
-        return 'In data column ' + str(columnName) + ' I could not find an uploaded file with the name (' + str(query) + '); '
+        return 'In data column ' + str(columnName) + ' I could not find an uploaded file with the name (' + str(query) + ')'
     else:
         # We will sometimes find 2 entries for a single file. This is the case for converted HAML files.
         # They are called "ABCD.csv" and "ABCD.csv.haml"
         # We should allow this.
+        # TODO: These uploads have a parent/child relationship. I should be checking this instead of by the text filename.
         if(len(matchList) == 2 and (matchList[0] in matchList[1] or matchList[1] in matchList[0])):
             print('In data column ' + str(columnName) + ' For file entry (' + str(query) + '), '
                 + str(len(matchList)) + ' matching files were found, and they appear to be the same converted file:('
@@ -37,7 +49,7 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
             resultsText = 'In data column ' + str(columnName) + ' For file entry (' + str(query) + '), ' + str(len(matchList)) + ' matching files were found:('
             for match in matchList:
                 resultsText += match + ') , ('
-            resultsText = resultsText[0:len(resultsText) - 2] + '; '
+            resultsText = resultsText[0:len(resultsText) - 2] + ''
             return resultsText
 
 def validateBoolean(query=None, columnName='?'):
@@ -46,7 +58,7 @@ def validateBoolean(query=None, columnName='?'):
     if queryText in ['y','n','true','false','1','0', '1.0','0.0']:
         return ''
     else:
-        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Yes/No Boolean value.; ')
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Yes/No Boolean value.')
 
 def validateMaleFemale(query=None, columnName='?'):
     # Expecting a binary sex, either M or F.
@@ -56,12 +68,118 @@ def validateMaleFemale(query=None, columnName='?'):
     if queryText in ['m', 'f', 'male', 'female']:
         return ''
     else:
-        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Male/Female value.; ')
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Male/Female value.')
 
 def validateNumber(query=None, columnName='?'):
     try:
         convertedNumber = float(query)
         return ''
     except Exception:
-        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Number.; ')
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Number.')
 
+def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None, uploadList=None):
+
+
+    # For these projects, and HLA Genotype can be one of 3 things
+    # 1) A filename of an HML file.
+    # 2) A HML ID.
+    # 3) A GL String
+    print('Checking this HLA Genotype:' + str(query))
+
+    # TODO: I temporarily disabled everything except filename search.
+    listValidationResult = validateUniqueEntryInList(query=query, searchList=searchList,allowPartialMatch=allowPartialMatch, columnName=columnName)
+    print('list validation results:' + str(listValidationResult))
+    return listValidationResult
+
+    '''
+    # Is it a filename? These will be HML files, with extension XML or HML.
+    if (str(query).lower().endswith('.xml') or str(query).lower().endswith('.hml')):
+        print(str(query) + ' looks like a file name.')
+        listValidationResult=validateUniqueEntryInList(query=query, searchList=searchList, allowPartialMatch=allowPartialMatch, columnName=columnName)
+        print('list validation results:' + str(listValidationResult))
+        return listValidationResult
+    # Otherwise, is it in our HML-ID list?
+    print('Checking HML ID.')
+    hmlIdList = getHmlIDsListFromUploads(uploadList=uploadList)
+    if(query in hmlIdList):
+        print(str(query) + ' is in the HML ID list! Next, check if it is unique.')
+        hmlIdValidationResults=validateUniqueEntryInList(query=query, searchList=hmlIdList, allowPartialMatch=False, columnName=columnName)
+        print('hml validation results:' + str(hmlIdValidationResults))
+        return hmlIdValidationResults
+
+    # If not, validate GL String.
+    print('Checking if this is a sane glstring:' + str(query))
+    # TODO:
+    #  glStringValidationResults = validateGlString(glString=query)
+    glStringValidationResults = '' # Temporary results from glstring validator, because it does not work yet
+    print('glstring validation results:' + str(glStringValidationResults))
+    return glStringValidationResults
+
+
+
+    # Does it match a filename on our list?
+
+
+    #if(listValidationResult == ''):
+    # list validation will return empty string if it's valid, return it.
+
+    # Then we're done.
+    # Does it match one of our HMLIDs?
+        # Then we're done.
+    # Check a GL String
+        # Return results.
+
+    return 'NOT SURE THE RESULTS HERE!'
+    '''
+
+def getHmlIDsListFromUploads(uploadList=None):
+    # TODO: Implement this. Get each upload
+    # Only wanna do this once, check if it's "None" first.
+    return []
+
+def createFileListFromUploads(uploads=None, fileTypeFilter=None):
+    fileNameList = []
+    for upload in uploads:
+        #print('upload:' + str(upload))
+        fileName =upload['fileName']
+        fileType = upload['type']
+        # TODO: Also other optional filters?
+        if(fileTypeFilter is None or fileType==fileTypeFilter):
+            fileNameList.append(fileName)
+
+    return fileNameList
+
+def validateGlString(glString=None):
+    print('validating Gl String:' + str(glString))
+    with Capturing() as output:
+        # TODO: This is not working. I need to borrow the main method logic from the GL String modulet
+
+        check.main()
+    output=list(output)
+
+    validationResults=''
+    for validationLineIndex in range(0,len(output)):
+        glStringValidationLine=output[validationLineIndex]
+
+        #print('GLSTRING****' + str(glStringValidationLine))
+        if ('WARNING' in glStringValidationLine.upper()):
+            print('I DETECTED A Warning!')
+            validationResults += (glStringValidationLine) + '\n'
+
+
+    if(len(validationResults) == 0):
+        return validationResults
+    else:
+        return 'GLString (' + str(glString) + ') had these validation problem:\n' + validationResults
+
+# Borrowed code to capture standard out
+# https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout
