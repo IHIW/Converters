@@ -58,7 +58,7 @@ def immunogenic_epitope_handler(event, context):
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
 
-                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True)
+                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True, projectID=projectID)
                     isValid=(validationResults == 'Valid')
                     print('validation results were retrieved, attempting to set status.')
                     print('ValidationResults:(\n' + str(validationResults) + '\n)')
@@ -71,7 +71,7 @@ def immunogenic_epitope_handler(event, context):
                     print('This is the Non Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
-                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=False)
+                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=False, projectID=projectID)
                     isValid=(validationResults == 'Valid')
                     print('validation results were retrieved, attempting to set status.')
                     print('ValidationResults:(\n' + str(validationResults) + '\n)')
@@ -91,7 +91,7 @@ def immunogenic_epitope_handler(event, context):
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
-def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
+def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=None):
     # This method returns a tuple, with (text validation status, inputExcelData, and a list of dictionaries representing row&column-specific error results)
     #print('Validating Epitopes Data Matrix:' + str(excelFile))
     validationErrors=[]
@@ -127,20 +127,13 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
     if(token==None):
         return('Could not aquire a login token.', inputExcelData, validationErrors)
 
-    uploadList = None
-    hmlList = None
-
     try:
         uploadList = getUploads(token=token, url=url)
-        uploadFileList = createFileListFromUploads(uploads=uploadList)
+        hmlUploadList = createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HML')
+        hamlUploadList = createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HAML')
     except Exception as e:
         print('Exception when getting list of uploads:\n' + str(e) + '\n' + str(exc_info()))
         return ('Exception when getting list of uploads:\n' + str(e) , inputExcelData, validationErrors)
-
-    # Get list of upload HML IDs.
-    # TODO: Check based on HML IDs as well. For now, just use filenames.
-    #existingHMLIDs = getHMLIDs()
-
 
     # Do more specific validation of the columns. Check that each column is valid.
     # This is project-specific so there are different validations for each column.
@@ -151,10 +144,10 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
             for key in getColumnNames(isImmunogenic=isImmunogenic):
                 currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
             # set individual validation things.
-            currentRowValidationResults['hla_donor'] += validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
-            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_recipient_pre_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
-            currentRowValidationResults['haml_recipient_post_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
+            currentRowValidationResults['hla_donor'] += validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
+            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['haml_recipient_pre_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
+            currentRowValidationResults['haml_recipient_post_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
             currentRowValidationResults['prozone_pre_tx'] += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
             currentRowValidationResults['prozone_post_tx'] += validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
             currentRowValidationResults['availability_pre_tx'] += validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
@@ -168,8 +161,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None):
             # set default values
             for key in getColumnNames(isImmunogenic=isImmunogenic):
                 currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
-            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_recipient'] += validateUniqueEntryInList(query=dataRow['haml_recipient'], searchList=uploadFileList, allowPartialMatch=True, columnName='haml_recipient')
+            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['haml_recipient'] += validateUniqueEntryInList(query=dataRow['haml_recipient'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient')
             currentRowValidationResults['prozone'] += validateBoolean(query=dataRow['prozone'], columnName='prozone')
             currentRowValidationResults['availability'] += validateBoolean(query=dataRow['availability'], columnName='availability')
             currentRowValidationResults['gender_recipient'] += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')

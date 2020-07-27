@@ -106,7 +106,16 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
                 currentDataRow[columnName] = cellValue
             else:
                 columnName = columnNames[excelColumnIndexes.index(columnIndex)]
-                #print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
+                print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
+                if(str(cellType)=='number'):
+                    # Passing values as a number causes problems. Integers and number-like text strings get converted to decimal values.
+                    newValue=cellValue
+                    try:
+                        newValue=int(cellValue)
+                        newValue=str(int(cellValue))
+                    except Exception as e:
+                        print('Trouble converting a number-like string into a string format')
+                    cellValue=newValue
                 currentDataRow[columnName] = cellValue
 
         # TODO: Loop thru missing data, and put a blank there.
@@ -170,6 +179,7 @@ def parseExcelFile(excelFile=None):
             columnName = columnNames[columnIndex]
             cellValue = cell.value
             cellType = ctype_text.get(cell.ctype, 'unknown type')
+            print('cell type of data (' + str(cellValue) + ') is of type (' + str(cellType) + ')')
             currentDataRow[columnName] = cellValue
         dataEntries.append(currentDataRow)
 
