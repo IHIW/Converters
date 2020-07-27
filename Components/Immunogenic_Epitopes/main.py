@@ -3,22 +3,11 @@ import argparse
 from os.path import split, join
 from io import BytesIO
 
-
-
-try:
-    from Common.IhiwRestAccess import setValidationStatus
-    from Common.S3_Access import writeFileToS3
-    from Common.ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
-    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
-    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
-except Exception:
-    raise Exception ('COULD NOT IMPORT!!!!')
-    '''
-    from Common.IhiwRestAccess import setValidationStatus
-    from Common.S3_Access import writeFileToS3
-    from Common.ParseExcel import createBytestreamExcelOutputFile, parseExcelFile, getColumnNumberAsString, createExcelValidationReport
-    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
-    '''
+from Common.IhiwRestAccess import setValidationStatus, getProjectID
+from Common.S3_Access import writeFileToS3
+from Common.ParseExcel import parseExcelFile, createExcelValidationReport
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -33,26 +22,24 @@ def parseArgs():
 def testValidateImmunogenicEpitopes(excelFile=None):
     print('Starting up the immuno epitopes methods.')
 
-    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True)
+    immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
+    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True, projectID=immunogenicEpitopeProjectNumber)
     print('Validation Results:\n' + str(validationResults))
 
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False)
+    nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectID=nonImmunogenicEpitopeProjectNumber)
     print('Validation Results:\n' + str(validationResults))
 
-    # Bug: Need to parse out the path and just use the report name.
     head, tail = split(excelFile)
-    # TODO: I prefer if this file had a _report.xlsx instead of .xlsx.
-    #  But I think this is not possible with our current CopyUpload rest endpoint.
-    #  I think I should modify the copyupload rest endpoint to allow arbitrary filenames.
-    reportFileName = tail + '.validation_report.xlsx'
+    reportFileName = tail + '.Validation_Report.xlsx'
 
+    # Commented for testing
     outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
     writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
-    #createExcelValidationReport(errors=errorResultsPerRow,inputWorkbookData=inputExcelFileData, reportFileName=reportFileName)
 
 def testSetValidationResults(args=None):
     uploadFileName = args.upload
@@ -115,6 +102,7 @@ def testCreateSchemaFilesS3(args=None):
         print('writing file ' + str (localPath) + ' to remote ' + str(remotePath))
         fileByteStream = open(localPath,'rb')
         bytesIOObject = BytesIO(fileByteStream.read())
+
         #writeFileToS3(newFileName=remotePath, bucket=bucket, s3ObjectBytestream=bytesIOObject)
 
 

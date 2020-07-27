@@ -2,18 +2,16 @@ from io import StringIO
 import sys
 
 # pip install git+https://github.com/nmdp-bioinformatics/pyglstring
+# pyglstring is a repository of sanity checks written by Bob Milius at NMDP/CIBMTR. Handy.
 from glstring import check
 
 def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?'):
     # Return an empty string if there is a single file found.
     # Or else return text describing the problem.
-
-    # Sometimes there is extra whitespace in the excel entries.
-    query = query.strip()
+    query = str(query).strip()
 
     if(len(query)<1):
         return 'No data provided for column ' + str(columnName)
-
 
     matchList = []
     for searchTerm in searchList:
@@ -78,27 +76,24 @@ def validateNumber(query=None, columnName='?'):
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Number.')
 
 def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None, uploadList=None):
-
-
     # For these projects, and HLA Genotype can be one of 3 things
     # 1) A filename of an HML file.
-    # 2) A HML ID.
+    # 2) A HML ID. (TODO:Implement checking lists of HML ids for a single entry.)
     # 3) A GL String
-    print('Checking this HLA Genotype:' + str(query))
+    #print('Checking this HLA Genotype:' + str(query))
 
-    # TODO: I temporarily disabled everything except filename search.
-    listValidationResult = validateUniqueEntryInList(query=query, searchList=searchList,allowPartialMatch=allowPartialMatch, columnName=columnName)
-    print('list validation results:' + str(listValidationResult))
-    return listValidationResult
-
-    '''
-    # Is it a filename? These will be HML files, with extension XML or HML.
-    if (str(query).lower().endswith('.xml') or str(query).lower().endswith('.hml')):
-        print(str(query) + ' looks like a file name.')
-        listValidationResult=validateUniqueEntryInList(query=query, searchList=searchList, allowPartialMatch=allowPartialMatch, columnName=columnName)
-        print('list validation results:' + str(listValidationResult))
+    # If we find a single file entry, we are done. Not filtering by file extension, because user may have submitted just the file ID without extension.
+    listValidationResult=validateUniqueEntryInList(query=query, searchList=searchList, allowPartialMatch=allowPartialMatch, columnName=columnName)
+    if(listValidationResult==''):
+        # This entry maps to an individual file. Done.
         return listValidationResult
-    # Otherwise, is it in our HML-ID list?
+    else:
+        pass
+        print(str(query) + ' did not map to a single file, results:' + str(listValidationResult))
+
+    # TODO: Implement the list of HML IDs.
+    hmlIdValidationResults = 'Could not find file with matching HML ID'
+    '''
     print('Checking HML ID.')
     hmlIdList = getHmlIDsListFromUploads(uploadList=uploadList)
     if(query in hmlIdList):
@@ -106,71 +101,90 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
         hmlIdValidationResults=validateUniqueEntryInList(query=query, searchList=hmlIdList, allowPartialMatch=False, columnName=columnName)
         print('hml validation results:' + str(hmlIdValidationResults))
         return hmlIdValidationResults
-
-    # If not, validate GL String.
-    print('Checking if this is a sane glstring:' + str(query))
-    # TODO:
-    #  glStringValidationResults = validateGlString(glString=query)
-    glStringValidationResults = '' # Temporary results from glstring validator, because it does not work yet
-    print('glstring validation results:' + str(glStringValidationResults))
-    return glStringValidationResults
-
-
-
-    # Does it match a filename on our list?
-
-
-    #if(listValidationResult == ''):
-    # list validation will return empty string if it's valid, return it.
-
-    # Then we're done.
-    # Does it match one of our HMLIDs?
-        # Then we're done.
-    # Check a GL String
-        # Return results.
-
-    return 'NOT SURE THE RESULTS HERE!'
     '''
+
+    # I could not find matching File or HMLID, so let's validate GL String.
+    #print('Checking if this is a sane glstring:' + str(query))
+    glStringValidationResults = validateGlString(glString=query)
+    #glStringValidationResults = '' # Temporary results from glstring validator, because it does not work yet
+
+    #print('glstring validation results:' + str(glStringValidationResults))
+    if(glStringValidationResults==''):
+        # No issues detected with GL String, it looks valid enough..
+        return glStringValidationResults
+
+
+    combinedValidationResults = listValidationResult + '\n' + hmlIdValidationResults + '\n' + glStringValidationResults
+    return combinedValidationResults
+
 
 def getHmlIDsListFromUploads(uploadList=None):
     # TODO: Implement this. Get each upload
     # Only wanna do this once, check if it's "None" first.
     return []
 
-def createFileListFromUploads(uploads=None, fileTypeFilter=None):
+def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=None):
+    # TODO: also optionally filter based on files submitted by lab members
     fileNameList = []
     for upload in uploads:
         #print('upload:' + str(upload))
         fileName =upload['fileName']
         fileType = upload['type']
-        # TODO: Also other optional filters?
-        if(fileTypeFilter is None or fileType==fileTypeFilter):
+        fileProject = upload['project']['id']
+
+        if((fileTypeFilter is None or fileType==fileTypeFilter)
+            and (projectFilter is None or fileProject==projectFilter)):
             fileNameList.append(fileName)
 
     return fileNameList
 
 def validateGlString(glString=None):
     print('validating Gl String:' + str(glString))
+    # Check if it's undefined, or not formatted like a GL String.
+    if(glString is None or len(glString)<2):
+        return 'GLString (' + str(glString) + ') is Not defined.'
+    elif(not str(glString).startswith('HLA-')):
+        return '(' + str(glString) + ') does not look like a GL String.'
+
+    validationFeedback = ''
+
+    #  We need the print output to detect validation errors. Capture it.
     with Capturing() as output:
-        # TODO: This is not working. I need to borrow the main method logic from the GL String modulet
+        #print("Checking locus blocks...")
+        locusblocks, duplicates = check.locus_blocks(glString)
+        for locusblock in locusblocks:
+            print(locusblock)
+        if len(locusblocks) > 1:
+            if len(duplicates) == 0:
+                print("OK: no loci found in more than one locus block")
+            else:
+                if len(duplicates) == 1:
+                    print("WARNING: Locus found in more than 1 locus block:", duplicates)
+                else:
+                    print("WARNING: Loci found in more than 1 locus block:", duplicates)
+        else:
+            print("Nothing to check: Only one locus block")
+        print()
 
-        check.main()
-    output=list(output)
+        check.printchecked(check.genotype_lists(glString), 'genotype lists')
+        check.printchecked(check.genotypes(glString), 'genotypes')
+        check.printchecked(check.allele_lists(glString), 'allele lists')
 
-    validationResults=''
+    output = list(output)
+    #print('At the end of validation I found output with length ' + str(len(output)))
+
     for validationLineIndex in range(0,len(output)):
         glStringValidationLine=output[validationLineIndex]
 
         #print('GLSTRING****' + str(glStringValidationLine))
         if ('WARNING' in glStringValidationLine.upper()):
-            print('I DETECTED A Warning!')
-            validationResults += (glStringValidationLine) + '\n'
+            #print('I DETECTED A Warning!')
+            validationFeedback += (glStringValidationLine) + '\n'
 
-
-    if(len(validationResults) == 0):
-        return validationResults
+    if(len(validationFeedback) == 0):
+        return validationFeedback
     else:
-        return 'GLString (' + str(glString) + ') had these validation problem:\n' + validationResults
+        return 'GLString (' + str(glString) + ') had these validation problem:\n' + validationFeedback
 
 # Borrowed code to capture standard out
 # https://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
@@ -183,3 +197,4 @@ class Capturing(list):
         self.extend(self._stringio.getvalue().splitlines())
         del self._stringio    # free up some memory
         sys.stdout = self._stdout
+
