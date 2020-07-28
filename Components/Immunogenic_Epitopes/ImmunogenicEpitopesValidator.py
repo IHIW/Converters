@@ -144,8 +144,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
             for key in getColumnNames(isImmunogenic=isImmunogenic):
                 currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
             # set individual validation things.
-            currentRowValidationResults['hla_donor'] += validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
-            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
+            currentRowValidationResults['hla_donor'] += validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_donor')
+            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_recipient')
             currentRowValidationResults['haml_recipient_pre_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
             currentRowValidationResults['haml_recipient_post_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
             currentRowValidationResults['prozone_pre_tx'] += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')

@@ -75,7 +75,7 @@ def validateNumber(query=None, columnName='?'):
     except Exception:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Number.')
 
-def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None, uploadList=None):
+def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None, columnName=None):
     # For these projects, and HLA Genotype can be one of 3 things
     # 1) A filename of an HML file.
     # 2) A HML ID. (TODO:Implement checking lists of HML ids for a single entry.)
