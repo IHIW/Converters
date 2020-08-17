@@ -47,7 +47,7 @@ def csv_to_hml_lambda_handler(event, context):
         if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
             print('Could not find the Upload object for upload ' + str(csvKey) + '\nI will not convert it to HAML.' )
             return None
-        elif (csvUploadObject['type'] != 'HAML'):
+        elif (csvUploadObject['type'] != 'ANTIBODY_CSV'):
             print('The upload ' + str(csvKey) + ' is type ' + csvUploadObject['type'] + '. I will not convert it to HAML.')
             return None
 
