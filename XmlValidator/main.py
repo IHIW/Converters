@@ -1,14 +1,14 @@
 from sys import exc_info
-from SchemaValidation import validateAgainstSchema
-from MiringValidation import validateMiring
+#from SchemaValidation import validateAgainstSchema
+#from MiringValidation import validateMiring
 from NmdpPortalValidation import validateNmdpPortal
-from HamlValidation import validateHaml
+#from HamlValidation import validateHaml
 import argparse
 
-try:
-    from IhiwRestAccess import setValidationStatus
-except Exception:
-    from Common.IhiwRestAccess import setValidationStatus
+#try:
+#    from IhiwRestAccess import setValidationStatus
+#except Exception:
+#    from Common.IhiwRestAccess import setValidationStatus
 
 # Test methods for running the lambda function.
 def parseArgs():
@@ -37,7 +37,7 @@ def testSchemaValidation(xmlFileName=None, schemaFileName=None):
 
 def testNmdpValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'xml/good.hml.1.0.1.xml'
+    xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml'
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
     print(validateNmdpPortal(xmlText=xmlText) + '\n')
@@ -70,9 +70,9 @@ if __name__=='__main__':
         xmlFilename = args.xml
         schemaFileName = args.schema
 
-        testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
+        #testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
         #testMiringValidation(xmlFileName=xmlFilename)
-        #testNmdpValidation()
+        testNmdpValidation()
         #testSetValidationResults()
         pass
 
