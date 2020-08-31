@@ -14,6 +14,7 @@ def nmdp_validation_handler(event, context):
     # This is the AWS Lambda handler function.
     try:
         print('This is bens message in the handler!!!!!!')
+        print('This is Giannis message too')
         print('This is the event:' + str(event))
 
         # Get the uploaded file.
