@@ -1,4 +1,6 @@
 from sys import exc_info
+
+import boto3
 from boto3 import client
 s3 = client('s3')
 import json
@@ -50,12 +52,16 @@ def validateMiring(xmlText=None):
             'xml': xmlText.decode()
         }
 
-        print('body:' + str(body))
+        bucketname = 'ihiw-management-upload-staging'
+        filename = '1497_1589832668946_HML_good.hml.1.0.1.hml'
+        s3 = boto3.resource('s3')
+        theData = s3.Object(bucketname, filename).get()['Body'].read()
+        print('body:' + str(body))                      #not used
         jsonDump = json.dumps(body)
         print('jsonDump:' + jsonDump)
         encodedJsonData = str(jsonDump).encode('utf-8')
-        print('encodedJsonData:' + str(encodedJsonData))
-        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='POST')
+        print('encodedJsonData:' + str(encodedJsonData))      #until here
+        updateRequest = request.Request(url=fullUrl, data=theData, method='POST')   #encodedJsonData
 
         updateRequest.add_header('Content-Type', 'application/json')
         #updateRequest.add_header('xml',xmlText)
