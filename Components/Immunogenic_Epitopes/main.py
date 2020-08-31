@@ -1,26 +1,45 @@
 from sys import exc_info
 import argparse
-from ImmunogenicEpitopes import validateEpitopesDataMatrix
+from os.path import split, join
+from io import BytesIO
 
-try:
-    from IhiwRestAccess import setValidationStatus
-except Exception:
-    from Common.IhiwRestAccess import setValidationStatus
+from Common.IhiwRestAccess import setValidationStatus, getProjectID
+from Common.S3_Access import writeFileToS3
+from Common.ParseExcel import parseExcelFile, createExcelValidationReport
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", help="verbose operation", action="store_true")
+    parser.add_argument("-v", "--validator", required=True, help="validator type", type=str)
     parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
+    parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
+    parser.add_argument("-i", "--input", required=False, help="Input Folder", type=str)
 
     return parser.parse_args()
 
-
-def testValidateImmunogenicEpitopes(args=None):
+def testValidateImmunogenicEpitopes(excelFile=None):
     print('Starting up the immuno epitopes methods.')
 
-    validationResults = validateEpitopesDataMatrix(excelFile=args.excel)
+    immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
+    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True, projectID=immunogenicEpitopeProjectNumber)
     print('Validation Results:\n' + str(validationResults))
+
+def testValidateNonImmunogenicEpitopes(excelFile=None):
+    print('Starting up the non immunogenic epitopes methods.')
+
+    nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectID=nonImmunogenicEpitopeProjectNumber)
+    print('Validation Results:\n' + str(validationResults))
+
+    head, tail = split(excelFile)
+    reportFileName = tail + '.Validation_Report.xlsx'
+
+    # Commented for testing
+    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
+    writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
 
 def testSetValidationResults(args=None):
     uploadFileName = args.upload
@@ -50,13 +69,70 @@ def testSetValidationResults(args=None):
     else:
         print('FAILED to set validation status!')
 
+def testWriteFileS3(args=None):
+    print('Opening Input Workbook...')
+    excelFile=args.excel
+    inputWorkbookData = parseExcelFile(excelFile=excelFile)
+    if(inputWorkbookData is None or len(inputWorkbookData) < 1):
+        print('I failed to open the input workbook data. Cannot continue.')
+        return None
+    else:
+        pass
+        print('Workbook was opened, this is the data:' + str(inputWorkbookData))
+
+    # Some test errors. The column headers with errors are stored for each line
+    errors = [{'prozone_post_tx':'This cell is missing data'},{'availability_pre_tx':'File is wrong format or whatever.'}]
+
+    # Create output files
+    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errors, inputWorkbookData=inputWorkbookData)
+
+    # Write the Excel File to S3 storage.
+    writeFileToS3(newFileName=args.upload, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+def testCreateSchemaFilesS3(args=None):
+    inputFolder = args.input
+    bucket = args.bucket
+    print('Uploading schema files from ' + str(inputFolder) + ' to bucket ' + str(bucket))
+
+    schemaRemoteOutputFolder = 'schema'
+    # Write it to S3.
+    for fileName in ['hml-1.0.1.xsd', 'IHIW-haml_version_w0_3_3.xsd']:
+        localPath = join(inputFolder, fileName)
+        remotePath = join(schemaRemoteOutputFolder, fileName)
+        print('writing file ' + str (localPath) + ' to remote ' + str(remotePath))
+        fileByteStream = open(localPath,'rb')
+        bytesIOObject = BytesIO(fileByteStream.read())
+
+        #writeFileToS3(newFileName=remotePath, bucket=bucket, s3ObjectBytestream=bytesIOObject)
+
+
+
+def testCreateImmunogenicEpitopesProjectReport(args=None):
+    print('Creating Immunogenic Epitopes Project Report')
+    createImmunogenicEpitopesReport(bucket=args.bucket)
+
+
+
+
+
 if __name__=='__main__':
     try:
         args=parseArgs()
-        verbose = args.verbose
-
-        testValidateImmunogenicEpitopes(args=args)
-        #testSetValidationResults(args=args)
+        validatorType =args.validator
+        if(validatorType=='IMMUNOGENIC_EPITOPES'):
+            testValidateImmunogenicEpitopes(excelFile=args.excel)
+        elif (validatorType == 'NON_IMMUNOGENIC_EPITOPES'):
+            testValidateNonImmunogenicEpitopes(excelFile=args.excel)
+        elif (validatorType == 'IMMUNOGENIC_EPITOPES_PROJECT_REPORT'):
+            testCreateImmunogenicEpitopesProjectReport(args=args)
+        elif(validatorType=='SET_VALIDATION_RESULTS'):
+            testSetValidationResults(args=args)
+        elif (validatorType == 'WRITE_FILE_S3'):
+            testWriteFileS3(args=args)
+        elif(validatorType=='CREATE_SCHEMA_FILES'):
+            testCreateSchemaFilesS3(args=args)
+        else:
+            print('I do not understand the validator type.')
 
 
     except Exception:

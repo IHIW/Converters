@@ -1,14 +1,14 @@
 # This script will install dependencies, bundle the lambda function, and deploy to the AWS lambda environment.
 # Y must have the AWS commandline environment already installed
 # And you must have previously run "aws configure" to set up your machine for access to the AWS Environment.
-# You need to provide the config file converter_config.yml with entries url: {} username: {} password: {}
+# You need to provide the config file validation_config.yml with entries url: {} username: {} password: {}
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/bmatern/github/Converters/HAMLConverterPy"
+PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="csv_to_haml_lambda_handler.py"
-LAMBDA_FUNCTION="convertCSVToHAMLStaging"
-#LAMBDA_FUNCTION="convertCSVToHAMLProd"
+HANDLER_FILE="NmdpPortalValidation.py"
+LAMBDA_FUNCTION="validateXmlNMDPStaging"
+#LAMBDA_FUNCTION="validateXmlNMDPProd"
 
 cd $PROJECT_PATH
 
@@ -19,7 +19,6 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
 pip install --target ./package pyyaml
-pip install --target ./package pandas
 deactivate
 
 # Zip packages
@@ -29,12 +28,14 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 # Zip Script
 cd ..
 zip -g function.zip $HANDLER_FILE
-zip -g function.zip ihiw_converter.py
-zip -j -g function.zip ../Common/IhiwRestAccess.py
-
 
 # Zip Config File
-zip -g function.zip converter_config.yml
+zip -g function.zip validation_config.yml
+
+# Add Common Files
+cd ..
+zip -g XmlValidator/function.zip Common/IhiwRestAccess.py
+cd XmlValidator
 
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip

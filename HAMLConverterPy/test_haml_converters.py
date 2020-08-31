@@ -12,11 +12,12 @@ def testRestAccess():
     url = getUrl(configFileName='converter_config.yml')
     token = getToken(user=user, password=password, url=url)
 
-    #response = createConvertedUploadObject(newUploadFileType='HML', previousUploadFileName='1497_1593086716939_HAML_immunogenic_bad1.xlsx', token=token, url=url)
-    #print('Response from createConvertedUploadObject:' + str(response))
-
-    response = getUploadByFilename(fileName='1_1592339213839_HAML_HLAM_Fusion.csv.haml', token=token, url=url)
+    response = createConvertedUploadObject(newUploadFileName='childfilename4.xlsx', newUploadFileType='XLSX'
+        , previousUploadFileName='1497_1594975386935_HAML_Recipient_56789_Post.csv', token=token, url=url)
     print('Response from createConvertedUploadObject:' + str(response))
+
+    #response = getUploadByFilename(fileName='1_1592339213839_HAML_HLAM_Fusion.csv.haml', token=token, url=url)
+    #print('Response from createConvertedUploadObject:' + str(response))
 
 if __name__ == '__main__':
     testRestAccess()
