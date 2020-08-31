@@ -13,6 +13,7 @@ except Exception:
 
 def schema_validation_handler(event, context):
     print('I found the schema validation handler.')
+    print('This is the event that was passed in:' + str(event))
     # This is the AWS Lambda handler function.
     try:
         # Get the uploaded file.
@@ -43,7 +44,7 @@ def schema_validation_handler(event, context):
         validationResults = None
         if(fileType == 'HML'):
             print('I will Validate Schema for this HML file:' + str(xmlKey))
-            schemaText = getSchemaText(schemaFileName='schema/hml-1.0.1.xsd', bucketName=bucket)
+            schemaText = getSchemaText(schemaFileName='hml-1.0.1.xsd')
             validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
             print('ValidationResults:' + str(validationResults))
             setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
@@ -52,7 +53,7 @@ def schema_validation_handler(event, context):
                 print('File ' + str(xmlKey) + ' is a .csv file, I will not perform schema validation.')
                 return None
             elif(fileExtension=='HAML' or fileExtension=='XML'):
-                schemaText = getSchemaText(schemaFileName='schema/IHIW-haml_version_w0_3_3.xsd', bucketName=bucket)
+                schemaText = getSchemaText(schemaFileName='IHIW-haml_version_w0_3_3.xsd')
                 validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
                 print('ValidationResults:' + str(validationResults))
                 setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
@@ -69,10 +70,12 @@ def schema_validation_handler(event, context):
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
-def getSchemaText(schemaFileName=None, bucketName=None):
-    schemaKey = schemaFileName
-    schemaFileObject = s3.get_object(Bucket=bucketName, Key=schemaKey)
-    schemaText = schemaFileObject["Body"].read()
+def getSchemaText(schemaFileName=None):
+    # This assumes the schema files are in the current working directory. That is how they are bundled for AWS.
+    print('Getting Schema Text from this local File:' + str(schemaFileName))
+    schemaFile=open(os.path.join(os.getcwd(),schemaFileName), 'r')
+    schemaText=schemaFile.read()
+    print('I found this text:' + str(schemaText))
     return schemaText
 
 def validateAgainstSchema(schemaText=None, xmlText=None):
