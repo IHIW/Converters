@@ -32,6 +32,11 @@ zip -g function.zip $HANDLER_FILE
 zip -g function.zip ihiw_converter.py
 zip -j -g function.zip ../Common/IhiwRestAccess.py
 
+# Add Common Files
+cd ..
+zip -g HAMLConverterPy/function.zip Common/IhiwRestAccess.py
+cd HAMLConverterPy
+
 
 # Zip Config File
 zip -g function.zip converter_config.yml

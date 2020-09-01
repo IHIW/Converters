@@ -68,10 +68,11 @@ class Converter(object):
         for dateFormat in potentialDateFormats:
             try:
                 dateObject = datetime.datetime.strptime(dateString, dateFormat)
-                print('Hooray, ' + dateString + ' IS this format:' + str(dateFormat))
+                #print('Hooray, ' + dateString + ' IS this format:' + str(dateFormat))
                 self.dateFormat=dateFormat
             except Exception as e:
-                print(dateString + ' is not this format:' + str(dateFormat))
+                pass
+                #print(dateString + ' is not this format:' + str(dateFormat))
         if(self.dateFormat is None):
             print('Failed at determining date format! ')
 
@@ -206,8 +207,8 @@ class Converter(object):
                 if (row.SampleIDName.strip() != sampleID or str(row.PatientID).strip() != patientID):
                     sampleID = str(row.SampleIDName).strip()
                     patientID = str(row.PatientID).strip()
-                    print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
-                        patientID) + ' and catalogID:' + str(catalogID))
+                    #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
+                    #    patientID) + ' and catalogID:' + str(catalogID))
 
                     # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
                     patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
@@ -223,7 +224,7 @@ class Converter(object):
                 # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
                 if (str(row.SampleIDName).strip() != sampleID or str(row.PatientID).strip() != patientID or str(row.CatalogID).strip() != catalogID):
                     catalogID = str(row.CatalogID).strip()
-                    print('Found a new bead catalog: ' + str(catalogID))
+                    #print('Found a new bead catalog: ' + str(catalogID))
 
                     current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
                           {'kit-manufacturer': self.manufacturer,
@@ -295,8 +296,8 @@ class Converter(object):
             if (str(row.Sample_ID).strip() != sampleID or str(row.Patient_Name).strip() != patientID):
                 sampleID = str(row.Sample_ID).strip()
                 patientID = str(row.Patient_Name).strip()
-                print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
-                    patientID) + ' and catalogID:' + str(catalogID))
+                #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
+                #    patientID) + ' and catalogID:' + str(catalogID))
 
                 sample_test_date = datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")
                 # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
@@ -345,7 +346,7 @@ class Converter(object):
         global manufacturer
         self.DetermineDelimiter()
         manufacturer, Table = self.DetermineManufacturer()
-        print('manufacturer', manufacturer)
+        #print('manufacturer', manufacturer)
         if manufacturer == 'OneLambda':
             print('manufacturer', manufacturer)
             self.ProcessOneLambda(Table)
@@ -365,9 +366,9 @@ if __name__ == '__main__':
     xmlFile = sys.argv[3]
     #xmlFile = None
 
-    print('csvFile:' + csvFile)
-    print('manufacturer:' + manufacturer)
-    print('xmlFile:' + str(xmlFile))
+    #print('csvFile:' + csvFile)
+    #print('manufacturer:' + manufacturer)
+    #print('xmlFile:' + str(xmlFile))
 
     converter = Converter(csvFile=csvFile,manufacturer=manufacturer,xmlFile=xmlFile)
     converter.convert()

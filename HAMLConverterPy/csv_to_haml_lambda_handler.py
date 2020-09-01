@@ -1,20 +1,12 @@
 import boto3
-#import os
-#import sys
 from ihiw_converter import Converter
 from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
 
 import json
-import urllib
+
 import io
 
-'''
-try:
-    from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
-except Exception as e:
-    print('Failed in importing files: ' + str(e))
-    from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
-'''
+from Common.IhiwRestAccess import getUploadsByParentId, deleteUpload
 
 ''' <summary>
     /// Handler was converted to Python by Teresa Tavella
@@ -53,6 +45,7 @@ def csv_to_hml_lambda_handler(event, context):
 
         s3 = boto3.client('s3')
 
+        # Get the CSV object from S3
         csvFileObject = s3.get_object(Bucket=bucket, Key=csvKey)
         print('csvFileObject:' + str(csvFileObject))
         #csvText = csvFileObject["Body"].read().decode()
@@ -61,7 +54,7 @@ def csv_to_hml_lambda_handler(event, context):
         print('s3 object:' + str(s3ObjectBytestream))
 
         manufacturer=''
-        xmlOutput = (csvKey + '.haml')
+        xmlOutput = (csvKey.replace('ANTIBODY_CSV','HAML') + '.haml')
         print('outputfilename:' + str(xmlOutput))
         #xmlFileObject = event['s3']['Keyxml']
 
@@ -72,14 +65,20 @@ def csv_to_hml_lambda_handler(event, context):
         # Somehow check if the convert was successful.
         if(converter.xmlText is not None and len(converter.xmlText) > 0):
             try:
-                # Call the Rest enpoint to create a new Upload entry. This should be BEFORE the file is actually created.
-                existingUpload = getUploadIfExists(token=token, url=url, fileName=xmlOutput)
-                if (existingUpload is None):
-                    print('There is no child upload for the haml file ' + str(xmlOutput) + ' so I will create one.')
-                    response=createConvertedUploadObject(newUploadFileName=xmlOutput,  newUploadFileType= 'HAML', previousUploadFileName=csvKey, token=token, url=url)
-                    print('response from new upload:' + str(response))
-                else:
-                    print('There is already a child upload(' + str(existingUpload) + ') for haml file ' + str(xmlOutput) + ' so I will not create one.')
+
+                #print('Looking for children of this upload object..')
+                parentId = csvUploadObject['id']
+                childUploads = getUploadsByParentId(token=token,url=url,parentId=parentId)
+                for childUpload in childUploads:
+                    if(childUpload['type'] == 'HAML'):
+                        childUploadFileName = childUpload['fileName']
+                        childUploadId = childUpload['id']
+                        print('Found a child HAML file, I will delete this one:' + str(childUploadFileName))
+                        deleteResponse = deleteUpload(token=token,url=url, uploadId=childUploadId)
+                        print('Found this reponse from deleting the child:' + str(deleteResponse))
+
+                response = createConvertedUploadObject(newUploadFileName=xmlOutput, newUploadFileType='HAML', previousUploadFileName=csvKey, token=token, url=url)
+                print('response from new upload:' + str(response))
 
                 # Write out the xml text
                 # This should trigger the XML validation.
