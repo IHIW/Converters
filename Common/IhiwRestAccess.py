@@ -213,6 +213,22 @@ def getUploads(token=None, url=None):
 
     return response
 
+def getUploadsByParentId(token=None, url=None, parentId=None):
+    # TODO: It would be better to do this inside a rest method somewhere. Getting all the uploads and looping through might not be most efficient.
+    if parentId is None:
+        print('Parent ID is none, cannot find any uploads with this parent')
+        return None
+    else:
+        allUploads=getUploads(token=token,url=url)
+
+        uploadList = []
+        for upload in allUploads:
+            if(upload['parentUpload'] is not None and str(upload['parentUpload']['id']) == str(parentId)):
+                uploadList.append(upload)
+
+        return uploadList
+
+
 def getUploadByFilename(token=None, url=None, fileName=None):
     if(url is None):
         url = getUrl()
@@ -245,12 +261,29 @@ def getUploadIfExists(token=None, url=None, fileName=None):
         else:
             raise
 
-def deleteUpload(token=None, url=None, fileName=None):
+def deleteUpload(token=None, url=None, uploadId=None):
     if(url is None):
         url = getUrl()
     if(token is None):
         token = getToken(url=url)
-    print('deleting upload by filename:' + str(fileName))
+    print('deleting upload by id:' + str(uploadId))
+
+    fullUrl = str(url) + '/api/uploads/' + str(uploadId)
+    body = {}
+
+    encodedJsonData = str(json.dumps(body)).encode('utf-8')
+    updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='DELETE')
+    updateRequest.add_header('Content-Type', 'application/json')
+    updateRequest.add_header('Authorization', 'Bearer ' + token)
+    responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+    print('Response from deleting upload:' + str(responseData))
+    if (responseData is None or len(responseData) < 1):
+        print('updateValidationStatus returned an empty response!')
+        return False
+    response = json.loads(responseData)
+    return response
+
+
 
 def getProjectID(configFileName='validation_config.yml', projectName=None):
     if(projectName is None):
