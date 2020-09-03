@@ -223,7 +223,29 @@ def getUploadsByParentId(token=None, url=None, parentId=None):
 
         uploadList = []
         for upload in allUploads:
-            if(upload['parentUpload'] is not None and str(upload['parentUpload']['id']) == str(parentId)):
+            if(upload['parentUpload'] is not None
+                and str(upload['parentUpload']['id']) == str(parentId)
+            ):
+                uploadList.append(upload)
+
+        return uploadList
+
+
+def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectID=None):
+    if fileName is None:
+        print('fileName is none, cannot find any uploads with this parent')
+        return None
+    else:
+        allUploads=getUploads(token=token,url=url)
+
+        #print('Checking keyword ' + fileName + ' against uploads:\n' + str(allUploads))
+
+        uploadList = []
+        for upload in allUploads:
+            if(upload['fileName'] is not None
+                and fileName.lower() in str(upload['fileName']).lower()
+                and (projectID is None or str(upload['project']['id'])==str(projectID))
+            ):
                 uploadList.append(upload)
 
         return uploadList
