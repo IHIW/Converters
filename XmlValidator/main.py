@@ -1,14 +1,17 @@
 from sys import exc_info
 #from SchemaValidation import validateAgainstSchema
+from XmlValidator.SchemaValidation import validateAgainstSchema
 #from MiringValidation import validateMiring
-from NmdpPortalValidation import validateNmdpPortal
-#from HamlValidation import validateHaml
+from XmlValidator.MiringValidation import validateMiring
+#from NmdpPortalValidation import validateNmdpPortal
+from XmlValidator.NmdpPortalValidation import validateNmdpPortal
+from HamlValidation import validateHaml
 import argparse
 
-#try:
-#    from IhiwRestAccess import setValidationStatus
-#except Exception:
-#    from Common.IhiwRestAccess import setValidationStatus
+try:
+    from Common.IhiwRestAccess import setValidationStatus
+except Exception:
+    from Common.IhiwRestAccess import setValidationStatus
 
 # Test methods for running the lambda function.
 def parseArgs():
@@ -37,7 +40,7 @@ def testSchemaValidation(xmlFileName=None, schemaFileName=None):
 
 def testNmdpValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml'
+    xmlPath = 'xml/good.hml.1.0.1.xml' #not used
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
     print(validateNmdpPortal(xmlText=xmlText) + '\n')
@@ -45,7 +48,7 @@ def testNmdpValidation():
 
 def testMiringValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'xml/good.hml.1.0.1.xml'
+    xmlPath = 'xml/good.hml.1.0.1.xml' #not used
     print('Validating MIRING,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
     print(validateMiring(xmlText=xmlText) + '\n')
@@ -71,8 +74,8 @@ if __name__=='__main__':
         schemaFileName = args.schema
 
         #testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
-        #testMiringValidation(xmlFileName=xmlFilename)
-        testNmdpValidation()
+        testMiringValidation()
+        #testNmdpValidation()
         #testSetValidationResults()
         pass
 
