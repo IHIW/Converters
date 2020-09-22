@@ -59,6 +59,30 @@ def validateBoolean(query=None, columnName='?'):
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Yes/No Boolean value.')
 
+def validateDate(query=None, columnName='?'):
+    # TODO: Implement date checker. I am expecting, probably, dates like DD-MM-YYYY
+    # But I can detect date format. I did that in the HAML converter, look for example.
+    return ''
+
+def validateBloodGroup(query=None, columnName='?'):
+    # TODO: Implement BloodGroup validation. A,AB, O+, O-
+    return ''
+
+def validateDonorSourceType(query=None, columnName='?'):
+    # TODO: Implement validateDonorSourceType validation.  DCD, DBD, living directed, PKE
+    return ''
+
+def validateProzoneType(query=None, columnName='?'):
+    # TODO: Implement validateProzoneType validation.   EDTA, DTT, dilution, Heat, Other
+    return ''
+
+def validateOrganCategory(query=None, columnName='?'):
+    # TODO: Implement validateOrganCategory validation.  Kidney, heart, lung, pancreas, KPD, liver, other
+    return ''
+
+
+
+
 def validateMaleFemale(query=None, columnName='?'):
     # Expecting a binary sex, either M or F.
     # For data standards reasons, not for any political or gender identity reasons.
