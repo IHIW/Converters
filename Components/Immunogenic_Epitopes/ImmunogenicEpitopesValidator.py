@@ -53,8 +53,9 @@ def immunogenic_epitope_handler(event, context):
             else:
                 immunogenicEpitopeProjectNumber=getProjectID(projectName='immunogenic_epitopes')
                 nonImmunogenicEpitopeProjectNumber=getProjectID(projectName='non_immunogenic_epitopes')
+                dqImmunogenicityProjectNumber=getProjectID(projectName='dq_immunogenicity')
 
-                if (projectID == immunogenicEpitopeProjectNumber):
+                if (projectID == immunogenicEpitopeProjectNumber or projectID == dqImmunogenicityProjectNumber):
                     print('This is the Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
