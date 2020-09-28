@@ -55,7 +55,7 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
 def validateBoolean(query=None, columnName='?'):
     queryText=str(query).lower()
     # Try to be flexible on this one.
-    if queryText in ['y','n','true','false','1','0', '1.0','0.0']:
+    if queryText in ['y','n','true','false','1','0', '1.0','0.0', 'unknown']:
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Yes/No Boolean value.')
