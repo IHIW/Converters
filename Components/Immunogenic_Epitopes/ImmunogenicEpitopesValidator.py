@@ -5,16 +5,17 @@ import json
 import urllib
 
 # For importing common methods, may be in the same directory when deployed as a package
+# TODO: Fix these imports. I think I can remove the try/catch here by changing the project root directory.
 try:
     from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, createConvertedUploadObject, getProjectID, getUploadIfExists
     from ParseExcel import parseExcelFileWithColumns, createExcelValidationReport
-    from Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale, createFileListFromUploads, validateHlaGenotypeEntry
+    from Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale, createFileListFromUploads, validateHlaGenotypeEntry, validateDate, validateBloodGroup, validateDonorSourceType, validateProzoneType, validateOrganCategory
     from S3_Access import writeFileToS3
 except Exception as e:
     print('Failed in importing files: ' + str(e))
     from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, createConvertedUploadObject, getProjectID, getUploadIfExists
     from Common.ParseExcel import parseExcelFileWithColumns, createExcelValidationReport
-    from Common.Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale, createFileListFromUploads, validateHlaGenotypeEntry
+    from Common.Validation import validateUniqueEntryInList, validateBoolean, validateNumber, validateMaleFemale, createFileListFromUploads, validateHlaGenotypeEntry, validateDate, validateBloodGroup, validateDonorSourceType, validateProzoneType, validateOrganCategory
     from Common.S3_Access import writeFileToS3
 
 def immunogenic_epitope_handler(event, context):
@@ -52,8 +53,9 @@ def immunogenic_epitope_handler(event, context):
             else:
                 immunogenicEpitopeProjectNumber=getProjectID(projectName='immunogenic_epitopes')
                 nonImmunogenicEpitopeProjectNumber=getProjectID(projectName='non_immunogenic_epitopes')
+                dqImmunogenicityProjectNumber=getProjectID(projectName='dq_immunogenicity')
 
-                if (projectID == immunogenicEpitopeProjectNumber):
+                if (projectID == immunogenicEpitopeProjectNumber or projectID == dqImmunogenicityProjectNumber):
                     print('This is the Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
@@ -144,18 +146,29 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
             for key in getColumnNames(isImmunogenic=isImmunogenic):
                 currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
             # set individual validation things.
-            currentRowValidationResults['hla_donor'] += validateHlaGenotypeEntry(query=dataRow['hla_donor'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_donor', uploadList=uploadList)
-            currentRowValidationResults['hla_recipient'] += validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_recipient_pre_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_pre_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient_pre_tx')
-            currentRowValidationResults['haml_recipient_post_tx'] += validateUniqueEntryInList(query=dataRow['haml_recipient_post_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient_post_tx')
-            currentRowValidationResults['prozone_pre_tx'] += validateBoolean(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
-            currentRowValidationResults['prozone_post_tx'] += validateBoolean(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
+            currentRowValidationResults['recipient_hla'] += validateHlaGenotypeEntry(query=dataRow['recipient_hla'], searchList=hmlUploadList, allowPartialMatch=True, columnName='recipient_hla',  uploadList=uploadList)
+            currentRowValidationResults['recipient_haml_pre_tx'] += validateUniqueEntryInList(query=dataRow['recipient_haml_pre_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='recipient_haml_pre_tx')
+            currentRowValidationResults['recipient_haml_post_tx'] += validateUniqueEntryInList(query=dataRow['recipient_haml_post_tx'], searchList=hamlUploadList, allowPartialMatch=True, columnName='recipient_haml_post_tx')
+            currentRowValidationResults['recipient_sex'] += validateMaleFemale(query=dataRow['recipient_sex'], columnName='recipient_sex')
+            currentRowValidationResults['recipient_year_of_birth'] += validateNumber(query=dataRow['recipient_year_of_birth'], columnName='recipient_year_of_birth')
+            currentRowValidationResults['recipient_pregnancies'] += validateBoolean(query=dataRow['recipient_pregnancies'], columnName='recipient_pregnancies')
+            currentRowValidationResults['recipient_transfusions'] += validateBoolean(query=dataRow['recipient_transfusions'], columnName='recipient_transfusions')
+            currentRowValidationResults['recipient_dialysis_date'] += validateDate(query=dataRow['recipient_dialysis_date'], columnName='recipient_dialysis_date')
+            currentRowValidationResults['recipient_deceased_date'] += validateDate(query=dataRow['recipient_deceased_date'], columnName='recipient_deceased_date')
+            currentRowValidationResults['donor_year_of_birth'] += validateNumber(query=dataRow['donor_year_of_birth'], columnName='donor_year_of_birth')
+            currentRowValidationResults['recipient_blood_group'] += validateBloodGroup(query=dataRow['recipient_blood_group'], columnName='recipient_blood_group')
+            currentRowValidationResults['donor_source_type'] += validateDonorSourceType(query=dataRow['donor_source_type'], columnName='donor_source_type')
+            currentRowValidationResults['donor_hla'] += validateHlaGenotypeEntry(query=dataRow['donor_hla'], searchList=hmlUploadList, allowPartialMatch=True, columnName='donor_hla', uploadList=uploadList)
+            currentRowValidationResults['donor_sex'] += validateMaleFemale(query=dataRow['donor_sex'], columnName='donor_sex')
+            currentRowValidationResults['donor_blood_group'] += validateBloodGroup(query=dataRow['donor_blood_group'], columnName='donor_blood_group')
+            currentRowValidationResults['transplantation_date'] += validateDate(query=dataRow['transplantation_date'], columnName='transplantation_date')
+            currentRowValidationResults['transplant_organ_category'] += validateOrganCategory(query=dataRow['transplant_organ_category'], columnName='transplant_organ_category')
+            currentRowValidationResults['prozone_pre_tx'] += validateProzoneType(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
+            currentRowValidationResults['prozone_post_tx'] += validateProzoneType(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
             currentRowValidationResults['availability_pre_tx'] += validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
             currentRowValidationResults['availability_post_tx'] += validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx')
-            currentRowValidationResults['months_post_tx'] += validateNumber(query=dataRow['months_post_tx'], columnName='months_post_tx')
-            currentRowValidationResults['gender_recipient'] += validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
-            currentRowValidationResults['age_recipient_tx'] += validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
-            currentRowValidationResults['pregnancies_recipient'] += validateBoolean(query=dataRow['pregnancies_recipient'], columnName='pregnancies_recipient')
+            currentRowValidationResults['date_antibody_pre_tx'] += validateDate(query=dataRow['date_antibody_pre_tx'], columnName='date_antibody_pre_tx')
+            currentRowValidationResults['date_antibody_post_tx'] += validateDate(query=dataRow['date_antibody_post_tx'], columnName='date_antibody_post_tx')
             currentRowValidationResults['immune_suppr_post_tx'] += validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx')
         else:
             # set default values
@@ -183,18 +196,29 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
 def getColumnNames(isImmunogenic=True):
     if (isImmunogenic):
         return [
-            'hla_donor'
-            , 'hla_recipient'
-            , 'haml_recipient_pre_tx'
-            , 'haml_recipient_post_tx'
+            'recipient_hla'
+            , 'recipient_haml_pre_tx'
+            , 'recipient_haml_post_tx'
+            , 'recipient_sex'
+            , 'recipient_year_of_birth'
+            , 'recipient_pregnancies'
+            , 'recipient_transfusions'
+            , 'recipient_dialysis_date'
+            , 'recipient_deceased_date'
+            , 'donor_year_of_birth'
+            , 'recipient_blood_group'
+            , 'donor_source_type'
+            , 'donor_hla'
+            , 'donor_sex'
+            , 'donor_blood_group'
+            , 'transplantation_date'
+            , 'transplant_organ_category'
             , 'prozone_pre_tx'
             , 'prozone_post_tx'
             , 'availability_pre_tx'
             , 'availability_post_tx'
-            , 'months_post_tx'
-            , 'gender_recipient'
-            , 'age_recipient_tx'
-            , 'pregnancies_recipient'
+            , 'date_antibody_pre_tx'
+            , 'date_antibody_post_tx'
             , 'immune_suppr_post_tx'
         ]
     else:

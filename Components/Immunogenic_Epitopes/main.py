@@ -23,8 +23,15 @@ def testValidateImmunogenicEpitopes(excelFile=None):
     print('Starting up the immuno epitopes methods.')
 
     immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
-    validationResults = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True, projectID=immunogenicEpitopeProjectNumber)
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True, projectID=immunogenicEpitopeProjectNumber)
     print('Validation Results:\n' + str(validationResults))
+
+    head, tail = split(excelFile)
+    reportFileName = tail + '.Validation_Report.xlsx'
+
+    # Commented for testing
+    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
+    writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
