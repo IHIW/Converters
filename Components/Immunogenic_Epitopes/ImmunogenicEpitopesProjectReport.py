@@ -1,12 +1,20 @@
 from boto3 import client
 
-from Common.ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
-from Common.ParseXml import getGlStringFromHml
-from Common.S3_Access import writeFileToS3
-from Common.Validation import validateGlString
-from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
-from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, \
-    createConvertedUploadObject, getProjectID, getUploadFileNamesByPartialKeyword
+try:
+    from ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
+    from ParseXml import getGlStringFromHml
+    from S3_Access import writeFileToS3
+    from Validation import validateGlString
+    from ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
+    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID, getUploadFileNamesByPartialKeyword
+except Exception as e:
+    print('Exception when importing:'  + str(e))
+    from Common.ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
+    from Common.ParseXml import getGlStringFromHml
+    from Common.S3_Access import writeFileToS3
+    from Common.Validation import validateGlString
+    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
+    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID, getUploadFileNamesByPartialKeyword
 
 s3 = client('s3')
 from sys import exc_info
@@ -23,9 +31,12 @@ def immunogenic_epitope_project_report_handler(event, context):
     print('Lambda handler: Creating a project report for immunogenic epitopes.')
     # This is the AWS Lambda handler function.
     try:
-        # bucket = content['Records'][0]['s3']['bucket']['name']
+        # TODO: get the bucket from the sns message ( there is no sns message)
+        #bucket = content['Records'][0]['s3']['bucket']['name']
+        #bucket = 'ihiw-management-upload-prod'
+        bucket=None
 
-        createImmunogenicEpitopesReport()
+        createImmunogenicEpitopesReport(bucket=bucket)
 
 
     except Exception as e:
@@ -52,7 +63,7 @@ def createImmunogenicEpitopesReport(bucket=None):
     headerStyle = outputWorkbook.add_format({'bold': True})
     errorStyle = outputWorkbook.add_format({'bg_color': 'red'})
     # Write headers on new sheet.
-    summaryHeaders = ['data_matrix_filename','submitting_user','submitting_lab','submission_date']
+    summaryHeaders = ['data_matrix_filename','submitting_user','submitting_lab','submission_date', 'donor_glstring', 'recipient_glstring']
     dataMatrixHeaders=getColumnNames(isImmunogenic=True)
 
 
@@ -110,6 +121,28 @@ def createImmunogenicEpitopesReport(bucket=None):
                     if(len(fileResults) == 1):
                         # We found a single file mapped to this HLA result. Get a GlString.
                         currentGlString = getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3, bucket=bucket)
+                        glStringValidationResults = validateGlString(glString=currentGlString)
+                    else:
+                        # We didn't find a single file to calculate a glString from. Use the existing data
+                        currentGlString = dataLine[header]
+                        glStringValidationResults = errorResultsPerRow[dataLineIndex][header]
+
+                    # print the glString in the appropriate column
+                    if(header=='donor_hla'):
+                        if(len(glStringValidationResults) > 0):
+                            outputWorksheet.write(getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString, errorStyle)
+                            outputWorksheet.write_comment(getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), glStringValidationResults)
+                        else:
+                            outputWorksheet.write(getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString)
+                    elif(header=='recipient_hla'):
+                        if (len(glStringValidationResults) > 0):
+                            outputWorksheet.write(getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString, errorStyle)
+                            outputWorksheet.write_comment(getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), glStringValidationResults)
+                        else:
+                            outputWorksheet.write(getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString)
+                    else:
+                        raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(dataLine[header]))
+
                 elif('_haml_' in (header)):
                     fileResults=getUploadFileNamesByPartialKeyword(fileName=str(dataLine[header]), projectID=projectID)
                 else:
@@ -118,26 +151,14 @@ def createImmunogenicEpitopesReport(bucket=None):
                 for uploadFile in fileResults:
                     supportingFiles.append(uploadFile['fileName'])
 
-                if(currentGlString is None):
-                    currentCellValue = dataLine[header]
-                else:
-                    currentCellValue = currentGlString
-
-                    # Get some validation results on the GL String
-                    glStringValidationResults = validateGlString(glString=currentGlString)
-                    #print('****** I found these glString validationRestults:' + str(glStringValidationResults))
-                    if(glStringValidationResults != ''):
-                        errorResultsPerRow[dataLineIndex][header] = glStringValidationResults
-
-
                 # Was there an error in this cell? Highlight it red and add error message
                 if (header in errorResultsPerRow[dataLineIndex].keys() and len(str(errorResultsPerRow[dataLineIndex][header])) > 0):
                     # TODO: Make the error styles optional.
-                    outputWorksheet.write(cellIndex, currentCellValue, errorStyle)
+                    outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
                     outputWorksheet.write_comment(cellIndex, errorResultsPerRow[dataLineIndex][header])
                 else:
                     # TODO: What if a dataline is missing a bit of information? Handle if this is missing in the input file.
-                    outputWorksheet.write(cellIndex, currentCellValue)
+                    outputWorksheet.write(cellIndex, dataLine[header])
 
     # Widen the columns a bit so we can read them.
     outputWorksheet.set_column('A:' + getColumnNumberAsString(len(dataMatrixHeaders) - 1), 30)
