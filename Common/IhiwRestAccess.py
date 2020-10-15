@@ -213,13 +213,14 @@ def getUploads(token=None, url=None):
 
     return response
 
-def getUploadsByParentId(token=None, url=None, parentId=None):
+def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
     # TODO: It would be better to do this inside a rest method somewhere. Getting all the uploads and looping through might not be most efficient.
     if parentId is None:
         print('Parent ID is none, cannot find any uploads with this parent')
         return None
     else:
-        allUploads=getUploads(token=token,url=url)
+        if(allUploads is None):
+            allUploads=getUploads(token=token,url=url)
 
         uploadList = []
         for upload in allUploads:
@@ -241,6 +242,7 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
         #print('Checking keyword ' + fileName + ' against uploads:\n' + str(allUploads))
 
         uploadList = []
+
         for upload in allUploads:
             if(upload['fileName'] is not None
                 and fileName.lower() in str(upload['fileName']).lower()
@@ -248,6 +250,16 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
             ):
                 uploadList.append(upload)
 
+                # Also append the children of this upload
+                childUploads = getUploadsByParentId(token=token, url=url, parentId=upload['id'], allUploads=allUploads)
+                for childUpload in childUploads:
+                    uploadList.append(childUpload)
+
+        # TODO: What if there are duplicate files? will list(set(list)) work? This could cause a bug when adding files to the zip. Not sure.
+        #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))
+        # list comprehension to remove duplicate uploads
+        #uploadList = [dict(t) for t in {tuple(d.items()) for d in uploadList}]
+        #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))
         return uploadList
 
 

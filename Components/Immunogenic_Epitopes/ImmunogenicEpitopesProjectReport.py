@@ -84,7 +84,6 @@ def createImmunogenicEpitopesReport(bucket=None):
         #print('This file has this validation status:' + validationResults)
 
         dataMatrixFileName = dataMatrixUpload['fileName']
-        # TODO: Add submitting user email address to this field.
         submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + dataMatrixUpload['createdBy']['user']['email']
         submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
         submissionDate = dataMatrixUpload['createdAt']
