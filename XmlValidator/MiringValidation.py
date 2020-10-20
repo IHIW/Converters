@@ -2,6 +2,7 @@ import json
 import urllib
 import yaml
 import ast
+import os
 import boto3
 import requests
 from sys import exc_info
@@ -18,26 +19,27 @@ def miring_validation_handler(event, context):
     try:
         print('This is the event:' + str(event)[0:50])
 
-        # Get the uploaded file.
-        con = json.dumps(event['Records'][0])
-        print('the content is: ', con)
-        content = json.loads(con)
-        bucket_name = event['Records'][0]['s3']['bucket']['name']
-        file_key = event['Records'][0]['s3']['object']['key']
-        xmlKey = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
-        xmlBucket = urllib.parse.unquote_plus(event['Records'][0]['s3']['bucket']['name'], encoding='utf-8')
-        xmlFileObject = s3.get_object(Bucket=bucket_name, Key=xmlKey)
+        content = json.loads(event['Records'][0]['Sns']['Message'])
+
+        bucket = content['Records'][0]['s3']['bucket']['name']
+        xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
+        xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
         xmlText = xmlFileObject["Body"].read()
 
+        # Determine file extension.
+        # I read an internet comment that this will treat the file as having no extension if it indeed does not have an extension.
+        fileName, fileExtension = os.path.splitext(str(xmlKey).upper())
+        fileExtension = fileExtension.replace('.','')
+        print('This file has the extension:' + fileExtension)
 
-
+        # Get access stuff from the REST Endpoints
         url = getUrl()
         token = getToken(url=url)
         #validation steps
         #   0) Check that this is a file with the HML file type. Get the upload and check it, can't just check the name of the file
 
         #   1) Send message to Service
-        xmlResponse =  validateMiring(xmlText=xmlText,xmlBucket=xmlBucket,xmlKey=xmlKey)
+        xmlResponse =  validateMiring(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey)
 
         #   2) Interpret the response? Parse the xml response somehow.
 
