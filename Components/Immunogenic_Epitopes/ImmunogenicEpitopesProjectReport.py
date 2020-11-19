@@ -1,14 +1,16 @@
 from boto3 import client
 
 from Common.ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
+from Common.ParseXml import getGlStringFromHml
 from Common.S3_Access import writeFileToS3
+from Common.Validation import validateGlString
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
 from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, \
     createConvertedUploadObject, getProjectID, getUploadFileNamesByPartialKeyword
 
 s3 = client('s3')
 from sys import exc_info
-import yaml
+#import yaml
 
 import zipfile
 import io
@@ -82,7 +84,8 @@ def createImmunogenicEpitopesReport(bucket=None):
         #print('This file has this validation status:' + validationResults)
 
         dataMatrixFileName = dataMatrixUpload['fileName']
-        submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName']
+        # TODO: Add submitting user email address to this field.
+        submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + dataMatrixUpload['createdBy']['user']['email']
         submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
         submissionDate = dataMatrixUpload['createdAt']
 
@@ -99,28 +102,43 @@ def createImmunogenicEpitopesReport(bucket=None):
             for headerIndex, header in enumerate(dataMatrixHeaders):
                 cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex+len(summaryHeaders)) + str(reportLineIndex)
 
+                currentGlString = None
                 # Add supporting files.
                 fileResults=[]
-                if(header.startswith('hla_')):
+                if(header.endswith('_hla')):
                     fileResults=getUploadFileNamesByPartialKeyword(fileName=str(dataLine[header]), projectID=projectID)
-                elif(header.startswith('haml_')):
+
+                    if(len(fileResults) == 1):
+                        # We found a single file mapped to this HLA result. Get a GlString.
+                        currentGlString = getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3, bucket=bucket)
+                elif('_haml_' in (header)):
                     fileResults=getUploadFileNamesByPartialKeyword(fileName=str(dataLine[header]), projectID=projectID)
                 else:
                     pass
+
                 for uploadFile in fileResults:
                     supportingFiles.append(uploadFile['fileName'])
+
+                if(currentGlString is None):
+                    currentCellValue = dataLine[header]
+                else:
+                    currentCellValue = currentGlString
+
+                    # Get some validation results on the GL String
+                    glStringValidationResults = validateGlString(glString=currentGlString)
+                    #print('****** I found these glString validationRestults:' + str(glStringValidationResults))
+                    if(glStringValidationResults != ''):
+                        errorResultsPerRow[dataLineIndex][header] = glStringValidationResults
+
 
                 # Was there an error in this cell? Highlight it red and add error message
                 if (header in errorResultsPerRow[dataLineIndex].keys() and len(str(errorResultsPerRow[dataLineIndex][header])) > 0):
                     # TODO: Make the error styles optional.
-                    outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
+                    outputWorksheet.write(cellIndex, currentCellValue, errorStyle)
                     outputWorksheet.write_comment(cellIndex, errorResultsPerRow[dataLineIndex][header])
                 else:
                     # TODO: What if a dataline is missing a bit of information? Handle if this is missing in the input file.
-                    outputWorksheet.write(cellIndex, dataLine[header])
-
-                # TODO: Fetch GLString from the HML file.
-
+                    outputWorksheet.write(cellIndex, currentCellValue)
 
     # Widen the columns a bit so we can read them.
     outputWorksheet.set_column('A:' + getColumnNumberAsString(len(dataMatrixHeaders) - 1), 30)
