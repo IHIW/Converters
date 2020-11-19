@@ -8,7 +8,7 @@ import requests
 from sys import exc_info
 from boto3 import client
 
-from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus
+from IhiwRestAccess import getUrl, getToken, setValidationStatus
 
 s3 = client('s3')
 
@@ -81,9 +81,10 @@ def validateMiring(xmlText=None, xmlBucket=None,xmlKey=None):
             'Content-Type': 'text/xml',
         }
 
-        body = {
-            'xml': xmlText.decode()
-        }
+        body = 'xml[]='+xmlText.decode()
+        #body = {
+        #    'xml[]': xmlText.decode()
+        #}
 
         bucketname = str(xmlBucket)
         filename = str(xmlKey)
@@ -98,73 +99,4 @@ def validateMiring(xmlText=None, xmlBucket=None,xmlKey=None):
         print(str(e))
         print(exc_info())
         return (str(e) + '\n' + str(exc_info()))
-
-def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=None, validatorType=None, token=None, url=None):
-    print('Setting upload validation status,\t' + 'uploadFileName=' + str(uploadFileName) + '\tvalidatorType=' + str(validatorType) + '\tisValid=' + str(isValid) + '\tvalidationFeedback=(' + str(validationFeedback) + ')\turl=' + str(url))
-    if (uploadFileName is None or isValid is None or validationFeedback is None or validatorType is None):
-        print('Missing data, cannot set validation status:'
-              + '\tuploadFileName:' + str(uploadFileName)
-              + '\tisValid:' + str(isValid)
-              + '\tvalidationFeedback:'
-              + str(validationFeedback)
-              + '\tvalidatorType:' + str(validatorType))
-        return False
-    if(url is None):
-        url = getUrl()
-    if(token is None):
-        token = getToken(url=url)
-    if(validatorType is None):
-        validatorType = 'UNKNOWN'
-    if (validationFeedback is None or len(str(validationFeedback))==0):
-        validationFeedback = 'No Feedback Provided.'
-    try:
-        print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(uploadFileName))
-
-        fullUrl = str(url) + '/api/uploads/setvalidation'
-
-        maxValidationLength=10000
-        if(len(validationFeedback) > maxValidationLength):
-            print('Warning, validator feedback length is greater than the maximum (' + str(maxValidationLength)
-                  + ') so I will truncate the feedback to ' + str(maxValidationLength) + ' characters.')
-            validationFeedback=validationFeedback[0:maxValidationLength]
-
-        body = {
-            'valid': isValid
-            , 'validationFeedback': validationFeedback
-            , 'validator': validatorType
-            , 'upload': {
-                'fileName': uploadFileName
-            }
-        }
-
-        print('body:' + str(body))
-        encodedJsonData = str(json.dumps(body)).encode('utf-8')
-        updateRequest = requests.post(url=fullUrl, headers={'Content-Type':'application/json',
-                                                            'Authorization': 'Bearer {}'.format('Bearer ' + token)}, data=encodedJsonData)
-        print(' This is the response: ' + updateRequest.text[0:50])
-        responseData  = updateRequest.text
-        if(responseData is None or len(responseData) < 1):
-            print('updateValidationStatus returned an empty response!')
-            return False
-        response=json.loads(responseData)
-        print(*response.items(), sep='\n')
-        # The response contains the saved data, if successful. If the response matches what we expect it was a success.
-        # Probably need to make this more robust.
-        #if(str(response['valid'])==str(isValid)  and str(response['validationFeedback'])==str(validationFeedback)):
-        #    return True
-        if(response['status'] ==402):
-            return True
-        else:
-            print('Could not set validation status, response:\n' + str(response))
-            return False
-    except SyntaxError as e:
-        print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
-        return False
-    except urllib.error.HTTPError as e:
-        print('HTTP error when setting validation status for upload file ' + str(uploadFileName) + ' : ' + str(e))
-        return False
-    except Exception as e:
-        print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
-        return False
-
 
