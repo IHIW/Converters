@@ -1,5 +1,6 @@
 from io import StringIO
 import sys
+import datetime
 
 # pip install git+https://github.com/nmdp-bioinformatics/pyglstring
 # pyglstring is a repository of sanity checks written by Bob Milius at NMDP/CIBMTR. Handy.
@@ -54,39 +55,53 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
 def validateBoolean(query=None, columnName='?'):
     queryText=str(query).lower()
     # Try to be flexible on this one.
-    if queryText in ['y','n','true','false','1','0', '1.0','0.0']:
+    if queryText in ['y','n','true','false','1','0', '1.0','0.0', 'unknown']:
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Yes/No Boolean value.')
 
-def validateDate(query=None, columnName='?'):
-    # TODO: Implement date checker. I am expecting, probably, dates like DD-MM-YYYY
-    # But I can detect date format. I did that in the HAML converter, look for example.
+def validateDate(query=None, columnName='?', dateFormat='%Y-%m-%d'):
+    try:
+        dateObject = datetime.datetime.strptime(query, dateFormat)
+    except Exception as e:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not match the expected date format (' + str(dateFormat) + ')')
     return ''
 
 def validateBloodGroup(query=None, columnName='?'):
-    # TODO: Implement BloodGroup validation. A,AB, O+, O-
-    return ''
+    # Easiest to just list the blood types, there aren't very many.
+    # Potential problem: these won't look right: ("A positive", "Type A", Apos)
+    validBloodGroups = ['A','B','O','AB','A+','B+','O+','AB+','A-','B-','O-','AB-']
+    if(str(query).upper() in validBloodGroups):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid blood type.')
 
 def validateDonorSourceType(query=None, columnName='?'):
-    # TODO: Implement validateDonorSourceType validation.  DCD, DBD, living directed, PKE
-    return ''
+    validDonorSourceTypes = ['DCD', 'DBD', 'LIVING DIRECTED', 'PKE']
+    if(str(query).upper() in validDonorSourceTypes):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid donor source type.')
 
 def validateProzoneType(query=None, columnName='?'):
-    # TODO: Implement validateProzoneType validation.   EDTA, DTT, dilution, Heat, Other
-    return ''
+    validProzoneTypes = ['EDTA', 'DTT', 'DILUTION', 'HEAT', 'OTHER']
+    if(str(query).upper() in validProzoneTypes):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid prozone type.')
 
 def validateOrganCategory(query=None, columnName='?'):
-    # TODO: Implement validateOrganCategory validation.  Kidney, heart, lung, pancreas, KPD, liver, other
-    return ''
-
+    validOrganCategories = ['KIDNEY', 'HEART', 'LUNG', 'PANCREAS', 'KPD', 'LIVER', 'OTHER']
+    if(str(query).upper() in validOrganCategories):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid organ type.')
 
 
 
 def validateMaleFemale(query=None, columnName='?'):
     # Expecting a binary sex, either M or F.
-    # For data standards reasons, not for any political or gender identity reasons.
-    # TODO: Make this method more flexible, allow non-binary gender identities.
+    # We're evaluating chromosomes, not making statements about valid genders.
     queryText = str(query).lower()
     if queryText in ['m', 'f', 'male', 'female']:
         return ''
