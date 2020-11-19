@@ -133,6 +133,10 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
         uploadList = getUploads(token=token, url=url)
         hmlUploadList = createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HML')
         hamlUploadList = createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HAML')
+        antibodyCsvUploadList = createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='ANTIBODY_CSV')
+        # Add the antibody_CSV files to the haml file list.
+        hamlUploadList.extend(antibodyCsvUploadList)
+
     except Exception as e:
         print('Exception when getting list of uploads:\n' + str(e) + '\n' + str(exc_info()))
         return ('Exception when getting list of uploads:\n' + str(e) , inputExcelData, validationErrors)
