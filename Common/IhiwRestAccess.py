@@ -29,8 +29,7 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
 
         fullUrl = str(url) + '/api/uploads/setvalidation'
 
-        # TODO: I changed the maximum to 3000, whenever we redeploy i can fix it here.
-        maxValidationLength=255
+        maxValidationLength=10000
         if(len(validationFeedback) > maxValidationLength):
             print('Warning, validator feedback length is greater than the maximum (' + str(maxValidationLength)
                   + ') so I will truncate the feedback to ' + str(maxValidationLength) + ' characters.')
@@ -73,47 +72,31 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
         print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
         return False
 
-def createConvertedUploadObject(newUploadFileType=None, token=None, url=None, previousUploadFileName=None):
+def createConvertedUploadObject(newUploadFileName=None, newUploadFileType=None, token=None, url=None, previousUploadFileName=None):
     print('Creating new upload object,\t' + 'newUploadFileType=' + str(newUploadFileType))
     if(previousUploadFileName is not None and len(previousUploadFileName)>1):
         print('previousConvertedUploadFileName=' + str(previousUploadFileName))
-    #elif(userID is not None and len(userID) > 1 and projectID is not None and len(projectID) > 1):
-    #    print('userID=' + str(userID) + '& projectID=' + str(projectID))
     else:
         print('No previous upload file name! Cannot Continue!')
         return None
 
-
-    '''if (uploadFileName is None or isValid is None or validationFeedback is None or validatorType is None):
-        print('Missing data, cannot set validation status:'
-              + '\tuploadFileName:' + str(uploadFileName)
-              + '\tisValid:' + str(isValid)
-              + '\tvalidationFeedback:'
-              + str(validationFeedback)
-              + '\tvalidatorType:' + str(validatorType))
-        return False'''
     if(url is None):
         url = getUrl()
     if(token is None):
         token = getToken(url=url)
 
     try:
-        #print ('Setting ' + str(validatorType) + ' validation status ' + str(isValid) + ' for file ' + str(uploadFileName))
-
-        # TODO: Is this the right path? currently it's /makeentry, could change to /copyUpload or something like that.
         fullUrl = str(url) + '/api/uploads/copyupload'
 
-        # This body is the "upload" object that is passed into the method. We can supply information about the previous upload here.
-        body = {
-           # 'oldfileName': previousUploadFileName
-           # ,'newType': 'HAML'
-            # TODO: add uploadurl userID and/or project name here. Otherwise, provide the previous upload that were copying from.
+        # Body is empty, we're passing the interesting stuff in the parameters.
+        body = {}
 
-        }
-
-        #url = "http://example.com"
-        params = {'oldfileName': previousUploadFileName
-            ,'newType': newUploadFileType}
+        params = {
+            'oldFileName': previousUploadFileName
+            #'oldfileName': previousUploadFileName
+            ,'newType': newUploadFileType
+            ,'newFileName':newUploadFileName
+            }
         query_string = urllib.parse.urlencode(params)
         fullUrl = fullUrl + "?" + query_string
 
@@ -125,7 +108,6 @@ def createConvertedUploadObject(newUploadFileType=None, token=None, url=None, pr
         updateRequest.add_header('Content-Type', 'application/json')
         updateRequest.add_header('Authorization', 'Bearer ' + token)
 
-        # TODO: Doesn't work yet so this is commented for now
         responseData = request.urlopen(updateRequest).read().decode("UTF-8")
         if(responseData is None or len(responseData) < 1):
             print('updateValidationStatus returned an empty response!')
@@ -231,8 +213,45 @@ def getUploads(token=None, url=None):
 
     return response
 
+def getUploadsByParentId(token=None, url=None, parentId=None):
+    # TODO: It would be better to do this inside a rest method somewhere. Getting all the uploads and looping through might not be most efficient.
+    if parentId is None:
+        print('Parent ID is none, cannot find any uploads with this parent')
+        return None
+    else:
+        allUploads=getUploads(token=token,url=url)
 
-def getUploadByFilename2(token=None, url=None, fileName=None):
+        uploadList = []
+        for upload in allUploads:
+            if(upload['parentUpload'] is not None
+                and str(upload['parentUpload']['id']) == str(parentId)
+            ):
+                uploadList.append(upload)
+
+        return uploadList
+
+
+def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectID=None):
+    if fileName is None:
+        print('fileName is none, cannot find any uploads with this parent')
+        return None
+    else:
+        allUploads=getUploads(token=token,url=url)
+
+        #print('Checking keyword ' + fileName + ' against uploads:\n' + str(allUploads))
+
+        uploadList = []
+        for upload in allUploads:
+            if(upload['fileName'] is not None
+                and fileName.lower() in str(upload['fileName']).lower()
+                and (projectID is None or str(upload['project']['id'])==str(projectID))
+            ):
+                uploadList.append(upload)
+
+        return uploadList
+
+
+def getUploadByFilename(token=None, url=None, fileName=None):
     if(url is None):
         url = getUrl()
     if(token is None):
@@ -254,20 +273,54 @@ def getUploadByFilename2(token=None, url=None, fileName=None):
     response = json.loads(responseData)
     return response
 
+def getUploadIfExists(token=None, url=None, fileName=None):
+    try:
+        existingUpload = getUploadByFilename(token=token, url=url, fileName=fileName)
+        return existingUpload
+    except urllib.error.HTTPError as err:
+        if err.code == 404:
+            return None
+        else:
+            raise
 
-def getUploadByFilename(token=None, url=None, fileName=None):
-    # TODO: Workaround method. Because I forgot to add the correct file in this last deploy
-    # TODO: I can remove this method with the next deploy.
-    # Not confident how this will work for other users, it might not find the upoad properly.
-    response = getUploads(token=token, url=url)
+def deleteUpload(token=None, url=None, uploadId=None):
+    if(url is None):
+        url = getUrl()
+    if(token is None):
+        token = getToken(url=url)
+    print('deleting upload by id:' + str(uploadId))
 
-    for responseEntry in response:
-        print('Checking this one:' + str(responseEntry['fileName']))
-        if str(responseEntry['fileName']) == fileName:
-            print('Found the file.')
-            return responseEntry
+    fullUrl = str(url) + '/api/uploads/' + str(uploadId)
+    body = {}
 
-    print ('I could not find the file!' )
-    return None
+    encodedJsonData = str(json.dumps(body)).encode('utf-8')
+    updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='DELETE')
+    updateRequest.add_header('Content-Type', 'application/json')
+    updateRequest.add_header('Authorization', 'Bearer ' + token)
+    responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+    print('Response from deleting upload:' + str(responseData))
+    if (responseData is None or len(responseData) < 1):
+        print('updateValidationStatus returned an empty response!')
+        return False
+    response = json.loads(responseData)
+    return response
+
+
+
+def getProjectID(configFileName='validation_config.yml', projectName=None):
+    if(projectName is None):
+        raise Exception('getProjectID: projectName is undefined.')
+
+    # Get the project ID from the config
+    try:
+        print('Fetching project ID of ' + str(projectName) + ' from ' + str(configFileName))
+        configStream = open(configFileName, 'r')
+        configDict = yaml.load(configStream, Loader=yaml.FullLoader)
+        #print('configDict:' + str(configDict)) # Dont print this, it contains passwords.
+        projectID = configDict['project_id'][projectName]
+        return projectID
+    except Exception as e:
+        print('Exception when loading project ID from config, does the config contain an entry for project_id:' + str(projectName) + '?:\n' + str(e) + '\n' + str(exc_info()))
+        return str(e)
 
 

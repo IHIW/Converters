@@ -40,7 +40,6 @@ def nmdp_validation_handler(event, context):
 
         #   1) Send message to Service
         xmlResponse =  validateNmdpPortal(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey)
-
         #   2) Interpret the response? Parse the xml response somehow.
 
         #   3) Determine if file is valid or not~
@@ -167,4 +166,5 @@ def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=No
     except Exception as e:
         print('Error when updating validation status:\n' + str(e) + '\n' + str(exc_info()))
         return False
+
 

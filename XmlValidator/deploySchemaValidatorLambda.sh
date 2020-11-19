@@ -6,8 +6,9 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-LAMBDA_FUNCTION="validateXmlSchemaStaging"
 HANDLER_FILE="SchemaValidation.py"
+LAMBDA_FUNCTION="validateXmlSchemaStaging"
+#LAMBDA_FUNCTION="validateXmlSchemaProd"
 
 cd $PROJECT_PATH
 
@@ -28,6 +29,8 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 cd ..
 zip -g function.zip $HANDLER_FILE
 zip -j -g function.zip ../Common/IhiwRestAccess.py
+zip -j -g function.zip schema/hml-1.0.1.xsd
+zip -j -g function.zip schema/IHIW-haml_version_w0_3_3.xsd
 
 
 # Zip Config File
