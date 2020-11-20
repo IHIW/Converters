@@ -1,16 +1,77 @@
 import json
 import urllib
-import yaml
-import ast
 import os
-import boto3
 import requests
 from sys import exc_info
 from boto3 import client
+import xml.etree.ElementTree as ElementTree
 
-from IhiwRestAccess import getUrl, getToken, setValidationStatus
+try:
+    import IhiwRestAccess
+except Exception:
+    import Common.IhiwRestAccess
 
 s3 = client('s3')
+
+
+def parseMiringXml(xmlText=None):
+    validationFeedback=''
+
+    print('Parsing MIRING Xml Text:' + str(xmlText))
+
+    documentRoot = ElementTree.fromstring(xmlText)
+    #print('DocumentRoot:' + str(documentRoot))
+
+    # is Valid if the node <miring-compliant> has text "true" or "warnings"
+    isHmlCompliant = documentRoot.findall('hml-compliant')[0].text in ['true', 'warnings']
+    isMiringCompliant = documentRoot.findall('miring-compliant')[0].text in ['true', 'warnings']
+    print('Is it HML compliant?' + str(isHmlCompliant))
+    print('Is it MIRING compliant?' + str(isMiringCompliant))
+    if(not isHmlCompliant):
+        validationFeedback += 'Not compliant with HML Schema.\n'
+
+    # Miring reports can have 3 feedback types:
+    # I want to report Errors and Warnings in the feedback text, but ignore the info. That's probably too much info.
+    # <miring-validation-errors>  <validation-warnings>, <validation-info>
+
+    # Loop Validation Errors
+    validationErrorNodes = documentRoot.findall('miring-validation-errors')
+    if(len(validationErrorNodes)>0):
+        miringResultNodes = validationErrorNodes[0].findall('miring-result')
+        #print('There are ' + str(len(miringResultNodes)) + ' miring result nodes under validation errors.')
+        for miringResultNode in miringResultNodes:
+            ruleID = str(miringResultNode.get('miring-rule-id'))
+            description = str(miringResultNode.findall('description')[0].text)
+            solution = str(miringResultNode.findall('solution')[0].text)
+            xPath = str(miringResultNode.findall('xpath')[0].text)
+            currentFeedbackText = ('MIRING violation, Rule:' + ruleID + ' at xpath location ' + str(xPath)
+                + '\n' + description
+                + '\n' + solution)
+
+            validationFeedback += currentFeedbackText + '\n'
+
+    # Loop Validation Warnings
+    validationWarningNodes = documentRoot.findall('validation-warnings')
+    if(len(validationWarningNodes)>0):
+        miringResultNodes = validationWarningNodes[0].findall('miring-result')
+        print('There are ' + str(len(miringResultNodes)) + ' miring result nodes under validation warnings.')
+        for miringResultNode in miringResultNodes:
+            ruleID = str(miringResultNode.get('miring-rule-id'))
+            description = str(miringResultNode.findall('description')[0].text)
+            solution = str(miringResultNode.findall('solution')[0].text)
+            xPath = str(miringResultNode.findall('xpath')[0].text)
+            currentFeedbackText = ('MIRING Warning, Rule:' + ruleID + ' at xpath location ' + str(xPath)
+                + '\n' + description
+                + '\n' + solution)
+
+            validationFeedback += currentFeedbackText + '\n'
+    if(len(validationFeedback.strip()) < 1):
+        validationFeedback='Valid\n'
+
+    # add a plug for this excellent validator
+    validationFeedback += 'More info on MIRING rules at http://miring.b12x.org'
+
+    return (isHmlCompliant and isMiringCompliant), validationFeedback
 
 
 def miring_validation_handler(event, context):
@@ -33,35 +94,38 @@ def miring_validation_handler(event, context):
         print('This file has the extension:' + fileExtension)
 
         # Get access stuff from the REST Endpoints
-        url = getUrl()
-        token = getToken(url=url)
-        #validation steps
-        #   0) Check that this is a file with the HML file type. Get the upload and check it, can't just check the name of the file
+        url = IhiwRestAccess.getUrl()
+        token = IhiwRestAccess.getToken(url=url)
 
-        #   1) Send message to Service
-        xmlResponse =  validateMiring(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey)
+        hmlUploadObject = IhiwRestAccess.getUploadByFilename(token=token, url=url, fileName=xmlKey)
+        if(hmlUploadObject is None or 'type' not in hmlUploadObject.keys() or hmlUploadObject['type'] is None):
+            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate by MIRING..' )
+            return None
+        fileType = hmlUploadObject['type']
 
-        #   2) Interpret the response? Parse the xml response somehow.
+        validationResults = None
+        if(fileType == 'HML'):
+            print(' Sending upload file ' + str(fileName) + ' to the miring validator.')
 
-        #   3) Determine if file is valid or not~
+            #  Send message to Service
+            xmlResponse = validateMiring(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey)
 
-        isValid = False
+            print('Xml Response Text: ' + str(xmlResponse))
+            #  Parse Xml response.
+            isValid, validationFeedback = parseMiringXml(xmlText=xmlResponse)
 
-        print('Assuming not valid. ~~~~My text is~~~~~: ' + str(xmlResponse))
+            #   5) Set validation status of the upload object.
+            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isValid
+                 , validationFeedback=validationFeedback, url=url, token=token, validatorType='MIRING')
 
-        #   4) Create a feedback text
-        feedbackText = 'Logic needed to create a nice feedback text'
+            # It's not really necessary to return anything...but AWS likes to see if the lambda was successful.
+            return {
+                'statusCode': 200,
+                'body': json.dumps('MIRING Validation performed successfully.')
 
-        #   5) Set validation status of the upload object.
-        setValidationStatus(uploadFileName=xmlKey, isValid=isValid
-                            , validationFeedback=feedbackText, url=url, token=token, validatorType='Miring')
-
-        # It's not really necessary to return anything...but AWS likes to see if the lambda was successful.
-        return {
-            'statusCode': 200,
-            'body': json.dumps('Hello from Lambda, we ran the validation handler successfully.')
-
-        }
+            }
+        else:
+            print('This is not an HML file (file type=' + str(fileType) + ') I will not validate it by MIRING.')
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
@@ -69,31 +133,20 @@ def miring_validation_handler(event, context):
 
 
 def validateMiring(xmlText=None, xmlBucket=None,xmlKey=None):
-    # TODO: there's nothing here yet. send a message to miring.b12x.org and get a response.
     try:
         print('Inside the MIRING Validator, i was given xml text that looks like: ' + str(xmlText)[0:100])
-
-        #$ curl -X POST --data-urlencode 'xml[]=<hml>...</hml>' http://miring.b12x.org/validator/ValidateMiring/
-
         fullUrl = 'http://miring.b12x.org/validator/ValidateMiring'
 
         headers = {
             'Content-Type': 'text/xml',
         }
 
-        body = 'xml[]='+xmlText.decode()
-        #body = {
-        #    'xml[]': xmlText.decode()
-        #}
+        body = {
+            'xml': xmlText.decode()
+        }
 
-        bucketname = str(xmlBucket)
-        filename = str(xmlKey)
-        s3 = boto3.resource('s3')
-        data = s3.Object(bucketname, filename).get()['Body'].read()
-        jsonDump = json.dumps(body)
-        encodedJsonData = str(jsonDump).encode('utf-8')
-        response= requests.post(url=fullUrl, headers=headers, data=data)   #encodedJsonData
-        return('Miring validation Results are the following: ' + response.text)
+        response= requests.post(url=fullUrl, headers=headers, data=body)   #encodedJsonData
+        return(response.text)
     except Exception as e:
         print('Unexpected problem during xml validation.')
         print(str(e))

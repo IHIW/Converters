@@ -2,7 +2,7 @@ from sys import exc_info
 #from SchemaValidation import validateAgainstSchema
 from XmlValidator.SchemaValidation import validateAgainstSchema
 #from MiringValidation import validateMiring
-from XmlValidator.MiringValidation import validateMiring
+from XmlValidator.MiringValidation import validateMiring, parseMiringXml
 #from NmdpPortalValidation import validateNmdpPortal
 from XmlValidator.NmdpPortalValidation import validateNmdpPortal
 from HamlValidation import validateHaml
@@ -40,7 +40,7 @@ def testSchemaValidation(xmlFileName=None, schemaFileName=None):
 
 def testNmdpValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'xml/good.hml.1.0.1.xml' #not used
+    xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml' #not used
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
     print(validateNmdpPortal(xmlText=xmlText) + '\n')
@@ -48,10 +48,16 @@ def testNmdpValidation():
 
 def testMiringValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'xml/good.hml.1.0.1.xml' #not used
+    xmlPath = 'XmlValidator/xml/TestMiring.xml'
     print('Validating MIRING,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
-    print(validateMiring(xmlText=xmlText) + '\n')
+    validationResultXml = validateMiring(xmlText=xmlText)
+
+    #print('validationResultsXml:' + validationResultXml + '\n')
+    isValid, validationFeedbackText = parseMiringXml(xmlText=validationResultXml)
+
+    print('isValid:' + str(isValid))
+    print('validationFeedbackText:\n' + str(validationFeedbackText))
 
 
 def testSetValidationResults():
