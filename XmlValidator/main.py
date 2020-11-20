@@ -1,17 +1,16 @@
 from sys import exc_info
-#from SchemaValidation import validateAgainstSchema
-from XmlValidator.SchemaValidation import validateAgainstSchema
-#from MiringValidation import validateMiring
-from XmlValidator.MiringValidation import validateMiring, parseMiringXml
-#from NmdpPortalValidation import validateNmdpPortal
-from XmlValidator.NmdpPortalValidation import validateNmdpPortal
-from HamlValidation import validateHaml
 import argparse
 
 try:
-    from Common.IhiwRestAccess import setValidationStatus
+    import Common.IhiwRestAccess as IhiwRestAccess
+    import XmlValidator.NmdpPortalValidation as NmdpPortalValidation
+    import XmlValidator.MiringValidation as MiringValidation
+    import XmlValidator.SchemaValidation as SchemaValidation
 except Exception:
-    from Common.IhiwRestAccess import setValidationStatus
+    import IhiwRestAccess
+    import NmdpPortalValidation
+    import MiringValidation
+    import SchemaValidation
 
 # Test methods for running the lambda function.
 def parseArgs():
@@ -36,14 +35,22 @@ def testSchemaValidation(xmlFileName=None, schemaFileName=None):
     print('Validating XML: ' + str(xmlFileName) + '\nagainst Schema: ' + str(schemaFileName) + '\n')
     schemaText = open(schemaFileName, 'rb').read()
     xmlText = open(xmlFileName, 'rb').read()
-    print(validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
+    print(SchemaValidation.validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
 def testNmdpValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml' #not used
+    xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml'
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
-    print(validateNmdpPortal(xmlText=xmlText) + '\n')
+    #print(validateNmdpPortal(xmlText=xmlText) + '\n')
+    validationResultXml = NmdpPortalValidation.validateNmdpPortal(xmlText=xmlText)
+
+
+    print('validationResultsXml:' + validationResultXml + '\n')
+    isValid, validationFeedbackText = NmdpPortalValidation.parseNmdpXml(xmlText=validationResultXml)
+
+    print('isValid:' + str(isValid))
+    print('validationFeedbackText:\n' + str(validationFeedbackText))
 
 
 def testMiringValidation():
@@ -51,10 +58,10 @@ def testMiringValidation():
     xmlPath = 'XmlValidator/xml/TestMiring.xml'
     print('Validating MIRING,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
-    validationResultXml = validateMiring(xmlText=xmlText)
+    validationResultXml = MiringValidation.validateMiring(xmlText=xmlText)
 
     #print('validationResultsXml:' + validationResultXml + '\n')
-    isValid, validationFeedbackText = parseMiringXml(xmlText=validationResultXml)
+    isValid, validationFeedbackText = MiringValidation.parseMiringXml(xmlText=validationResultXml)
 
     print('isValid:' + str(isValid))
     print('validationFeedbackText:\n' + str(validationFeedbackText))
@@ -65,7 +72,7 @@ def testSetValidationResults():
     isValid = True
     validationFeedback = 'According to NMDP rules it is fine.'
     validatorType='LOL'
-    validationResult = setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, validatorType=validatorType)
+    validationResult = IhiwRestAccess.setValidationStatus(uploadFileName=uploadFileName, isValid=isValid, validationFeedback=validationFeedback, validatorType=validatorType)
     #print('ValidationResult=' + str(validationResult))
 
     if (validationResult):
@@ -80,8 +87,8 @@ if __name__=='__main__':
         schemaFileName = args.schema
 
         #testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
-        testMiringValidation()
-        #testNmdpValidation()
+        #testMiringValidation()
+        testNmdpValidation()
         #testSetValidationResults()
         pass
 
