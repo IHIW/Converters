@@ -25,6 +25,11 @@ def parseNmdpXml(xmlText=None):
 
     isValid = statusText.upper()=='VALID'
 
+    # Sometimes there is an error in the "message" node.
+    messageNodes = documentRoot.findall('message')
+    for messageNode in messageNodes:
+        validationFeedback += messageNode.text+ '\n'
+
     validationErrorsNodes = documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}errors')
     validationErrorNodes = validationErrorsNodes[0].findall('error')
     print('I found ' + str(len(validationErrorNodes)) + ' errors nodes.')
@@ -105,12 +110,14 @@ def nmdp_validation_handler(event, context):
 def validateNmdpPortal(xmlText=None, xmlBucket=None,xmlKey=None):
     try:
         print('Inside the NMPD Portal Validator, i was given xml text that looks like: ' + str(xmlText)[0:50])
-        baseurl = r'https://qa-api.nmdp.org/hml_gw/v1/validate'
+        baseurl = 'https://qa-api.nmdp.org/hml_gw/v1/validate'
         headers = {
             'Content-Type': 'text/xml',
         }
 
+        #print('I am passing this xmlText:' + str(xmlText))
         response = requests.post(url=baseurl, headers=headers, data=xmlText)
+        print('I found this response:' + str(response.text))
         return(response.text)
 
     except Exception as e:

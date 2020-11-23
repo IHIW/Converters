@@ -39,9 +39,12 @@ def testSchemaValidation(xmlFileName=None, schemaFileName=None):
 
 def testNmdpValidation():
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml'
+    #xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml'
+    xmlPath='/home/bmatern/UMCU/Test Files/HML/TestMiring.xml'
+    #xmlPath='/home/bmatern/UMCU/Test Files/HML/TestMiringBackup.BrokenNMDP.xml'
+    #xmlPath='/home/bmatern/UMCU/Test Files/HML/LONGNAMELONGNAMELONGNAMELONGNAMELONGNAMELONGNAMELONGNAME.xml'
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
-    xmlText = open(xmlPath, 'rb').read()
+    xmlText = open(xmlPath, 'r').read().strip()
     #print(validateNmdpPortal(xmlText=xmlText) + '\n')
     validationResultXml = NmdpPortalValidation.validateNmdpPortal(xmlText=xmlText)
 
