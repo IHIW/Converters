@@ -6,8 +6,10 @@ import json
 import urllib
 import os
 
-from IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
-
+try:
+    from IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
+except Exception:
+    from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
 
 def schema_validation_handler(event, context):
     print('I found the schema validation handler.')
@@ -33,11 +35,11 @@ def schema_validation_handler(event, context):
         token = getToken(url=url)
 
         # Get the FileType from the upload object
-        csvUploadObject = getUploadByFilename(token=token, url=url, fileName=xmlKey)
-        if(csvUploadObject is None or 'type' not in csvUploadObject.keys() or csvUploadObject['type'] is None):
+        hmlUploadObject = getUploadByFilename(token=token, url=url, fileName=xmlKey)
+        if(hmlUploadObject is None or 'type' not in hmlUploadObject.keys() or hmlUploadObject['type'] is None):
             print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate it by schema.' )
             return None
-        fileType = csvUploadObject['type']
+        fileType = hmlUploadObject['type']
 
         validationResults = None
         if(fileType == 'HML'):
