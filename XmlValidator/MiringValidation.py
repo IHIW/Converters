@@ -77,6 +77,7 @@ def parseMiringXml(xmlText=None):
 def miring_validation_handler(event, context):
     print('I found the schema validation handler.')
     # This is the AWS Lambda handler function.
+    xmlKey = None
     try:
         print('This is the event:' + str(event)[0:50])
 
@@ -129,6 +130,15 @@ def miring_validation_handler(event, context):
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
+        if (xmlKey is not None):
+            url = IhiwRestAccess.getUrl()
+            token = IhiwRestAccess.getToken(url=url)
+            validationStatus = 'Exception running MIRING Validation:' + str(e)
+            print('I will try to set the status.')
+            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback=validationStatus, url=url,
+                                token=token, validatorType='MIRING')
+        else:
+            print('Failed setting the upload status because I could not identify the name of the xml file.')
         return str(e)
 
 
