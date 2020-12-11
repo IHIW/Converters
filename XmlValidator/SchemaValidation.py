@@ -7,14 +7,15 @@ import urllib
 import os
 
 try:
-    from IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
+    import IhiwRestAccess
 except Exception:
-    from Common.IhiwRestAccess import getUrl, getToken, setValidationStatus, getUploadByFilename
+    import Common.IhiwRestAccess
 
 def schema_validation_handler(event, context):
     print('I found the schema validation handler.')
     print('This is the event that was passed in:' + str(event))
     # This is the AWS Lambda handler function.
+    xmlKey = None
     try:
         # Get the uploaded file.
         content = json.loads(event['Records'][0]['Sns']['Message'])
@@ -31,11 +32,11 @@ def schema_validation_handler(event, context):
         print('This file has the extension:' + fileExtension)
 
         # Get access stuff from the REST Endpoints
-        url = getUrl()
-        token = getToken(url=url)
+        url = IhiwRestAccess.getUrl()
+        token = IhiwRestAccess.getToken(url=url)
 
         # Get the FileType from the upload object
-        hmlUploadObject = getUploadByFilename(token=token, url=url, fileName=xmlKey)
+        hmlUploadObject = IhiwRestAccess.getUploadByFilename(token=token, url=url, fileName=xmlKey)
         if(hmlUploadObject is None or 'type' not in hmlUploadObject.keys() or hmlUploadObject['type'] is None):
             print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate it by schema.' )
             return None
@@ -47,7 +48,7 @@ def schema_validation_handler(event, context):
             schemaText = getSchemaText(schemaFileName='hml-1.0.1.xsd')
             validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
             print('ValidationResults:' + str(validationResults))
-            setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
+            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
         elif(fileType == 'HAML'):
             if(fileExtension=='CSV'):
                 print('File ' + str(xmlKey) + ' is a .csv file, I will not perform schema validation.')
@@ -56,7 +57,7 @@ def schema_validation_handler(event, context):
                 schemaText = getSchemaText(schemaFileName='IHIW-haml_version_w0_3_3.xsd')
                 validationResults = validateAgainstSchema(schemaText=schemaText, xmlText=xmlText)
                 print('ValidationResults:' + str(validationResults))
-                setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
+                IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=(validationResults == 'Valid'), validationFeedback=validationResults, url=url, token=token, validatorType='SCHEMA')
             else:
                 print('The file' + str(xmlKey) + ' is a HAML file but I dont understand the extension. I will not perform schema validation.')
                 return None
@@ -68,6 +69,15 @@ def schema_validation_handler(event, context):
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
+        if (xmlKey is not None):
+            url = IhiwRestAccess.getUrl()
+            token = IhiwRestAccess.getToken(url=url)
+            validationStatus = 'Exception running SCHEMA Validation:' + str(e)
+            print('I will try to set the status.')
+            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback=validationStatus, url=url,
+                                token=token, validatorType='SCHEMA')
+        else:
+            print('Failed setting the upload status because I could not identify the name of the xml file.')
         return str(e)
 
 def getSchemaText(schemaFileName=None):

@@ -7,8 +7,8 @@
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 HANDLER_FILE="MiringValidation.py"
-#LAMBDA_FUNCTION="validateXmlMiringStaging"
-LAMBDA_FUNCTION="validateXmlMiringProd"
+LAMBDA_FUNCTION="validateXmlMiringStaging"
+#LAMBDA_FUNCTION="validateXmlMiringProd"
 
 cd $PROJECT_PATH
 

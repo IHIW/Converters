@@ -53,6 +53,7 @@ def parseNmdpXml(xmlText=None):
 def nmdp_validation_handler(event, context):
     print('I found the schema validation handler.')
     # This is the AWS Lambda handler function.
+    xmlKey = None
     try:
         print('This is the event:' + str(event)[0:50])
 
@@ -105,6 +106,15 @@ def nmdp_validation_handler(event, context):
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
+        if (xmlKey is not None):
+            url = IhiwRestAccess.getUrl()
+            token = IhiwRestAccess.getToken(url=url)
+            validationStatus = 'Exception running NMDP Validation:' + str(e)
+            print('I will try to set the status.')
+            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback=validationStatus, url=url,
+                                token=token, validatorType='NMDP')
+        else:
+            print('Failed setting the upload status because I could not identify the name of the xml file.')
         return str(e)
 
 def validateNmdpPortal(xmlText=None, xmlBucket=None,xmlKey=None):
