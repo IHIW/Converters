@@ -6,9 +6,9 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="NmdpPortalValidation.py"
-LAMBDA_FUNCTION="validateXmlNMDPStaging"
-#LAMBDA_FUNCTION="validateXmlNMDPProd"
+HANDLER_FILE="MiringValidation.py"
+LAMBDA_FUNCTION="validateXmlMiringStaging"
+#LAMBDA_FUNCTION="validateXmlMiringProd"
 
 cd $PROJECT_PATH
 
