@@ -70,14 +70,14 @@ def validateDate(query=None, columnName='?', dateFormat='%Y-%m-%d'):
 def validateBloodGroup(query=None, columnName='?'):
     # Easiest to just list the blood types, there aren't very many.
     # Potential problem: these won't look right: ("A positive", "Type A", Apos)
-    validBloodGroups = ['A','B','O','AB','A+','B+','O+','AB+','A-','B-','O-','AB-']
+    validBloodGroups = ['A','B','O','AB', 'UNKNOWN']
     if(str(query).upper() in validBloodGroups):
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid blood type.')
 
 def validateDonorSourceType(query=None, columnName='?'):
-    validDonorSourceTypes = ['DCD', 'DBD', 'LIVING DIRECTED', 'PKE']
+    validDonorSourceTypes = ['DCD', 'DBD', 'LIVING DIRECTED', 'LIVING RELATED', 'PKE','OTHER']
     if(str(query).upper() in validDonorSourceTypes):
         return ''
     else:
@@ -97,13 +97,18 @@ def validateOrganCategory(query=None, columnName='?'):
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid organ type.')
 
-
+def validateOrganStatus(query=None, columnName='?'):
+    validOrganCategories = ['STABLE GRAFT FUNCTION', 'REJECTION','GRAFT LOSS','UNKNOWN']
+    if(str(query).upper() in validOrganCategories):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid organ status.')
 
 def validateMaleFemale(query=None, columnName='?'):
     # Expecting a binary sex, either M or F.
     # We're evaluating chromosomes, not making statements about valid genders.
     queryText = str(query).lower()
-    if queryText in ['m', 'f', 'male', 'female']:
+    if queryText in ['m', 'f', 'male', 'female', 'unknown']:
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Male/Female value.')
