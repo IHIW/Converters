@@ -1,21 +1,13 @@
 from boto3 import client
 
 try:
-    print('Importing...')
     import IhiwRestAccess
     import ParseExcel
     import Validation
     import S3_Access
     import ParseXml
     import ImmunogenicEpitopesValidator
-    '''
-    from ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
-    from ParseXml import getGlStringFromHml
-    from S3_Access import writeFileToS3
-    from Validation import validateGlString
-    from ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
-    from IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID, getUploadFileNamesByPartialKeyword
-    '''
+
 except Exception as e:
     print('Exception when importing:'  + str(e))
     from Common import IhiwRestAccess
@@ -24,24 +16,12 @@ except Exception as e:
     from Common import S3_Access
     from Common import ParseXml
     import ImmunogenicEpitopesValidator
-    '''
-    from Common.ParseExcel import createBytestreamExcelOutputFile, getColumnNumberAsString
-    from Common.ParseXml import getGlStringFromHml
-    from Common.S3_Access import writeFileToS3
-    from Common.Validation import validateGlString
-    from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix, getColumnNames
-    from Common.IhiwRestAccess import getUrl, getToken, getUploads, setValidationStatus, getUploadByFilename, createConvertedUploadObject, getProjectID, getUploadFileNamesByPartialKeyword
-    '''
+
 s3 = client('s3')
 from sys import exc_info
-#import yaml
 
 import zipfile
 import io
-#from StringIO import StringIO
-
-
-
 
 def immunogenic_epitope_project_report_handler(event, context):
     print('Lambda handler: Creating a project report for immunogenic epitopes.')
@@ -58,8 +38,6 @@ def immunogenic_epitope_project_report_handler(event, context):
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
-
-
 
 def createImmunogenicEpitopesReport(bucket=None):
     print('Creating an Immunogenic Epitopes Submission Report.')
@@ -104,7 +82,10 @@ def createImmunogenicEpitopesReport(bucket=None):
         print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
         print('This is the upload: ' + str(dataMatrixUpload))
 
+        supportingFiles.append(dataMatrixUpload['fileName'])
+
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
+
         inputExcelBytes = excelFileObject["Body"].read()
         # validateEpitopesDataMatrix returns all the information we need.
         (validationResults, inputExcelFileData, errorResultsPerRow) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True)
@@ -132,7 +113,7 @@ def createImmunogenicEpitopesReport(bucket=None):
                 # Add supporting files.
                 fileResults=[]
                 if(header.endswith('_hla')):
-                    fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(fileName=str(dataLine[header]), projectID=projectID)
+                    fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=projectID)
 
                     if(len(fileResults) == 1):
                         # We found a single file mapped to this HLA result. Get a GlString.
@@ -160,7 +141,7 @@ def createImmunogenicEpitopesReport(bucket=None):
                         raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(dataLine[header]))
 
                 elif('_haml_' in (header)):
-                    fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(fileName=str(dataLine[header]), projectID=projectID)
+                    fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=projectID)
                 else:
                     pass
 
