@@ -7,8 +7,8 @@
 PROJECT_PATH="/home/bmatern/github/Converters/Components/Immunogenic_Epitopes"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 HANDLER_FILE="ImmunogenicEpitopesProjectReport.py"
-LAMBDA_FUNCTION="projectReportImmunogenicEpitopesStaging"
-#LAMBDA_FUNCTION="projectReportImmunogenicEpitopesProd"
+#LAMBDA_FUNCTION="projectReportImmunogenicEpitopesStaging"
+LAMBDA_FUNCTION="projectReportImmunogenicEpitopesProd"
 
 cd $PROJECT_PATH
 

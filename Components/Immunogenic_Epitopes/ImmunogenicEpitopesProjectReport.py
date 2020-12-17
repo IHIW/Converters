@@ -29,8 +29,10 @@ def immunogenic_epitope_project_report_handler(event, context):
     try:
         # TODO: get the bucket from the sns message ( there is no sns message)
         #bucket = content['Records'][0]['s3']['bucket']['name']
-        #bucket = 'ihiw-management-upload-prod'
-        bucket = 'ihiw-management-upload-staging'
+        bucket = 'ihiw-management-upload-prod'
+        #bucket = 'ihiw-management-upload-staging'
+
+        adminUserID=
 
         createImmunogenicEpitopesReport(bucket=bucket)
 
