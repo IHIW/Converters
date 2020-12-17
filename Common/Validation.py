@@ -134,7 +134,7 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
         return listValidationResult
     else:
         pass
-        print(str(query) + ' did not map to a single file, results:' + str(listValidationResult))
+        #print(str(query) + ' did not map to a single file, results:' + str(listValidationResult))
 
     # TODO: Implement the list of HML IDs.
     hmlIdValidationResults = 'Could not find file with matching HML ID'
@@ -183,7 +183,7 @@ def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=
     return fileNameList
 
 def validateGlString(glString=None):
-    print('validating Gl String:' + str(glString))
+    #print('validating Gl String:' + str(glString))
     # Check if it's undefined, or not formatted like a GL String.
     if(glString is None or len(glString)<2):
         return 'GLString (' + str(glString) + ') is Not defined.'

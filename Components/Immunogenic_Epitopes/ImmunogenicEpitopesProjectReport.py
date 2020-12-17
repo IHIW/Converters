@@ -34,7 +34,6 @@ def immunogenic_epitope_project_report_handler(event, context):
 
         createImmunogenicEpitopesReport(bucket=bucket)
 
-
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
@@ -60,9 +59,8 @@ def createImmunogenicEpitopesReport(bucket=None):
     summaryHeaders = ['data_matrix_filename','submitting_user','submitting_lab','submission_date', 'donor_glstring', 'recipient_glstring']
     dataMatrixHeaders=ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=True)
 
-
-    print('These are the summary headers:' + str(summaryHeaders))
-    print('These are the data matrix headers:' + str(dataMatrixHeaders))
+    #print('These are the summary headers:' + str(summaryHeaders))
+    #print('These are the data matrix headers:' + str(dataMatrixHeaders))
 
     for headerIndex, header in enumerate(summaryHeaders):
         cellIndex = ParseExcel.getColumnNumberAsString(base0ColumnNumber=headerIndex) + '1'
@@ -79,8 +77,8 @@ def createImmunogenicEpitopesReport(bucket=None):
 
     # Combine data matrices together.
     for dataMatrixUpload in dataMatrixUploadList:
-        print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
-        print('This is the upload: ' + str(dataMatrixUpload))
+        #print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
+        #print('This is the upload: ' + str(dataMatrixUpload))
 
         supportingFiles.append(dataMatrixUpload['fileName'])
 
