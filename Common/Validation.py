@@ -77,8 +77,8 @@ def validateBloodGroup(query=None, columnName='?'):
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid blood type.')
 
 def validateDonorSourceType(query=None, columnName='?'):
-    validDonorSourceTypes = ['DCD', 'DBD', 'LIVING DIRECTED', 'LIVING RELATED', 'PKE','OTHER']
-    if(str(query).upper() in validDonorSourceTypes):
+    validDonorSourceTypes = ['DCD', 'DBD', 'LIVINGDIRECTED', 'LIVINGRELATED', 'LIVINGUNKNOWN', 'PKE','OTHER']
+    if(str(query).upper().replace(' ','').replace('(','').replace(')','') in validDonorSourceTypes):
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid donor source type.')
