@@ -129,6 +129,58 @@ def createConvertedUploadObject(newUploadFileName=None, newUploadFileType=None, 
         print('Error when creating the Upload object for converted file:\n' + str(e) + '\n' + str(exc_info()))
         return False
 
+'''
+def createNewUploadObject(newUploadFileName=None, newUploadFileType=None, token=None, url=None):
+    print('Creating new upload object,\t' + 'newUploadFileType=' + str(newUploadFileType))
+
+    if(url is None):
+        url = getUrl()
+    if(token is None):
+        token = getToken(url=url)
+    try:
+        fullUrl = str(url) + '/api/uploads'
+
+        # Body is empty, we're passing the interesting stuff in the parameters.
+        body = {}
+
+        params = {
+            'oldFileName': previousUploadFileName
+            #'oldfileName': previousUploadFileName
+            ,'newType': newUploadFileType
+            ,'newFileName':newUploadFileName
+            }
+        query_string = urllib.parse.urlencode(params)
+        fullUrl = fullUrl + "?" + query_string
+
+        print('body:' + str(body))
+        print('fullurl:' + str(fullUrl))
+
+        encodedJsonData = str(json.dumps(body)).encode('utf-8')
+        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
+        updateRequest.add_header('Content-Type', 'application/json')
+        updateRequest.add_header('Authorization', 'Bearer ' + token)
+
+        responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+        if(responseData is None or len(responseData) < 1):
+            print('updateValidationStatus returned an empty response!')
+            return False
+        response=json.loads(responseData)
+        if str(response['id']) is not None:
+            return response
+        else:
+            print('No response was found when creating the new object, returning None.')
+            return None
+
+    except SyntaxError as e:
+        print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
+        return False
+    except urllib.error.HTTPError as e:
+        print('HTTP error when creating the Upload object for converted file for upload file ' + str(previousUploadFileName) + ' : ' + str(e))
+        return False
+    except Exception as e:
+        print('Error when creating the Upload object for converted file:\n' + str(e) + '\n' + str(exc_info()))
+        return False
+'''
 def getCredentials(configFileName='validation_config.yml'):
     try:
         configStream = open(configFileName, 'r')
@@ -213,13 +265,14 @@ def getUploads(token=None, url=None):
 
     return response
 
-def getUploadsByParentId(token=None, url=None, parentId=None):
+def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
     # TODO: It would be better to do this inside a rest method somewhere. Getting all the uploads and looping through might not be most efficient.
     if parentId is None:
         print('Parent ID is none, cannot find any uploads with this parent')
         return None
     else:
-        allUploads=getUploads(token=token,url=url)
+        if(allUploads is None):
+            allUploads=getUploads(token=token,url=url)
 
         uploadList = []
         for upload in allUploads:
@@ -229,7 +282,6 @@ def getUploadsByParentId(token=None, url=None, parentId=None):
                 uploadList.append(upload)
 
         return uploadList
-
 
 def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectID=None):
     if fileName is None:
@@ -241,6 +293,7 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
         #print('Checking keyword ' + fileName + ' against uploads:\n' + str(allUploads))
 
         uploadList = []
+
         for upload in allUploads:
             if(upload['fileName'] is not None
                 and fileName.lower() in str(upload['fileName']).lower()
@@ -248,8 +301,17 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
             ):
                 uploadList.append(upload)
 
-        return uploadList
+                # Also append the children of this upload
+                childUploads = getUploadsByParentId(token=token, url=url, parentId=upload['id'], allUploads=allUploads)
+                for childUpload in childUploads:
+                    uploadList.append(childUpload)
 
+        # TODO: What if there are duplicate files? will list(set(list)) work? This could cause a bug when adding files to the zip. Not sure.
+        #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))
+        # list comprehension to remove duplicate uploads
+        #uploadList = [dict(t) for t in {tuple(d.items()) for d in uploadList}]
+        #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))
+        return uploadList
 
 def getUploadByFilename(token=None, url=None, fileName=None):
     if(url is None):
@@ -304,8 +366,6 @@ def deleteUpload(token=None, url=None, uploadId=None):
         return False
     response = json.loads(responseData)
     return response
-
-
 
 def getProjectID(configFileName='validation_config.yml', projectName=None):
     if(projectName is None):

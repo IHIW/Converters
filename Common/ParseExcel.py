@@ -106,7 +106,7 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
                 currentDataRow[columnName] = cellValue
             else:
                 columnName = columnNames[excelColumnIndexes.index(columnIndex)]
-                print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
+                #print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
                 if(str(cellType)=='number'):
                     # Passing values as a number causes problems. Integers and number-like text strings get converted to decimal values.
                     newValue=cellValue
