@@ -13,7 +13,25 @@ except Exception as e:
 
 s3 = client('s3')
 
-def parseNmdpXml(xmlText=None):
+def parseXml(xmlText=None):
+    print('Parsing XML Text.')
+
+    # Get HML ID
+
+    # Get Sample IDs
+
+    # Get GL Strings
+
+    # Validate GL Strings individually.
+        # Set validation status?
+
+    # Return the HML ID, Sample IDs, and GL Strings
+
+    return 'HMLID',['SAMPLE ID 1','SAMPLE ID 2'], ['GLSTRING 1','GLSTRING 2']
+
+    '''
+    
+    
     validationFeedback=''
 
     print('Parsing NMDP Xml Text:' + str(xmlText))
@@ -49,8 +67,9 @@ def parseNmdpXml(xmlText=None):
         validationFeedback='Valid\n'
 
     return isValid, validationFeedback
+    '''
 
-def nmdp_validation_handler(event, context):
+def hml_parser_handler(event, context):
     print('I found the schema validation handler.')
     # This is the AWS Lambda handler function.
     xmlKey = None
@@ -76,62 +95,29 @@ def nmdp_validation_handler(event, context):
 
         hmlUploadObject = IhiwRestAccess.getUploadByFilename(token=token, url=url, fileName=xmlKey)
         if(hmlUploadObject is None or 'type' not in hmlUploadObject.keys() or hmlUploadObject['type'] is None):
-            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate by NMDP..' )
+            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not continue.' )
             return None
         fileType = hmlUploadObject['type']
 
         validationResults = None
         if(fileType == 'HML'):
-            print(' Sending upload file ' + str(fileName) + ' to the NMDP validator.')
+            print('This is an HML file, I will parse and validate it.')
 
-            #  Send message to Service
-            xmlResponse = validateNmdpPortal(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey)
+            hmlId, sampleIds, glStrings = parseXml(xmlText = '?????')
 
-            print('Xml Response Text: ' + str(xmlResponse))
-            #  Parse Xml response.
-            isValid, validationFeedback = parseNmdpXml(xmlText=xmlResponse)
 
-            #   5) Set validation status of the upload object.
-            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isValid
-                 , validationFeedback=validationFeedback, url=url, token=token, validatorType='NMDP')
-
-            # It's not really necessary to return anything...but AWS likes to see if the lambda was successful.
-            return {
-                'statusCode': 200,
-                'body': json.dumps('NMDP Validation performed successfully.')
-
-            }
         else:
-            print('This is not an HML file (file type=' + str(fileType) + ') I will not validate it by NMDP.')
+            print('This is not an HML file (file type=' + str(fileType) + ') I will not parse it.')
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         if (xmlKey is not None):
             url = IhiwRestAccess.getUrl()
             token = IhiwRestAccess.getToken(url=url)
-            validationStatus = 'Exception running NMDP Validation:' + str(e)
+            validationStatus = 'Exception Parsing HML file:' + str(e)
             print('I will try to set the status.')
             IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback=validationStatus, url=url,
-                                token=token, validatorType='NMDP')
+                                token=token, validatorType='GLSTRING')
         else:
-            print('Failed setting the upload status because I could not identify the name of the xml file.')
+            print('!!!!Failed setting the upload status because I could not identify the name of the xml file.')
         return str(e)
-
-def validateNmdpPortal(xmlText=None, xmlBucket=None,xmlKey=None):
-    try:
-        print('Inside the NMPD Portal Validator, i was given xml text that looks like: ' + str(xmlText)[0:50])
-        baseurl = 'https://qa-api.nmdp.org/hml_gw/v1/validate'
-        headers = {
-            'Content-Type': 'text/xml',
-        }
-
-        #print('I am passing this xmlText:' + str(xmlText))
-        response = requests.post(url=baseurl, headers=headers, data=xmlText)
-        print('I found this response:' + str(response.text))
-        return(response.text)
-
-    except Exception as e:
-        print('Unexpected problem during xml validation.')
-        print(str(e))
-        print(exc_info())
-        return (str(e) + '\n' + str(exc_info()))

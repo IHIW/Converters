@@ -6,9 +6,9 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="NmdpPortalValidation.py"
-LAMBDA_FUNCTION="validateXmlNMDPStaging"
-#LAMBDA_FUNCTION="validateXmlNMDPProd"
+HANDLER_FILE="HmlGlStringParser.py"
+LAMBDA_FUNCTION="parseHmlStaging"
+#LAMBDA_FUNCTION="parseHmlProd"
 
 cd $PROJECT_PATH
 
@@ -19,7 +19,7 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
 pip install --target ./package pyyaml
-pip install --target ./package requests
+#pip install --target ./package requests
 deactivate
 
 # Zip packages
@@ -36,4 +36,4 @@ zip -j -g function.zip ../Common/IhiwRestAccess.py
 zip -g function.zip validation_config.yml
 
 # Upload to AWS
-aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip
+#aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip
