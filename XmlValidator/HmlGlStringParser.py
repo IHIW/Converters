@@ -1,73 +1,26 @@
 import json
 import urllib
 import os
-import requests
+#import requests
 from sys import exc_info
 from boto3 import client
-import xml.etree.ElementTree as ElementTree
+
 
 try:
-    import Common.IhiwRestAccess
+    import Common.IhiwRestAccess as IhiwRestAccess
+    import Common.Validation as Validation
+    import Common.ParseXml as ParseXml
 except Exception as e:
     import IhiwRestAccess
+    import Validation
+    import ParseXml
 
 s3 = client('s3')
 
-def parseXml(xmlText=None):
-    print('Parsing XML Text.')
-
-    # Get HML ID
-
-    # Get Sample IDs
-
-    # Get GL Strings
-
-    # Validate GL Strings individually.
-        # Set validation status?
-
-    # Return the HML ID, Sample IDs, and GL Strings
-
-    return 'HMLID',['SAMPLE ID 1','SAMPLE ID 2'], ['GLSTRING 1','GLSTRING 2']
-
-    '''
-    
-    
-    validationFeedback=''
-
-    print('Parsing NMDP Xml Text:' + str(xmlText))
-
-    documentRoot = ElementTree.fromstring(xmlText)
-
-    print('DocumentRoot:' + str(documentRoot))
-    statusText = documentRoot.findall('status')[0].text
-
-    isValid = statusText.upper()=='VALID'
-
-    # Sometimes there is an error in the "message" node.
-    messageNodes = documentRoot.findall('message')
-    for messageNode in messageNodes:
-        validationFeedback += messageNode.text+ '\n'
-
-    validationErrorsNodes = documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}errors')
-    validationErrorNodes = validationErrorsNodes[0].findall('error')
-    print('I found ' + str(len(validationErrorNodes)) + ' errors nodes.')
 
 
-    for validationErrorNode in validationErrorNodes:
-        lineNumber = str(validationErrorNode.get('line'))
-        severity = str(validationErrorNode.get('severity'))
-        description = str(validationErrorNode.text)
 
-        currentFeedbackText = (severity + ': Line ' + str(lineNumber)
-            + '\n' + description)
 
-        validationFeedback += currentFeedbackText + '\n'
-
-    if(len(validationFeedback.strip()) < 1):
-        validationFeedback='Valid\n'
-
-    return isValid, validationFeedback
-    '''
 
 def hml_parser_handler(event, context):
     print('I found the schema validation handler.')
@@ -103,7 +56,11 @@ def hml_parser_handler(event, context):
         if(fileType == 'HML'):
             print('This is an HML file, I will parse and validate it.')
 
-            hmlId, sampleIds, glStrings = parseXml(xmlText = '?????')
+            hmlId, sampleIds, glStrings = ParseXml.parseXml(xmlText = xmlText)
+
+            isGlStringsValid, glStringValidationFeedback = Validation.validateGlStrings(glStrings=glStrings)
+            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isGlStringsValid
+                 , validationFeedback=glStringValidationFeedback, url=url, token=token, validatorType='GLSTRING')
 
 
         else:

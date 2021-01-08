@@ -1,4 +1,48 @@
 from lxml import etree
+import xml.etree.ElementTree as ElementTree
+
+
+def parseXml(xmlText=None):
+    print('Parsing XML Text.')
+
+    documentRoot = ElementTree.fromstring(xmlText)
+    print('DocumentRoot:' + str(documentRoot))
+
+    # Get HML ID
+    hmlIdNodes = documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}hmlid')
+    print('found these hmlid nodes:' + str(hmlIdNodes))
+    if(len(hmlIdNodes)==0):
+        print('Warning! No HMLID found!')
+        hmlId=None
+    elif(len(hmlIdNodes)==1):
+        hmlId = str(hmlIdNodes[0].get('root') + ':' + hmlIdNodes[0].get('extension') )
+        print('found hmlid (root:extension) (' + hmlId + ')')
+    else:
+        print('Warning! Multiple HMLIDs found, that should not happen!!')
+        hmlId=None
+
+    # Get Sample IDs & GL Strings
+    sampleIds = []
+    glStrings = []
+    for sampleNode in documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}sample'):
+        currentID = sampleNode.get('id')
+        sampleIds.append(currentID)
+
+        for typingNode in sampleNode.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}typing'):
+            for alleleAssignmentNode in typingNode.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}allele-assignment'):
+                glStringNodes = alleleAssignmentNode.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')
+
+                for glStringNode in glStringNodes:
+                    currentGlStringText = str(glStringNode.text).strip()
+                    #print('glStringNode:' + str(glStringNode))
+                    print('glstring:' + currentGlStringText)
+                    glStrings.append(currentGlStringText)
+
+
+    # TODO: Get variant nodes, reference sequence nodes, and indices. Return those as well.
+
+
+    return hmlId,sampleIds, glStrings
 
 
 def getGlStringFromHml(hmlFileName=None, s3=None, bucket=None):

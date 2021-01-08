@@ -19,7 +19,7 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
 pip install --target ./package pyyaml
-#pip install --target ./package requests
+pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
 deactivate
 
 # Zip packages
@@ -30,10 +30,12 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 cd ..
 zip -g function.zip $HANDLER_FILE
 zip -j -g function.zip ../Common/IhiwRestAccess.py
+zip -j -g function.zip ../Common/Validation.py
+zip -j -g function.zip ../Common/ParseXml.py
 
 
 # Zip Config File
 zip -g function.zip validation_config.yml
 
 # Upload to AWS
-#aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip
+aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip
