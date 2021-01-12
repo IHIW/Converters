@@ -17,11 +17,6 @@ except Exception as e:
 
 s3 = client('s3')
 
-
-
-
-
-
 def hml_parser_handler(event, context):
     print('I found the schema validation handler.')
     # This is the AWS Lambda handler function.
@@ -34,6 +29,7 @@ def hml_parser_handler(event, context):
         bucket = content['Records'][0]['s3']['bucket']['name']
         xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
         xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
+        # TODO: Rather than read text, I can probably use the pyHML Parser from the aws object.
         xmlText = xmlFileObject["Body"].read()
 
         # Determine file extension.
@@ -56,12 +52,11 @@ def hml_parser_handler(event, context):
         if(fileType == 'HML'):
             print('This is an HML file, I will parse and validate it.')
 
-            hmlId, sampleIds, glStrings = ParseXml.parseXml(xmlText = xmlText)
+            hmlId, sampleIds, glStrings = ParseXml.parseXmlFromText(xmlText = xmlText)
 
             isGlStringsValid, glStringValidationFeedback = Validation.validateGlStrings(glStrings=glStrings)
             IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isGlStringsValid
                  , validationFeedback=glStringValidationFeedback, url=url, token=token, validatorType='GLSTRING')
-
 
         else:
             print('This is not an HML file (file type=' + str(fileType) + ') I will not parse it.')

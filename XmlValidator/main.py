@@ -1,3 +1,5 @@
+from os import makedirs, getcwd
+from os.path import isdir, join
 from sys import exc_info
 import argparse
 
@@ -29,6 +31,7 @@ def parseArgs():
     parser.add_argument("-x", "--xml",  help="xml file to validate", type=str)
     parser.add_argument("-s", "--schema", help="schema file to validate against", type=str)
     parser.add_argument("-t", "--test", help="what kind of test should we perform", type=str)
+    parser.add_argument("-o", "--output", help="output directory", type=str)
 
     return parser.parse_args()
 
@@ -93,11 +96,15 @@ def testSetValidationResults():
         print('FAILED to set validation status!')
 
 
-def testHmlParser(xmlFileName=None):
+def testHmlParser(xmlFileName=None, outputDirectory=None):
     print('Testing the HML Parser with filename:' + str(xmlFileName))
     xmlText = open(xmlFileName, 'r').read()
     #print('xmlText:\n' + str(xmlText))
-    hmlId, sampleIds, glStrings = ParseXml.parseXml(xmlText=xmlText)
+
+    hmlObject = ParseXml.parseXmlFromText(xmlText=xmlText)
+    sampleIds = ParseXml.getSampleIDs(hml=hmlObject)
+    hmlId = ParseXml.getHmlid(xmlText=xmlText)
+    glStrings = ParseXml.getGlStrings(hml=hmlObject)
     print('I found this HMLID:' + str(hmlId))
     print('I found these SampleIDs:' + str(sampleIds))
     print('I found this glStrings:' + str(glStrings))
@@ -105,6 +112,11 @@ def testHmlParser(xmlFileName=None):
     glStringValidity, glStringValidationFeedback = Validation.validateGlStrings(glStrings=glStrings)
     print('glstringValidity:' + str(glStringValidity))
     print('glStringValidationFeedback:' + str(glStringValidationFeedback))
+
+    # Write some data from the HML to file (These are named based on sample ID)
+    hmlObject.tobiotype(outputDirectory, dtype='fasta', by='subject')
+    xmlDirectory=join(getcwd(),'XmlValidator/xml')
+    ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory)
 
 
 if __name__=='__main__':
@@ -117,8 +129,13 @@ if __name__=='__main__':
         print('CurrentTest:' + currentTest)
         print(str(type(currentTest)))
 
+        outputDirectory = args.output
+        if(outputDirectory is not None and not isdir(outputDirectory)):
+            print('Creating output directory:' + str(outputDirectory))
+            makedirs(outputDirectory)
+
         if (currentTest=='HMLPARSER'):
-            testHmlParser(xmlFileName=xmlFilename)
+            testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 

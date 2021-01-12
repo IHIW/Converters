@@ -193,7 +193,7 @@ def validateGlStrings(glStrings=None):
         validationFeedback = ''
         for glString in glStrings:
             glStringValidationResults = validateGlString(glString=glString)
-            print('GLString(' + glString + ') has these validation results (' + glStringValidationResults+ ')')
+            #print('GLString(' + glString + ') has these validation results (' + glStringValidationResults+ ')')
             if(len(glStringValidationResults) > 0):
                 isValid = False
                 if(len(validationFeedback)>0):
