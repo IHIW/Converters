@@ -68,13 +68,16 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
             rawReferenceSequences[databaseVersion][record.id]=record.seq
 
 
-def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirectory=None):
+def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirectory=None, newline='\n'):
     print('Extrapolating consensus from Variants')
+    #TODO: For each consensus sequence block, instead of just writing the sequences, collect them. Then I can do a MSA in biopython automatically.
     rawReferenceSequences = {}
     for sample in hml.sample:
         for typingIndex, typing in enumerate(sample.typing):
             for consensusIndex, consensusSequence in enumerate(typing.consensus_sequence):
-                outputFileName = join(str(outputDirectory), 'consensus_' + str(sample.id) + '_' + str(typingIndex + 1) + '_' + str(consensusIndex + 1) + '_' + str(typing.gene_family) + '.fasta')
+                outputFileName = join(str(outputDirectory), 'sample_' + str(sample.id) + '.typing_' + str(typingIndex + 1) + '.consensus_' + str(consensusIndex + 1) + '.' + str(typing.gene_family) + '.fasta')
+                outputFile = open(outputFileName, 'w')
+                referenceLookup={}
                 # Load reference sequences from file
                 for referenceDatabase in consensusSequence.reference_database:
                     #print('Reference database name:' + str(referenceDatabase.name))
@@ -85,23 +88,59 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                         #print('ID:' + str(referenceSequence.id))
                         #print('name:' + str(referenceSequence.name))
                         if(referenceSequence.name in rawReferenceSequences[referenceDatabase.version]):
-                            print('Ref Found!')
+                            #print('Ref Found!')
+                            # Print full reference sequence
+                            outputFile.write('>FullReference_' + referenceSequence.id + '_' + referenceSequence.name +  newline)
+                            fullSequence = str(rawReferenceSequences[referenceDatabase.version][referenceSequence.name])
+                            referenceLookup[referenceSequence.id] = fullSequence
+                            outputFile.write(fullSequence + newline)
                         else:
                             # We don't have this reference sequence.
                             print('Warning! Reference sequence was not found. (Allele=' + str(referenceSequence.name) + '), (IPD-IMGT/HLA v' + databaseVersion + ')')
+                            outputFile.write('>ReferenceNotFound' + referenceSequence.id + '_' + referenceSequence.name +  newline)
+                            fullSequence = 'N'*(referenceSequence.end - referenceSequence.start)
+                            referenceLookup[referenceSequence.id] = fullSequence
+                            outputFile.write(fullSequence + newline)
                         # TODO: Is it in the standard set of reference sequences? or just in full-length?
 
+                for consensusSequenceBlock in consensusSequence.consensus_sequence_block:
+                    if(consensusSequenceBlock.reference_sequence_id) in referenceLookup.keys():
+                        #print('start:' + str(consensusSequenceBlock.start))
+                        #print('end:' + str(consensusSequenceBlock.end))
+
+                        # Print Reference from indices. Store it also, dictionary with reference IDs.
+                        extractedReferenceSequence = referenceLookup[consensusSequenceBlock.reference_sequence_id][consensusSequenceBlock.start:consensusSequenceBlock.end] # Did i get indexing right? I dunno.
+                        outputFile.write('>ExtractedReference_' + consensusSequenceBlock.reference_sequence_id
+                            + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'+ newline)
+                        outputFile.write(extractedReferenceSequence + newline)
+                    else:
+                        raise Exception ('Reference Sequence not found:' + str(consensusSequenceBlock.reference_sequence_id))
 
 
-                # extract reference sequences from HML
+                    #print('This is the csb sequence:' + str(consensusSequenceBlock.sequence))
+                    outputFile.write('>ReportedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_'
+                        + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')' + newline)
+                    outputFile.write(str(consensusSequenceBlock.sequence) + newline)
+
+                # TODO: For each consensus sequence block
+                # Apply Variants to reference
+                # Print all this info.
+
+                # TODO: Can I split it by allele? Maybe not in a consnstent way...
+                # TODO: Although I can split by which reference it's using.
+
+                outputFile.close()
+
 
                 # Load consensus sequence blocks.
 
-                # For each consensus sequence block
-                    # Apply Variants to reference
-                    # Does constructed
 
-    # For each locus print all sequences, for visual alignment.
+
+            # For each locus print all sequences, for visual alignment.
+                # 1) Reference Sequence(s) full
+                # 2) Extracted Reference Sequence(s)
+                # 3) Provided consensus sequences
+                # 4) Constructed consensus sequences from variants
 
 
         # Get IMGT Database Version
