@@ -76,7 +76,10 @@ def csv_to_hml_lambda_handler(event, context):
                         print('Found a child HAML file, I will delete this one:' + str(childUploadFileName))
                         deleteResponse = deleteUpload(token=token,url=url, uploadId=childUploadId)
                         print('Found this reponse from deleting the child:' + str(deleteResponse))
+            except Exception as e:
+                print('Warning! Could not delete the previous child upload:' + str(e))
 
+            try:
                 response = createConvertedUploadObject(newUploadFileName=xmlOutput, newUploadFileType='HAML', previousUploadFileName=csvKey, token=token, url=url)
                 print('response from new upload:' + str(response))
 
