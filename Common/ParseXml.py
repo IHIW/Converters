@@ -21,7 +21,12 @@ def getHmlid(xmlText=None):
     if(len(hmlIdNodes)==0):
         hmlId=None
     elif(len(hmlIdNodes)==1):
-        hmlId = str(hmlIdNodes[0].get('root') + ':' + hmlIdNodes[0].get('extension') )
+        hmlId = str(hmlIdNodes[0].get('root')  )
+        try:
+            hmlIdExtension = hmlIdNodes[0].get('extension')
+            hmlId = hmlId + ':' + hmlIdExtension
+        except Exception:
+            print('No HmlID Extension was provided.')
     else:
         print('Warning! Multiple HMLIDs found, that should not happen!!')
         hmlId=None
@@ -58,7 +63,9 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
         # Nothing to do. These were already loaded.
         return
     else:
-        if(databaseVersion=='3400'):
+        if(databaseVersion=='3390'):
+            referenceInputFile=join(xmlDirectory, '3.39.0_FullLengthSequences.fasta')
+        elif(databaseVersion=='3400'):
             referenceInputFile=join(xmlDirectory, '3.40.0_FullLengthSequences.fasta')
         else:
             raise Exception('Unknown IPD-IMGT/HLA database version:' + str(databaseVersion))
@@ -87,11 +94,18 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                     for referenceSequence in referenceDatabase.reference_sequence:
                         #print('ID:' + str(referenceSequence.id))
                         #print('name:' + str(referenceSequence.name))
-                        if(referenceSequence.name in rawReferenceSequences[referenceDatabase.version]):
+
+                        if(not referenceSequence.name.startswith('HLA-')):
+                            # Sometimes "HLA-" is not included in the allele name.
+                            # TODO: This might break on some genes like MICA..
+                            print('Modifying reference allele name from ' + referenceSequence.name + ' to HLA-' + referenceSequence.name)
+                            referenceSequence.name = 'HLA-' + referenceSequence.name
+
+                        if(referenceSequence.name in rawReferenceSequences[databaseVersion]):
                             #print('Ref Found!')
                             # Print full reference sequence
                             outputFile.write('>FullReference_' + referenceSequence.id + '_' + referenceSequence.name +  newline)
-                            fullSequence = str(rawReferenceSequences[referenceDatabase.version][referenceSequence.name])
+                            fullSequence = str(rawReferenceSequences[databaseVersion][referenceSequence.name])
                             referenceLookup[referenceSequence.id] = fullSequence
                             outputFile.write(fullSequence + newline)
                         else:
