@@ -63,7 +63,9 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
         # Nothing to do. These were already loaded.
         return
     else:
-        if(databaseVersion=='3390'):
+        if (databaseVersion == '3370'):
+            referenceInputFile = join(xmlDirectory, '3.37.0_FullLengthSequences.fasta')
+        elif(databaseVersion=='3390'):
             referenceInputFile=join(xmlDirectory, '3.39.0_FullLengthSequences.fasta')
         elif(databaseVersion=='3400'):
             referenceInputFile=join(xmlDirectory, '3.40.0_FullLengthSequences.fasta')
@@ -95,6 +97,11 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                         #print('ID:' + str(referenceSequence.id))
                         #print('name:' + str(referenceSequence.name))
 
+                        startIndex = int(referenceSequence.start)
+                        endIndex = int(referenceSequence.end)
+                        if(endIndex <= startIndex):
+                            print('Warning! End index is bigger than start index!')
+
                         if(not referenceSequence.name.startswith('HLA-')):
                             # Sometimes "HLA-" is not included in the allele name.
                             # TODO: This might break on some genes like MICA..
@@ -118,6 +125,14 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                         # TODO: Is it in the standard set of reference sequences? or just in full-length?
 
                 for consensusSequenceBlock in consensusSequence.consensus_sequence_block:
+
+                    startIndex = int(consensusSequenceBlock.start)
+                    endIndex = int(consensusSequenceBlock.end)
+                    if (endIndex <= startIndex):
+                        print('Warning! in consensus sequence block End index is bigger than start index!')
+
+
+
                     if(consensusSequenceBlock.reference_sequence_id) in referenceLookup.keys():
                         #print('start:' + str(consensusSequenceBlock.start))
                         #print('end:' + str(consensusSequenceBlock.end))
