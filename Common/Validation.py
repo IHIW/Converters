@@ -182,6 +182,29 @@ def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=
 
     return fileNameList
 
+def validateGlStrings(glStrings=None):
+    # Validate GL Strings individually.
+    if(glStrings is None):
+        return False, 'GL Strings were None, some error has apparently occurred in validation'
+    elif(len(glStrings) == 0):
+        return (True, 'No GL Strings were found.')
+    else:
+        isValid = True
+        validationFeedback = ''
+        for glString in glStrings:
+            glStringValidationResults = validateGlString(glString=glString)
+            #print('GLString(' + glString + ') has these validation results (' + glStringValidationResults+ ')')
+            if(len(glStringValidationResults) > 0):
+                isValid = False
+                if(len(validationFeedback)>0):
+                    validationFeedback += ', '
+                validationFeedback += glStringValidationResults
+
+        if(isValid and len(validationFeedback)==0):
+            validationFeedback = 'Valid GLStrings'
+
+        return isValid, validationFeedback
+
 def validateGlString(glString=None):
     #print('validating Gl String:' + str(glString))
     # Check if it's undefined, or not formatted like a GL String.

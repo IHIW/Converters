@@ -1,16 +1,26 @@
+from os import makedirs, getcwd
+from os.path import isdir, join
 from sys import exc_info
 import argparse
 
+#from  import parseXml
+
 try:
     import Common.IhiwRestAccess as IhiwRestAccess
+    import Common.ParseXml as ParseXml
+    import Common.Validation as Validation
     import XmlValidator.NmdpPortalValidation as NmdpPortalValidation
     import XmlValidator.MiringValidation as MiringValidation
     import XmlValidator.SchemaValidation as SchemaValidation
+    import XmlValidator.HmlGlStringParser as HmlGlStringParser
 except Exception:
     import IhiwRestAccess
+    import ParseXml
+    import Validation
     import NmdpPortalValidation
     import MiringValidation
     import SchemaValidation
+    import HmlGlStringParser
 
 # Test methods for running the lambda function.
 def parseArgs():
@@ -20,6 +30,8 @@ def parseArgs():
     #parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
     parser.add_argument("-x", "--xml",  help="xml file to validate", type=str)
     parser.add_argument("-s", "--schema", help="schema file to validate against", type=str)
+    parser.add_argument("-t", "--test", help="what kind of test should we perform", type=str)
+    parser.add_argument("-o", "--output", help="output directory", type=str)
 
     return parser.parse_args()
 
@@ -83,15 +95,54 @@ def testSetValidationResults():
     else:
         print('FAILED to set validation status!')
 
+
+def testHmlParser(xmlFileName=None, outputDirectory=None):
+    print('Testing the HML Parser with filename:' + str(xmlFileName))
+    xmlText = open(xmlFileName, 'r').read()
+    #print('xmlText:\n' + str(xmlText))
+
+    hmlObject = ParseXml.parseXmlFromText(xmlText=xmlText)
+    sampleIds = ParseXml.getSampleIDs(hml=hmlObject)
+    hmlId = ParseXml.getHmlid(xmlText=xmlText)
+    glStrings = ParseXml.getGlStrings(hml=hmlObject)
+    print('I found this HMLID:' + str(hmlId))
+    print('I found these SampleIDs:' + str(sampleIds))
+    print('I found this glStrings:' + str(glStrings))
+
+    glStringValidity, glStringValidationFeedback = Validation.validateGlStrings(glStrings=glStrings)
+    print('glstringValidity:' + str(glStringValidity))
+    print('glStringValidationFeedback:' + str(glStringValidationFeedback))
+
+    # Write some data from the HML to file (These are named based on sample ID)
+    hmlObject.tobiotype(outputDirectory, dtype='fasta', by='subject')
+    xmlDirectory=join(getcwd(),'XmlValidator/xml')
+    ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory)
+
+
 if __name__=='__main__':
     try:
         args = parseArgs()
         xmlFilename = args.xml
         schemaFileName = args.schema
 
+        currentTest = str(args.test.upper())
+        print('CurrentTest:' + currentTest)
+        print(str(type(currentTest)))
+
+        outputDirectory = args.output
+        if(outputDirectory is not None and not isdir(outputDirectory)):
+            print('Creating output directory:' + str(outputDirectory))
+            makedirs(outputDirectory)
+
+        if (currentTest=='HMLPARSER'):
+            testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
+        else:
+            print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
+
+
         #testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
         #testMiringValidation()
-        testNmdpValidation()
+        #testNmdpValidation()
         #testSetValidationResults()
         pass
 
