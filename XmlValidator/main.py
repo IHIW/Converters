@@ -27,7 +27,7 @@ def parseArgs():
     parser = argparse.ArgumentParser()
     #parser.add_argument("-v", "--verbose", help="verbose operation", action="store_true")
     #parser.add_argument("-ex", "--excel", required=False, help="input excel file", type=str)
-    #parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
+    parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
     parser.add_argument("-x", "--xml",  help="xml file to validate", type=str)
     parser.add_argument("-s", "--schema", help="schema file to validate against", type=str)
     parser.add_argument("-t", "--test", help="what kind of test should we perform", type=str)
@@ -119,6 +119,17 @@ def testHmlParser(xmlFileName=None, outputDirectory=None):
     ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory)
 
 
+def testDeleteFile(uploadFileName=None, configFileName='XmlValidator/validation_config.yml' ):
+    print('Deleting an upload with the name:' + str(uploadFileName))
+    (user, password) = IhiwRestAccess.getCredentials(configFileName=configFileName)
+    url = IhiwRestAccess.getUrl(configFileName=configFileName)
+    print('URL=' + str(url))
+    token = IhiwRestAccess.getToken(user=user, password=password, url=url)
+    uploadId = IhiwRestAccess.getUploadIfExists(token=token, url=url, fileName=uploadFileName)
+    print('I found this upload id:' + str(uploadId['id']))
+    deleteUpload(token=None, url=None, uploadId=None):
+
+
 if __name__=='__main__':
     try:
         args = parseArgs()
@@ -136,6 +147,9 @@ if __name__=='__main__':
 
         if (currentTest=='HMLPARSER'):
             testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
+        elif(currentTest=='DELETEFILE'):
+            testDeleteFile(uploadFileName=args.upload)
+            #testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 
