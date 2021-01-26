@@ -64,7 +64,8 @@ class Converter(object):
     def DetermineDateFormat(self, dateString):
         print('Determining Date format of this string:' + dateString)
         self.dateFormat = None
-        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y']
+        # TODO: Is there a more flexible way to do this? This breaks regularly with new date formats.
+        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y', '%d/%m/%Y','%m/%d/%Y']
         for dateFormat in potentialDateFormats:
             try:
                 dateObject = datetime.datetime.strptime(dateString, dateFormat)
