@@ -127,7 +127,8 @@ def testDeleteFile(uploadFileName=None, configFileName='XmlValidator/validation_
     token = IhiwRestAccess.getToken(user=user, password=password, url=url)
     uploadId = IhiwRestAccess.getUploadIfExists(token=token, url=url, fileName=uploadFileName)
     print('I found this upload id:' + str(uploadId['id']))
-    deleteUpload(token=None, url=None, uploadId=None):
+    response = IhiwRestAccess.deleteUpload(token=token, url=url, uploadId=uploadId['id'])
+    print('I found this response:' + str(response))
 
 
 if __name__=='__main__':
@@ -149,7 +150,6 @@ if __name__=='__main__':
             testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
         elif(currentTest=='DELETEFILE'):
             testDeleteFile(uploadFileName=args.upload)
-            #testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 
