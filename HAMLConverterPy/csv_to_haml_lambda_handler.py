@@ -1,4 +1,5 @@
 import boto3
+import urllib
 from ihiw_converter import Converter
 from IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadIfExists
 
@@ -14,7 +15,7 @@ from Common.IhiwRestAccess import getUploadsByParentId, deleteUpload
     /// https://github.com/TessaTi/IHIW_Converter_py
  '''
 
-def csv_to_hml_lambda_handler(event, context):
+def csv_to_haml_lambda_handler(event, context):
     try:
         content = json.loads(event['Records'][0]['Sns']['Message'])
         print('Content:' + str(content))
@@ -23,7 +24,10 @@ def csv_to_hml_lambda_handler(event, context):
         print('bucket:' + str(bucket))
         csvKey = content['Records'][0]['s3']['object']['key']
 
-        print('csvKey:' + str(csvKey))
+        # Filenames that have a space character need to be decoded.
+        decodedKey = urllib.parse.unquote_plus(csvKey)
+        print('decodedCsvKey:' + str(decodedKey))
+        csvKey = decodedKey
 
         if not (str(csvKey[len(csvKey)-4:len(csvKey)]).lower() in ['.csv','.tsv']):
             print('Upload ' + str(csvKey) + ' is not a .csv file. I will not convert it to HAML.')
