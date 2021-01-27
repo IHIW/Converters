@@ -131,6 +131,15 @@ def testDeleteFile(uploadFileName=None, configFileName='XmlValidator/validation_
     print('I found this response:' + str(response))
 
 
+def testGetUpload(uploadFileName=None, configFileName='XmlValidator/validation_config.yml'):
+    print('Getting an upload an upload with the name:' + str(uploadFileName))
+    (user, password) = IhiwRestAccess.getCredentials(configFileName=configFileName)
+    url = IhiwRestAccess.getUrl(configFileName=configFileName)
+    print('URL=' + str(url))
+    token = IhiwRestAccess.getToken(user=user, password=password, url=url)
+    uploadId = IhiwRestAccess.getUploadIfExists(token=token, url=url, fileName=uploadFileName)
+    print('I found this upload id:' + str(uploadId['id']))
+
 if __name__=='__main__':
     try:
         args = parseArgs()
@@ -150,6 +159,8 @@ if __name__=='__main__':
             testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
         elif(currentTest=='DELETEFILE'):
             testDeleteFile(uploadFileName=args.upload)
+        elif (currentTest == 'GETBYFILENAME'):
+            testGetUpload(uploadFileName=args.upload)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 
