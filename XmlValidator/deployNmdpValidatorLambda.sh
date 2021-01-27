@@ -7,8 +7,8 @@
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 HANDLER_FILE="NmdpPortalValidation.py"
-LAMBDA_FUNCTION="validateXmlNMDPStaging"
-#LAMBDA_FUNCTION="validateXmlNMDPProd"
+#LAMBDA_FUNCTION="validateXmlNMDPStaging"
+LAMBDA_FUNCTION="validateXmlNMDPProd"
 
 cd $PROJECT_PATH
 
