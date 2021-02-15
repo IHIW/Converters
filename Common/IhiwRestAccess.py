@@ -320,11 +320,13 @@ def getUploadByFilename(token=None, url=None, fileName=None):
         token = getToken(url=url)
     print('Getting upload by filename:' + str(fileName))
 
-    fullUrl = str(url) + '/api/uploads/getbyfilename/' + fileName
+    # Encoding the file name, in case it contains spaces
+    fullUrl = str(url) + '/api/uploads/getbyfilename/' + urllib.parse.quote(fileName)
+    #print('FullUrl:' +str(fullUrl))
     body = {}
 
     encodedJsonData = str(json.dumps(body)).encode('utf-8')
-    updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
+    updateRequest = request.Request(url=str(fullUrl), data=encodedJsonData, method='GET')
     updateRequest.add_header('Content-Type', 'application/json')
     updateRequest.add_header('Authorization', 'Bearer ' + token)
     responseData = request.urlopen(updateRequest).read().decode("UTF-8")

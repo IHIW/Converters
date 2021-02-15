@@ -6,9 +6,9 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="MiringValidation.py"
-#LAMBDA_FUNCTION="validateXmlMiringStaging"
-LAMBDA_FUNCTION="validateXmlMiringProd"
+HANDLER_FILE="HmlGlStringParser.py"
+LAMBDA_FUNCTION="parseHmlStaging"
+#LAMBDA_FUNCTION="parseHmlProd"
 
 cd $PROJECT_PATH
 
@@ -19,7 +19,7 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
 pip install --target ./package pyyaml
-pip install --target ./package requests
+pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
 deactivate
 
 # Zip packages
@@ -30,6 +30,8 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 cd ..
 zip -g function.zip $HANDLER_FILE
 zip -j -g function.zip ../Common/IhiwRestAccess.py
+zip -j -g function.zip ../Common/Validation.py
+zip -j -g function.zip ../Common/ParseXml.py
 
 
 # Zip Config File

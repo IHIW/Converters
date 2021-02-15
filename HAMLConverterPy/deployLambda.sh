@@ -7,8 +7,8 @@
 PROJECT_PATH="/home/bmatern/github/Converters/HAMLConverterPy"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 HANDLER_FILE="csv_to_haml_lambda_handler.py"
-LAMBDA_FUNCTION="convertCSVToHAMLStaging"
-#LAMBDA_FUNCTION="convertCSVToHAMLProd"
+#LAMBDA_FUNCTION="convertCSVToHAMLStaging"
+LAMBDA_FUNCTION="convertCSVToHAMLProd"
 
 cd $PROJECT_PATH
 
