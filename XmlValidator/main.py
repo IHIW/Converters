@@ -116,7 +116,10 @@ def testHmlParser(xmlFileName=None, outputDirectory=None):
     # Write some data from the HML to file (These are named based on sample ID)
     hmlObject.tobiotype(outputDirectory, dtype='fasta', by='subject')
     xmlDirectory=join(getcwd(),'XmlValidator/xml')
-    ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory)
+    alignSequences=True
+    isValid, validationResults = ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory, alignSequences=alignSequences)
+    print('IsValid:' + str(isValid))
+    print('validationResults:' + str(validationResults))
 
 
 def testDeleteFile(uploadFileName=None, configFileName='XmlValidator/validation_config.yml' ):

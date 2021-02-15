@@ -3,6 +3,7 @@ from os import getcwd, remove
 from os.path import join
 
 from Bio import SeqIO
+from Bio.Align.Applications import ClustalOmegaCommandline
 from lxml import etree
 import xml.etree.ElementTree as ElementTree
 import pyhml
@@ -77,30 +78,33 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
             rawReferenceSequences[databaseVersion][record.id]=record.seq
 
 
-def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirectory=None, newline='\n'):
+def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirectory=None, newline='\n', alignSequences=False):
     print('Extrapolating consensus from Variants')
+    isValid = True
+    validationFeedback = ''
+
     #TODO: For each consensus sequence block, instead of just writing the sequences, collect them. Then I can do a MSA in biopython automatically.
     rawReferenceSequences = {}
     for sample in hml.sample:
         for typingIndex, typing in enumerate(sample.typing):
             for consensusIndex, consensusSequence in enumerate(typing.consensus_sequence):
-                outputFileName = join(str(outputDirectory), 'sample_' + str(sample.id) + '.typing_' + str(typingIndex + 1) + '.consensus_' + str(consensusIndex + 1) + '.' + str(typing.gene_family) + '.fasta')
-                outputFile = open(outputFileName, 'w')
+                # Dict for storing reference sequences for later use.
                 referenceLookup={}
+                # Dictionary identifiedSequences[refSeqId][sequenceDescription]=sequence
+                identifiedSequences = {}
+
                 # Load reference sequences from file
                 for referenceDatabase in consensusSequence.reference_database:
-                    #print('Reference database name:' + str(referenceDatabase.name))
-                    #print('Reference database version:' + str(referenceDatabase.version))
                     databaseVersion = referenceDatabase.version.replace('.', '')
                     loadReferencesFromFile(rawReferenceSequences=rawReferenceSequences, databaseVersion=databaseVersion, xmlDirectory=xmlDirectory)
                     for referenceSequence in referenceDatabase.reference_sequence:
-                        #print('ID:' + str(referenceSequence.id))
-                        #print('name:' + str(referenceSequence.name))
-
+                        identifiedSequences[referenceSequence.id] = {}
                         startIndex = int(referenceSequence.start)
                         endIndex = int(referenceSequence.end)
                         if(endIndex <= startIndex):
-                            print('Warning! End index is bigger than start index!')
+                            #print('Warning! End index is bigger than start index!')
+                            validationFeedback += 'End index is bigger than start index for reference sequence ' + str(referenceSequence.id) + ';' + newline
+                            isValid=False
 
                         if(not referenceSequence.name.startswith('HLA-')):
                             # Sometimes "HLA-" is not included in the allele name.
@@ -109,56 +113,88 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                             referenceSequence.name = 'HLA-' + referenceSequence.name
 
                         if(referenceSequence.name in rawReferenceSequences[databaseVersion]):
-                            #print('Ref Found!')
-                            # Print full reference sequence
-                            outputFile.write('>FullReference_' + referenceSequence.id + '_' + referenceSequence.name +  newline)
+                            # Full reference sequence
+                            fullRefDescription = 'FullReference_' + referenceSequence.id + '_' + referenceSequence.name
                             fullSequence = str(rawReferenceSequences[databaseVersion][referenceSequence.name])
                             referenceLookup[referenceSequence.id] = fullSequence
-                            outputFile.write(fullSequence + newline)
+                            identifiedSequences[referenceSequence.id][fullRefDescription] = fullSequence
                         else:
-                            # We don't have this reference sequence.
-                            print('Warning! Reference sequence was not found. (Allele=' + str(referenceSequence.name) + '), (IPD-IMGT/HLA v' + databaseVersion + ')')
-                            outputFile.write('>ReferenceNotFound' + referenceSequence.id + '_' + referenceSequence.name +  newline)
+                            # We don't have this reference sequence available, cannot interpret..
+                            validationFeedback += 'Warning! Reference sequence was not found. (Allele=' + str(referenceSequence.name) + '), (IPD-IMGT/HLA v' + databaseVersion + ');' + newline
+                            isValid=False
+                            fullRefDescription = 'ReferenceNotFound' + referenceSequence.id + '_' + referenceSequence.name
                             fullSequence = 'N'*(referenceSequence.end - referenceSequence.start)
                             referenceLookup[referenceSequence.id] = fullSequence
-                            outputFile.write(fullSequence + newline)
-                        # TODO: Is it in the standard set of reference sequences? or just in full-length?
+                            identifiedSequences[referenceSequence.id][fullRefDescription] = fullSequence
 
+                        # TODO: Validate, Is it in the standard set of reference sequences? or just in full-length?
                 for consensusSequenceBlock in consensusSequence.consensus_sequence_block:
 
                     startIndex = int(consensusSequenceBlock.start)
                     endIndex = int(consensusSequenceBlock.end)
                     if (endIndex <= startIndex):
-                        print('Warning! in consensus sequence block End index is bigger than start index!')
-
-
+                        validationFeedback += 'Warning! in consensus sequence block Start index is greater than end index!' + str(referenceSequence.id) + ';' + newline
+                        isValid = False
+                        temp = startIndex
+                        startIndex=endIndex
+                        endIndex=temp
 
                     if(consensusSequenceBlock.reference_sequence_id) in referenceLookup.keys():
                         #print('start:' + str(consensusSequenceBlock.start))
                         #print('end:' + str(consensusSequenceBlock.end))
 
                         # Print Reference from indices. Store it also, dictionary with reference IDs.
-                        extractedReferenceSequence = referenceLookup[consensusSequenceBlock.reference_sequence_id][consensusSequenceBlock.start:consensusSequenceBlock.end] # Did i get indexing right? I dunno.
-                        outputFile.write('>ExtractedReference_' + consensusSequenceBlock.reference_sequence_id
-                            + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'+ newline)
-                        outputFile.write(extractedReferenceSequence + newline)
+                        extractedReferenceSequence = referenceLookup[consensusSequenceBlock.reference_sequence_id][startIndex:endIndex] # Did i get indexing right? I dunno.
+                        refSequenceDescription = '>ExtractedReference_' + consensusSequenceBlock.reference_sequence_id + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'
+                        identifiedSequences[consensusSequenceBlock.reference_sequence_id][refSequenceDescription] = extractedReferenceSequence
                     else:
                         raise Exception ('Reference Sequence not found:' + str(consensusSequenceBlock.reference_sequence_id))
 
 
                     #print('This is the csb sequence:' + str(consensusSequenceBlock.sequence))
-                    outputFile.write('>ReportedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_'
-                        + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')' + newline)
-                    outputFile.write(str(consensusSequenceBlock.sequence) + newline)
+                    reportedConsensusDescription = 'ReportedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'
+                    identifiedSequences[consensusSequenceBlock.reference_sequence_id][reportedConsensusDescription] = str(consensusSequenceBlock.sequence)
+
+                    if(consensusSequenceBlock.variant is not None):
+                        for variant in consensusSequenceBlock.variant:
+                            print('Variant ID:' + str(variant.id))
+                    else:
+                        print('Warning, variant is None.')
+                        print(str(consensusSequenceBlock))
+
+
 
                 # TODO: For each consensus sequence block
                 # Apply Variants to reference
                 # Print all this info.
+                for refId in identifiedSequences.keys():
+                    outputFileName = join(str(outputDirectory), 'sample_' + str(sample.id) + '.typing_' + str(typingIndex + 1) + '.consensus_' + str(consensusIndex + 1) + '.' + str(typing.gene_family) +'.ref_' + refId + '.fasta')
+                    outputFile = open(outputFileName, 'w')
 
-                # TODO: Can I split it by allele? Maybe not in a consnstent way...
-                # TODO: Although I can split by which reference it's using.
+                    for sequenceDescription in identifiedSequences[refId].keys():
+                        sequence = identifiedSequences[refId][sequenceDescription]
+                        if(len(str(sequence).strip()) > 0):
+                            outputFile.write('>' + sequenceDescription + newline)
+                            outputFile.write(sequence + newline)
+                        else:
+                            print('Warning! Reference Sequence is length 0!!!' + sequenceDescription )
+                        #
 
-                outputFile.close()
+                    outputFile.close()
+
+                    # Align
+                    # TODO: Thread? It takes lots of memory.
+                    try:
+                        alignedClustalOOutputFilename = outputFileName.replace('.fasta','_clustalAligned.fasta')
+                        print('Aligning file -> ' + str(alignedClustalOOutputFilename))
+                        cline = ClustalOmegaCommandline("clustalo", infile=outputFileName, outfile=alignedClustalOOutputFilename, verbose=True, auto=True, wrap=100000, threads=6, force=True)
+                        print(cline)
+                        if(alignSequences):
+                            cline()
+                    except Exception as e:
+                        print('Failed to align sequences:' + alignedClustalOOutputFilename)
+                        print(e)
+
 
 
                 # Load consensus sequence blocks.
@@ -176,6 +212,13 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
     #imgtDatabaseVersion = None
 
+    # TODO: Some validation checks.
+    #  1) reference + variants = reported consensus
+    #  2) Length of reported consensus matches
+
+
+
+    return isValid, validationFeedback
 
 
 
