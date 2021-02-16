@@ -1,4 +1,4 @@
-
+import argparse
 import os,sys
 import xml.etree.ElementTree as ET #using System.Xml;
 import xml.etree
@@ -359,19 +359,27 @@ class Converter(object):
             return False
 
 
+def parseArgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--csv", help="xml file to validate", type=str, required=True)
+    parser.add_argument("-x", "--xml", help="xml(haml) file to write output to.", type=str, required=True)
+
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
 
-    csvFile = sys.argv[1]
-    #manufacturer = sys.argv[2]
-    manufacturer = ''
-    xmlFile = sys.argv[3]
-    #xmlFile = None
+    args = parseArgs()
+    csvFile = args.csv
+    xmlFile = args.xml
+    manufacturer=''
 
-    #print('csvFile:' + csvFile)
-    #print('manufacturer:' + manufacturer)
-    #print('xmlFile:' + str(xmlFile))
+    print('csvFile:' + csvFile)
+    print('manufacturer:' + manufacturer)
+    print('xmlFile:' + str(xmlFile))
 
     converter = Converter(csvFile=csvFile,manufacturer=manufacturer,xmlFile=xmlFile)
     converter.convert()
+
 
     print('Done. Results written to ' + str(xmlFile))

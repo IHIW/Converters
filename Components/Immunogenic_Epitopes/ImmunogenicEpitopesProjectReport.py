@@ -44,6 +44,8 @@ def immunogenic_epitope_project_report_handler(event, context):
 
 def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     # TODO: This should be a standalone upload, not a child upload. Need some work on this part.
+
+    # TODO: This will also make multiple copies. I should check if the report file already exists and/or (probably) overwrite it
     parentUploadName = '1592_1613480914383_OTHER_ProjectReport'
     url = IhiwRestAccess.getUrl()
     token = IhiwRestAccess.getToken(url=url)
@@ -115,7 +117,7 @@ def createImmunogenicEpitopesReport(bucket=None):
         #print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
         #print('This is the upload: ' + str(dataMatrixUpload))
 
-        supportingFiles.append(dataMatrixUpload['fileName'])
+
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
 
@@ -125,7 +127,7 @@ def createImmunogenicEpitopesReport(bucket=None):
         #print('This file has this validation status:' + validationResults)
 
         if(inputExcelFileData is not None):
-
+            supportingFiles.append(dataMatrixUpload['fileName'])
             dataMatrixFileName = dataMatrixUpload['fileName']
             submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + dataMatrixUpload['createdBy']['user']['email']
             submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
@@ -148,7 +150,7 @@ def createImmunogenicEpitopesReport(bucket=None):
                     # Add supporting files.
                     fileResults=[]
                     if(header.endswith('_hla')):
-                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=immuEpsProjectID)
+                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectIDs=[immuEpsProjectID, dqEpsProjectID])
 
                         if(len(fileResults) == 1):
                             # We found a single file mapped to this HLA result. Get a GlString.
@@ -176,11 +178,13 @@ def createImmunogenicEpitopesReport(bucket=None):
                             raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(dataLine[header]))
 
                     elif('_haml_' in (header)):
-                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=immuEpsProjectID)
+                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectIDs=[immuEpsProjectID, dqEpsProjectID])
+                        #print('I just found these haml results:' + str(fileResults))
                     else:
                         pass
 
                     for uploadFile in fileResults:
+                        #print('Appending this file to the upload list:' + str(uploadFile))
                         supportingFiles.append(uploadFile['fileName'])
 
                     # Was there an error in this cell? Highlight it red and add error message
@@ -194,6 +198,8 @@ def createImmunogenicEpitopesReport(bucket=None):
         else:
             print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']) )
             print('Upload ID of missing data matrix:' +  str(dataMatrixUpload['id']) )
+
+    createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
 
     # Widen the columns a bit so we can read them.
     outputWorksheet.set_column('A:' + ParseExcel.getColumnNumberAsString(len(dataMatrixHeaders) - 1), 30)
@@ -212,7 +218,7 @@ def createImmunogenicEpitopesReport(bucket=None):
     #supportingFileZip.writestr('HelloWorld.txt', 'Hello World!')
     supportingFileZip.writestr(summaryFileName, outputWorkbookbyteStream.getvalue())
 
-    for supportingFile in supportingFiles:
+    for supportingFile in list(set(supportingFiles)):
         print('Adding file ' + str(supportingFile) + ' to ' + str(zipFileName))
 
         supportingFileObject = s3.get_object(Bucket=bucket, Key=supportingFile)
@@ -223,7 +229,7 @@ def createImmunogenicEpitopesReport(bucket=None):
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
-    createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
+
 
     print('Done. Summary is here: ' + str(summaryFileName) + '\nSupporting zip is here: ' + str(zipFileName)
           + '\nin bucket: ' + str(bucket))

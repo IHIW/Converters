@@ -283,7 +283,11 @@ def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
 
         return uploadList
 
-def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectID=None):
+def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None):
+    if(projectIDs is not None and not isinstance(projectIDs, list)):
+        projectIDs = [projectIDs]
+
+    #print('Checking IDS:' + str(projectIDs))
     if fileName is None:
         print('fileName is none, cannot find any uploads with this parent')
         return None
@@ -297,7 +301,7 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
         for upload in allUploads:
             if(upload['fileName'] is not None
                 and fileName.lower() in str(upload['fileName']).lower()
-                and (projectID is None or str(upload['project']['id'])==str(projectID))
+                and (projectIDs is None or int(upload['project']['id']) in projectIDs)
             ):
                 uploadList.append(upload)
 
