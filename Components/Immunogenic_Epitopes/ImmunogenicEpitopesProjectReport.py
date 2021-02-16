@@ -1,20 +1,21 @@
 from boto3 import client
+#import json
+#import urllib
 
 try:
     import IhiwRestAccess
     import ParseExcel
+    import ParseXml
     import Validation
     import S3_Access
-    import ParseXml
     import ImmunogenicEpitopesValidator
-
 except Exception as e:
-    print('Exception when importing:'  + str(e))
+    print('Failed in importing files: ' + str(e))
     from Common import IhiwRestAccess
     from Common import ParseExcel
+    from Common import ParseXml
     from Common import Validation
     from Common import S3_Access
-    from Common import ParseXml
     import ImmunogenicEpitopesValidator
 
 s3 = client('s3')
@@ -32,7 +33,7 @@ def immunogenic_epitope_project_report_handler(event, context):
         bucket = 'ihiw-management-upload-prod'
         #bucket = 'ihiw-management-upload-staging'
 
-        adminUserID=
+        #adminUserID=
 
         createImmunogenicEpitopesReport(bucket=bucket)
 
@@ -40,16 +41,48 @@ def immunogenic_epitope_project_report_handler(event, context):
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
+
+def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
+    # TODO: This should be a standalone upload, not a child upload. Need some work on this part.
+    parentUploadName = '1592_1613480914383_OTHER_ProjectReport'
+    url = IhiwRestAccess.getUrl()
+    token = IhiwRestAccess.getToken(url=url)
+
+    IhiwRestAccess.createConvertedUploadObject(newUploadFileName=summaryFileName
+                                               , newUploadFileType='OTHER'
+                                               , previousUploadFileName=parentUploadName
+                                               , url=url, token=token)
+    IhiwRestAccess.createConvertedUploadObject(newUploadFileName=zipFileName
+                                               , newUploadFileType='OTHER'
+                                               , previousUploadFileName=parentUploadName
+                                               , url=url, token=token)
+
+    IhiwRestAccess.setValidationStatus(uploadFileName=parentUploadName, isValid=True,
+                                       validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
+                                       token=token)
+    IhiwRestAccess.setValidationStatus(uploadFileName=summaryFileName, isValid=True,
+                                       validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
+                                       token=token)
+    IhiwRestAccess.setValidationStatus(uploadFileName=zipFileName, isValid=True,
+                                       validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
+                                       token=token)
+
+
 def createImmunogenicEpitopesReport(bucket=None):
     print('Creating an Immunogenic Epitopes Submission Report.')
 
     url=IhiwRestAccess.getUrl()
     token=IhiwRestAccess.getToken(url=url)
-    projectID = IhiwRestAccess.getProjectID(projectName='immunogenic_epitopes')
-    summaryFileName = 'Project.' + str(projectID) + '.Report.xlsx'
-    zipFileName = 'Project.' + str(projectID) + '.Report.zip'
+    immuEpsProjectID = IhiwRestAccess.getProjectID(projectName='immunogenic_epitopes')
+    dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
+    #summaryFileName = 'Project.' + str(immuEpsProjectID) + '.Report.xlsx'
+    #zipFileName = 'Project.' + str(immuEpsProjectID) + '.Report.zip'
+    summaryFileName = 'ImmunogenicEpitopes.ProjectReport.xlsx'
+    zipFileName = 'ImmunogenicEpitopes.ProjectReport.zip'
 
-    dataMatrixUploadList = getDataMatrixUploads(projectID=projectID, token=token, url=url)
+
+
+    dataMatrixUploadList = getDataMatrixUploads(projectIDs=[immuEpsProjectID, dqEpsProjectID], token=token, url=url)
 
     # Create Spreadsheet, Define Headers?
     outputWorkbook, outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile()
@@ -91,71 +124,76 @@ def createImmunogenicEpitopesReport(bucket=None):
         (validationResults, inputExcelFileData, errorResultsPerRow) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True)
         #print('This file has this validation status:' + validationResults)
 
-        dataMatrixFileName = dataMatrixUpload['fileName']
-        submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + dataMatrixUpload['createdBy']['user']['email']
-        submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
-        submissionDate = dataMatrixUpload['createdAt']
+        if(inputExcelFileData is not None):
 
-        # Loop input Workbook data
-        for dataLineIndex, dataLine in enumerate(inputExcelFileData):
-        # print('Copying this line:' + str(dataLine))
-            reportLineIndex += 1
+            dataMatrixFileName = dataMatrixUpload['fileName']
+            submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + dataMatrixUpload['createdBy']['user']['email']
+            submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
+            submissionDate = dataMatrixUpload['createdAt']
 
-            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=0) + str(reportLineIndex), dataMatrixFileName)
-            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=1) + str(reportLineIndex), submittingUser)
-            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=2) + str(reportLineIndex), submittingLab)
-            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=3) + str(reportLineIndex), submissionDate)
+            # Loop input Workbook data
+            for dataLineIndex, dataLine in enumerate(inputExcelFileData):
+            # print('Copying this line:' + str(dataLine))
+                reportLineIndex += 1
 
-            for headerIndex, header in enumerate(dataMatrixHeaders):
-                cellIndex = ParseExcel.getColumnNumberAsString(base0ColumnNumber=headerIndex+len(summaryHeaders)) + str(reportLineIndex)
+                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=0) + str(reportLineIndex), dataMatrixFileName)
+                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=1) + str(reportLineIndex), submittingUser)
+                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=2) + str(reportLineIndex), submittingLab)
+                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=3) + str(reportLineIndex), submissionDate)
 
-                currentGlString = None
-                # Add supporting files.
-                fileResults=[]
-                if(header.endswith('_hla')):
-                    fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=projectID)
+                for headerIndex, header in enumerate(dataMatrixHeaders):
+                    cellIndex = ParseExcel.getColumnNumberAsString(base0ColumnNumber=headerIndex+len(summaryHeaders)) + str(reportLineIndex)
 
-                    if(len(fileResults) == 1):
-                        # We found a single file mapped to this HLA result. Get a GlString.
-                        currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3, bucket=bucket)
-                        glStringValidationResults = Validation.validateGlString(glString=currentGlString)
-                    else:
-                        # We didn't find a single file to calculate a glString from. Use the existing data
-                        currentGlString = dataLine[header]
-                        glStringValidationResults = errorResultsPerRow[dataLineIndex][header]
+                    currentGlString = None
+                    # Add supporting files.
+                    fileResults=[]
+                    if(header.endswith('_hla')):
+                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=immuEpsProjectID)
 
-                    # print the glString in the appropriate column
-                    if(header=='donor_hla'):
-                        if(len(glStringValidationResults) > 0):
-                            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString, errorStyle)
-                            outputWorksheet.write_comment(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), glStringValidationResults)
+                        if(len(fileResults) == 1):
+                            # We found a single file mapped to this HLA result. Get a GlString.
+                            currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3, bucket=bucket)
+                            glStringValidationResults = Validation.validateGlString(glString=currentGlString)
                         else:
-                            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString)
-                    elif(header=='recipient_hla'):
-                        if (len(glStringValidationResults) > 0):
-                            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString, errorStyle)
-                            outputWorksheet.write_comment(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), glStringValidationResults)
+                            # We didn't find a single file to calculate a glString from. Use the existing data
+                            currentGlString = dataLine[header]
+                            glStringValidationResults = errorResultsPerRow[dataLineIndex][header]
+
+                        # print the glString in the appropriate column
+                        if(header=='donor_hla'):
+                            if(len(glStringValidationResults) > 0):
+                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString, errorStyle)
+                                outputWorksheet.write_comment(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), glStringValidationResults)
+                            else:
+                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString)
+                        elif(header=='recipient_hla'):
+                            if (len(glStringValidationResults) > 0):
+                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString, errorStyle)
+                                outputWorksheet.write_comment(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), glStringValidationResults)
+                            else:
+                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString)
                         else:
-                            outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString)
+                            raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(dataLine[header]))
+
+                    elif('_haml_' in (header)):
+                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=immuEpsProjectID)
                     else:
-                        raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(dataLine[header]))
+                        pass
 
-                elif('_haml_' in (header)):
-                    fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(token=token, url=url, fileName=str(dataLine[header]), projectID=projectID)
-                else:
-                    pass
+                    for uploadFile in fileResults:
+                        supportingFiles.append(uploadFile['fileName'])
 
-                for uploadFile in fileResults:
-                    supportingFiles.append(uploadFile['fileName'])
-
-                # Was there an error in this cell? Highlight it red and add error message
-                if (header in errorResultsPerRow[dataLineIndex].keys() and len(str(errorResultsPerRow[dataLineIndex][header])) > 0):
-                    # TODO: Make the error styles optional.
-                    outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
-                    outputWorksheet.write_comment(cellIndex, errorResultsPerRow[dataLineIndex][header])
-                else:
-                    # TODO: What if a dataline is missing a bit of information? Handle if this is missing in the input file.
-                    outputWorksheet.write(cellIndex, dataLine[header])
+                    # Was there an error in this cell? Highlight it red and add error message
+                    if (header in errorResultsPerRow[dataLineIndex].keys() and len(str(errorResultsPerRow[dataLineIndex][header])) > 0):
+                        # TODO: Make the error styles optional.
+                        outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
+                        outputWorksheet.write_comment(cellIndex, errorResultsPerRow[dataLineIndex][header])
+                    else:
+                        # TODO: What if a dataline is missing a bit of information? Handle if this is missing in the input file.
+                        outputWorksheet.write(cellIndex, dataLine[header])
+        else:
+            print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']) )
+            print('Upload ID of missing data matrix:' +  str(dataMatrixUpload['id']) )
 
     # Widen the columns a bit so we can read them.
     outputWorksheet.set_column('A:' + ParseExcel.getColumnNumberAsString(len(dataMatrixHeaders) - 1), 30)
@@ -163,6 +201,9 @@ def createImmunogenicEpitopesReport(bucket=None):
     outputWorksheet.freeze_panes(1, 0)
     outputWorkbook.close()
     S3_Access.writeFileToS3(newFileName=summaryFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+
+
 
     # create zip file
     zipFileStream = io.BytesIO()
@@ -182,17 +223,22 @@ def createImmunogenicEpitopesReport(bucket=None):
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
+    createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
+
     print('Done. Summary is here: ' + str(summaryFileName) + '\nSupporting zip is here: ' + str(zipFileName)
           + '\nin bucket: ' + str(bucket))
 
-def getDataMatrixUploads(projectID=None, token=None, url=None):
+def getDataMatrixUploads(projectIDs=None, token=None, url=None):
     # collect all data matrix files.
     uploadList = IhiwRestAccess.getUploads(token=token, url=url)
+    #print('I found these uploads:' + str(uploadList))
     #print('This is my upload list:' + str(uploadList))
-    #print('Parsing ' + str(len(uploadList)) + ' uploads to find data matrices for project ' + str(projectID) + '..')
+    print('Parsing ' + str(len(uploadList)) + ' uploads to find data matrices for project(s) ' + str(projectIDs) + '..')
+    if(not isinstance(projectIDs, list)):
+        projectIDs = [projectIDs]
     dataMatrixUploadList = []
     for upload in uploadList:
-        if (projectID == upload['project']['id']):
+        if (upload['project']['id'] in projectIDs):
             if (upload['type'] == 'PROJECT_DATA_MATRIX'):
                 dataMatrixUploadList.append(upload)
             else:
@@ -202,7 +248,7 @@ def getDataMatrixUploads(projectID=None, token=None, url=None):
             # print('Disregarding this upload because it is not in our project.')
             pass
     print(
-        'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectID) + '.\n')
+        'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectIDs) + '.\n')
     return dataMatrixUploadList
 
 

@@ -22,6 +22,8 @@ pip install --target ./package lxml
 pip install --target ./package pyyaml
 pip install --target ./package xlsxwriter
 pip install --target ./package zipfile
+pip install --target ./package biopython
+#pip install --target ./package pyhml
 pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
 deactivate
 
@@ -42,7 +44,7 @@ zip -j -g function.zip ../../Common/IhiwRestAccess.py
 zip -j -g function.zip ../../Common/S3_Access.py
 
 # Zip Config File
-zip -g function.zip ../../validation_config.yml
+zip -g function.zip validation_config.yml
 
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip

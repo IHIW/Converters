@@ -6,7 +6,7 @@ from Bio import SeqIO
 from Bio.Align.Applications import ClustalOmegaCommandline
 from lxml import etree
 import xml.etree.ElementTree as ElementTree
-import pyhml
+
 
 def getSampleIDs(hml=None):
     sampleIDs=[]
@@ -16,6 +16,7 @@ def getSampleIDs(hml=None):
 
 def getHmlid(xmlText=None):
     # HMLID Is apparently not in the hml object, gotta parse it from the text.
+    # TODO: parse the hmlid in pyhml
     #print('getting Hmlid')
     documentRoot = ElementTree.fromstring(xmlText)
     hmlIdNodes = documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}hmlid')
@@ -44,6 +45,9 @@ def getGlStrings(hml=None):
     return glStrings
 
 def parseXmlFromText(xmlText=None, tempDirectory=None):
+    # TODO: pyHML is huge. Im moving the import here so it doesnt crash if I run without this import.
+    import pyhml
+
     #print('Parsing XML Text.')
     # Parse using pyhml
     # pyHml needs an actual file to work in. Write it.
