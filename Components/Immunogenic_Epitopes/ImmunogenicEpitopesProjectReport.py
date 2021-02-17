@@ -23,11 +23,14 @@ from sys import exc_info
 
 import zipfile
 import io
+from time import sleep
 
 def immunogenic_epitope_project_report_handler(event, context):
     print('Lambda handler: Creating a project report for immunogenic epitopes.')
     # This is the AWS Lambda handler function.
     try:
+        # Sleep 1 second, enough time to make sure the file is available.
+        sleep(1)
         # TODO: get the bucket from the sns message ( there is no sns message)
         #bucket = content['Records'][0]['s3']['bucket']['name']
         bucket = 'ihiw-management-upload-prod'

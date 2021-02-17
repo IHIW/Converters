@@ -4,6 +4,7 @@ import os
 import requests
 from sys import exc_info
 from boto3 import client
+from time import sleep
 import xml.etree.ElementTree as ElementTree
 
 try:
@@ -79,6 +80,8 @@ def miring_validation_handler(event, context):
     # This is the AWS Lambda handler function.
     xmlKey = None
     try:
+        # Sleep 1 second, enough time to make sure the file is available.
+        sleep(1)
         print('This is the event:' + str(event)[0:50])
 
         content = json.loads(event['Records'][0]['Sns']['Message'])

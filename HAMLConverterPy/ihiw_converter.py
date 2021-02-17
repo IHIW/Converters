@@ -90,8 +90,9 @@ class Converter(object):
                     OLReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, engine="python")
                     OLReader = OLReader.loc[:,~OLReader.columns.str.contains('^Unnamed')]  # eliminate empty columns at the end
 
-                    if(len(OLReader.columns.tolist()) > 3):
-                        # If I find multiple columns, I hope this is sufficient.
+                    if(len(OLReader.columns.tolist()) > 3
+                        and ('PatientID' in OLReader.columns.tolist() or 'Patient ID' in OLReader.columns.tolist())):
+                        # If I find multiple columns, and one of them is patient ID. Sanity check.
                         print('This is a (' + str(delimiter) + ') delimited file.')
                         self.delimiter=delimiter
                 except Exception as e:
@@ -101,7 +102,9 @@ class Converter(object):
 
     def DetermineManufacturer(self,):
         col_OneLambda = ['PatientID', 'SampleIDName', 'RunDate', 'CatalogID', 'BeadID', 'Specificity', 'RawData','NC1BeadID','PC1BeadID', 'NC2BeadID','PC2BeadID', 'Rxn']
-        col_Immucor = ['Sample_ID', 'Patient_Name', 'Lot_ID', 'Run_Date', 'Allele', 'Raw_Value', 'Assignment']
+        col_Immucor = ['Sample ID', 'Patient ID', 'Lot ID', 'Run Date', 'Allele', 'Assignment', 'Raw Value']
+        # TODO: Column names have changed. See sample files from Gijs.
+        #col_Immucor = ['Sample_ID', 'Patient_Name', 'Lot_ID', 'Run_Date', 'Allele', 'Raw_Value', 'Assignment']
         OLReader = ''
         if not self.manufacturer.strip():
             print('Determining Manufacturer, csv file=' + str(self.csvFile))
@@ -112,13 +115,15 @@ class Converter(object):
                 #print('This is the copied object:' + str(copyInputFile))
 
                 #pd.read_csv(io.BytesIO(obj['Body'].read()))
-                OLReader = pd.read_csv(copyInputFile,index_col = False,sep=self.delimiter,engine="python")                     #try with , separator
+                OLReader = pd.read_csv(copyInputFile,index_col = False,sep=self.delimiter,engine="python", na_filter=False)                     #try with , separator
                 OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
 
                 colnames = [str(c.strip('"').strip().replace(' ','_')) for c in OLReader.columns.tolist()]      #list colnames
                 OLReader.columns = colnames
 
-                if (set(colnames) & set(col_Immucor)): # Check if there is an intersection of the sets. Overlapping is good.
+                # Check if there is an intersection of the sets. Overlapping is good.
+                # Does this work? think this will break if there are any overlapping column names.
+                if (set(colnames) & set(col_Immucor)):
                     self.manufacturer = 'Immucor'
                 elif(set(colnames) & set(col_OneLambda)):
                     self.manufacturer = 'OneLambda'
@@ -170,6 +175,8 @@ class Converter(object):
     def ProcessOneLambda(self,OLReader):
         #print('OneLambda to xml...',OLReader.head())
         print('OneLambda to xml...')
+        # TODO return validation feedback.
+        validationFeedback = ''
       
         col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
                 
@@ -190,12 +197,12 @@ class Converter(object):
         readerState = 'negative_control'
         negativeControlRow=None
         positiveControlRow=None
-        patientID=''
-        sampleID = ''
+        patientID='!!!'
+        sampleID = '!!!'
         catalogID = ''
 
         #rowlength = OLReader.shape[0]
-        for row in OLReader.itertuples():
+        for line, row in enumerate(OLReader.itertuples(),1):
             if(readerState=='negative_control'):
                 negativeControlRow = row
                 readerState='positive_control'
@@ -203,11 +210,33 @@ class Converter(object):
                 positiveControlRow = row
                 readerState = 'bead_values'
 
+                currentRowSampleIDName=str(row.SampleIDName).strip()
+                currentRowPatientID=str(row.PatientID).strip()
+
+                # In one case the user submitted data that was missing sampleIDs. This shouldn't be accepted.
+                #print('delimiter =(' + self.delimiter + ')')
+                #print('sampleIDName= ' + str(row.SampleIDName))
+                if(currentRowSampleIDName is None or len(currentRowSampleIDName) == 0 or currentRowSampleIDName=='nan'):
+                    # row.SampleIDName='?'
+                    currentRowSampleIDName = '?'
+                    feedbackText = 'Empty SampleIDName found, please provide SampleIDName in every row.'
+                    # Only report this once.
+                    if(feedbackText not in validationFeedback):
+                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+
+                if (currentRowPatientID is None or len(currentRowPatientID) == 0 or currentRowPatientID=='nan'):
+                    currentRowPatientID = '?'
+                    feedbackText = 'Empty PatientID found, please provide PatientID in every row.'
+                    # Only report this once.
+                    if (feedbackText not in validationFeedback):
+                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+
+
                 # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
                 # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
-                if (row.SampleIDName.strip() != sampleID or str(row.PatientID).strip() != patientID):
-                    sampleID = str(row.SampleIDName).strip()
-                    patientID = str(row.PatientID).strip()
+                if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID):
+                    sampleID = currentRowSampleIDName
+                    patientID = currentRowPatientID
                     #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
                     #    patientID) + ' and catalogID:' + str(catalogID))
 
@@ -269,15 +298,21 @@ class Converter(object):
         # create a new XML file with the results
         self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
+
+        return validationFeedback
     ########
     # Parse Immucor
     ########
     def ProcessImmucor(self,OLReader):
         print('Immucor to xml...')
+        # TODO: Do I add validation feedback anywhere?
+        validationFeedback=''
 
         # TODO: These rankings are assigned based on whether the bead is positive. Is 8/6/2 arbitrary? I do not know where that came from.
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
-        col_Immucor = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1,'Allele':-1, 'Raw_Value':-1, 'Assignment ':-1}
+        #col_Immucor = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1,'Allele':-1, 'Raw_Value':-1, 'Assignment ':-1}
+        col_Immucor = {'Sample ID':-1, 'Patient ID':-1, 'Lot ID':-1, 'Run Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw Value':-1}
+        # New column names: Sample ID,Patient ID,Lot ID ,Run Date ,Allele    ,Assignment,Raw Value
         #// Determine where the columns are
         colnames = OLReader.columns.tolist()
         for c in range(0,len(colnames)): 
@@ -294,13 +329,14 @@ class Converter(object):
         for row in OLReader.itertuples():
             # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
             # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
-            if (str(row.Sample_ID).strip() != sampleID or str(row.Patient_Name).strip() != patientID):
+            if (str(row.Sample_ID).strip() != sampleID or str(row.Patient_ID).strip() != patientID):
                 sampleID = str(row.Sample_ID).strip()
-                patientID = str(row.Patient_Name).strip()
+                patientID = str(row.Patient_ID).strip()
                 #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
                 #    patientID) + ' and catalogID:' + str(catalogID))
 
-                sample_test_date = datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")
+                #sample_test_date = datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")
+                sample_test_date = self.formatRunDate(row.Run_Date)
                 # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
                 patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
                     {'sampleID': str(sampleID),
@@ -312,7 +348,7 @@ class Converter(object):
                      #'positive-control-MFI': str(int(round(float(str(row.RawData).replace(',', '.')))))
                      })
             # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
-            if (row.Sample_ID.strip() != sampleID or str(row.Patient_Name).strip() != patientID or row.Lot_ID.strip() != catalogID):
+            if (row.Sample_ID.strip() != sampleID or str(row.Patient_ID).strip() != patientID or row.Lot_ID.strip() != catalogID):
                 catalogID = row.Lot_ID.strip()
                 print('Found a new bead catalog: ' + str(catalogID))
 
@@ -342,6 +378,8 @@ class Converter(object):
         self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
 
+        return validationFeedback
+
 
     def convert(self):
         global manufacturer
@@ -350,10 +388,10 @@ class Converter(object):
         #print('manufacturer', manufacturer)
         if manufacturer == 'OneLambda':
             print('manufacturer', manufacturer)
-            self.ProcessOneLambda(Table)
+            self.validationFeedback=self.ProcessOneLambda(Table)
         elif manufacturer == 'Immucor':
             print('manufacturer', manufacturer)
-            self.ProcessImmucor(Table)
+            self.validationFeedback=self.ProcessImmucor(Table)
         else:
             print('Not known manufacturer, unable to convert file')
             return False
@@ -380,6 +418,8 @@ if __name__ == '__main__':
 
     converter = Converter(csvFile=csvFile,manufacturer=manufacturer,xmlFile=xmlFile)
     converter.convert()
+
+    print('Validation Feedback:' + str(converter.validationFeedback))
 
 
     print('Done. Results written to ' + str(xmlFile))

@@ -3,6 +3,7 @@ s3 = client('s3')
 from sys import exc_info
 import json
 import urllib
+from time import sleep
 
 # For importing common methods, may be in the same directory when deployed as a package
 # TODO: Fix these imports. I think I can remove the try/catch here by changing the project root directory.
@@ -22,6 +23,8 @@ def immunogenic_epitope_handler(event, context):
     print('I found the immunogenic epitope validation handler.')
     # This is the AWS Lambda handler function.
     try:
+        # Sleep 1 second, enough time to make sure the file is available.
+        sleep(1)
         # Get the uploaded file.
         content = json.loads(event['Records'][0]['Sns']['Message'])
 
