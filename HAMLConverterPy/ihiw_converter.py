@@ -360,6 +360,7 @@ class Converter(object):
             if row.Sample_ID is not None:
                 Ranking = 2  #default value, this is negative
                 beadAssignment=str(row.Assignment).strip()
+                print('Checking Bead assignment:' + str(beadAssignment))
                 if beadAssignment == 'Positive':
                     Ranking = switcher['Positive']
                 elif beadAssignment == 'Weak':
