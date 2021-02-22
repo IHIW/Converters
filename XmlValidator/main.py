@@ -164,6 +164,8 @@ if __name__=='__main__':
             testDeleteFile(uploadFileName=args.upload)
         elif (currentTest == 'GETBYFILENAME'):
             testGetUpload(uploadFileName=args.upload)
+        elif (currentTest == 'SCHEMA'):
+            testSchemaValidation(xmlFileName=xmlFilename,schemaFileName=schemaFileName)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 

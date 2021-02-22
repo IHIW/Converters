@@ -303,82 +303,141 @@ class Converter(object):
     ########
     # Parse Immucor
     ########
-    def ProcessImmucor(self,OLReader):
+    def ProcessImmucor(self,OLReader=None, reportingCenterID='?'):
         print('Immucor to xml...')
         # TODO: Do I add validation feedback anywhere?
         validationFeedback=''
 
         # TODO: These rankings are assigned based on whether the bead is positive. Is 8/6/2 arbitrary? I do not know where that came from.
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
-        #col_Immucor = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1,'Allele':-1, 'Raw_Value':-1, 'Assignment ':-1}
-        col_Immucor = {'Sample ID':-1, 'Patient ID':-1, 'Lot ID':-1, 'Run Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw Value':-1}
-        # New column names: Sample ID,Patient ID,Lot ID ,Run Date ,Allele    ,Assignment,Raw Value
+        immucorColumnNames = {'Sample ID':-1, 'Patient ID':-1, 'Lot ID':-1, 'Run Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw Value':-1}
         #// Determine where the columns are
         colnames = OLReader.columns.tolist()
         for c in range(0,len(colnames)): 
             name = colnames[c]
-            col_Immucor[name] =  c 
-            
-        #for each sample id/row start converting
-        data = ET.Element("haml",xmlns='urn:HAML.Namespace')
+            immucorColumnNames[name] =  c
 
-        patientID=''
-        sampleID = ''
-        catalogID = ''
+
+        # Parse Data
+        # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
+        csvData = {}
 
         for row in OLReader.itertuples():
             # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
-            # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
-            if (str(row.Sample_ID).strip() != sampleID or str(row.Patient_ID).strip() != patientID):
-                sampleID = str(row.Sample_ID).strip()
-                patientID = str(row.Patient_ID).strip()
-                #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
-                #    patientID) + ' and catalogID:' + str(catalogID))
+            sampleID = str(row.Sample_ID).strip()
+            patientID = str(row.Patient_ID).strip()
+            sampleTestDate = str(row.Run_Date).strip()
+            lotID = str(row.Lot_ID).strip()
+            allele = str(row.Allele).strip()
+            assignment = str(row.Assignment).strip()
+            rawMfi = str(row.Raw_Value).strip()
 
-                #sample_test_date = datetime.datetime.strptime(row.Run_Date, "%d-%m-%Y").strftime("%Y-%m-%d")
-                sample_test_date = self.formatRunDate(row.Run_Date)
-                # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
-                patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                    {'sampleID': str(sampleID),
-                     'patientID': str(patientID),
-                     'reporting-centerID': 'ReportingCenterID',
-                     # TODO No reporting center in the input file. Should we pass that in somehow?
-                     'sample-test-date': self.formatRunDate(sample_test_date),
-                     #'negative-control-MFI': str(int(round(float(str(row.RawData).replace(',', '.'))))),
-                     #'positive-control-MFI': str(int(round(float(str(row.RawData).replace(',', '.')))))
-                     })
-            # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
-            if (row.Sample_ID.strip() != sampleID or str(row.Patient_ID).strip() != patientID or row.Lot_ID.strip() != catalogID):
-                catalogID = row.Lot_ID.strip()
-                print('Found a new bead catalog: ' + str(catalogID))
+            # Initiate some data structure
+            if sampleID not in csvData:
+                csvData[sampleID]={}
+            if patientID not in csvData[sampleID]:
+                csvData[sampleID][patientID]={}
+            if sampleTestDate not in csvData[sampleID][patientID]:
+                csvData[sampleID][patientID][sampleTestDate]={}
+            if lotID not in csvData[sampleID][patientID][sampleTestDate]:
+                csvData[sampleID][patientID][sampleTestDate][lotID]={}
 
-                current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
-                    {'kit-manufacturer': self.manufacturer,
-                    'lot': catalogID
-                    })
+            # In the case of heterodimers, we must pair alleles.
+            if(allele.startswith('DPA1') or allele.startswith('DPB1') or allele.startswith('DQA1') or allele.startswith('DQB1')):
+                #print ('Heterodimer allele:' + str(allele))
 
-            if row.Sample_ID is not None:
-                Ranking = 2  #default value, this is negative
-                beadAssignment=str(row.Assignment).strip()
-                print('Checking Bead assignment:' + str(beadAssignment))
-                if beadAssignment == 'Positive':
-                    Ranking = switcher['Positive']
-                elif beadAssignment == 'Weak':
-                    Ranking = switcher['Weak']
-                elif beadAssignment == 'Negative':
-                    Ranking = switcher['Negative']
+                unpairedAlleles = [alleleName for alleleName in csvData[sampleID][patientID][sampleTestDate][lotID] if '_UNPAIRED' in alleleName]
+                #print('UNPAIRED alleles:' + str(unpairedAlleles))
+
+                # TODO: Could modify this to check all unpaired alleles instead of just the first...
+                if(len(unpairedAlleles)==0):
+                    # This is the first of a pair. Hopefully.
+                    csvData[sampleID][patientID][sampleTestDate][lotID][allele+'_UNPAIRED'] = (assignment, rawMfi)
+                elif(len(unpairedAlleles)==1):
+                    # This entry should pair with previous unpaired allele. Double check MFI and assignment to be sure.
+                    if(csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0]] ==  (assignment, rawMfi) ):
+                        # print('MATCH!' + str(unpairedAlleles[0]) + ' : ' + str(allele))
+                        # Remove the unpaired allele and store the paired one.
+                        csvData[sampleID][patientID][sampleTestDate][lotID].pop(unpairedAlleles[0])
+                        csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0].replace('_UNPAIRED','~') + allele] = (assignment, rawMfi)
+
+                    else:
+                        validationFeedback += ('Trouble when matching heterodimer alleles, these do not match!:'+ str(unpairedAlleles[0]) + ' : ' + str(allele)  + ';\n')
+                        #raise Exception('These alleles are unmatched!:'+ str(unpairedAlleles[0]) + ' : ' + str(allele) )
                 else:
-                    raise Exception('Problem, What is this bead assignment? I expected Positive/Negative:' + str(beadAssignment))
-                # TODO: Heterodimers are split here. It seems the A and B have the same MFI. Should we combine them into one bead element? Yes.
-                current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
-                {'HLA-allele-specificity':str(row.Allele),
-                    'raw-MFI':str(row.Raw_Value).replace(',','.'),
-                    'Ranking':str(Ranking),
-                })
+                    pass
+                    validationFeedback += ('Trouble when matching heterodimer alleles, multiple unmatched alleles found!:'+ str(unpairedAlleles) + ';\n')
+            else:
+                # These beads do not represent heterodimers. Store normally.
+                csvData[sampleID][patientID][sampleTestDate][lotID][allele] = (assignment, rawMfi)
+
+        # Write XML from that data.
+        # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+        # for each sample id/row start converting
+        data = ET.Element("haml", xmlns='urn:HAML.Namespace')
+        # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
+
+        # Each sampleID/patientID combination gets a patient-antibody-assessment element
+        for sampleID in csvData:
+            for patientID in csvData[sampleID]:
+                for runDate in csvData[sampleID][patientID]:
+
+                    # Get the PC and NC MFIs
+                    # TODO: there may be an edge-case bug here. If there are multiple lot IDs we might have multiple postive and negative control MFIs, may be hidden
+                    for lotID in csvData[sampleID][patientID][runDate]:
+                        if('NC' in csvData[sampleID][patientID][runDate][lotID]):
+                            ncMfi = csvData[sampleID][patientID][runDate][lotID]['NC'][1]
+                        else:
+                            ncMfi = '-1'
+                            validationFeedback += 'Missing negative control for lot ' + str(lotID) + ';\n'
+                        if('PC' in csvData[sampleID][patientID][runDate][lotID]):
+                            pcMfi = csvData[sampleID][patientID][runDate][lotID]['PC'][1]
+                        else:
+                            pcMfi = '-1'
+                            validationFeedback += 'Missing postive control for lot ' + str(lotID) + ';\n'
+
+                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                        {'sampleID': str(sampleID),
+                         'patientID': str(patientID),
+                         'reporting-centerID': str(reportingCenterID),
+                         # TODO No reporting center in the input file. Should we pass that in somehow?
+                         'sample-test-date': self.formatRunDate(runDate),
+                         'negative-control-MFI': str(ncMfi),
+                         'positive-control-MFI': str(pcMfi)
+                         })
+
+                    # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
+                    for lotID in csvData[sampleID][patientID][runDate]:
+                        current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                            {'kit-manufacturer': self.manufacturer,
+                            'lot': lotID
+                            })
+
+                        for allele in csvData[sampleID][patientID][runDate][lotID]:
+
+                            beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
+
+                            # Skip if it's NC or PC, we already printed those values.
+                            if(allele=='NC' and beadAssignment=='NC') or (allele=='PC' and beadAssignment=='PC'):
+                                #print('Skipping this positive/negative control bead.')
+                                pass
+                            else:
+                                #print('Checking Bead assignment:' + str(beadAssignment))
+                                try:
+                                    ranking = switcher[beadAssignment]
+                                except Exception as e:
+                                    validationFeedback += ('I do not understand this bead assignment, I expected Positive/Negative:' + str(beadAssignment) + ';\n')
+                                    ranking = 2  # default value, this is negative
+
+                                current_row_panel_bead = ET.SubElement(current_row_panel, 'bead',
+                                    {'HLA-allele-specificity': str(allele),
+                                    'raw-MFI': str(rawMfi).replace(',', '.'),
+                                    'Ranking': str(ranking),
+                                    })
+
 
         self.xmlData = ET.tostring(data)
         self.prettyPrintXml()
-
         return validationFeedback
 
 
