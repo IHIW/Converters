@@ -58,7 +58,7 @@ def nmdp_validation_handler(event, context):
     try:
         # Sleep 1 second, enough time to make sure the file is available.
         sleep(1)
-        print('This is the event:' + str(event)[0:50])
+        #print('This is the event:' + str(event)[0:50])
 
         content = json.loads(event['Records'][0]['Sns']['Message'])
 

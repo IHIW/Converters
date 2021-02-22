@@ -177,128 +177,131 @@ class Converter(object):
         print('OneLambda to xml...')
         # TODO return validation feedback.
         validationFeedback = ''
-      
-        col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
-                
-        # Determine where the columns are, position
-        colnames = [c.strip('"') for c in OLReader.columns.tolist()] #list colnames file
-        for c in range(0,len(colnames)): 
-            name = colnames[c]
-            col_OneLambda[name] =  c 
-        
-        # Data is the root element.
-        data = ET.Element("haml",xmlns='urn:HAML.Namespace')
-        # OLReader is a pandas DataFrame.
-        # Each row is a namedtuple
-        # The first row contains the negative control info.
-        # The second row contains positive control info.
 
-        # State variable to iterate through. States cycle through negative_control->positive_control->bead_values
-        readerState = 'negative_control'
-        negativeControlRow=None
-        positiveControlRow=None
-        patientID='!!!'
-        sampleID = '!!!'
-        catalogID = ''
+        try:
 
-        #rowlength = OLReader.shape[0]
-        for line, row in enumerate(OLReader.itertuples(),1):
-            if(readerState=='negative_control'):
-                negativeControlRow = row
-                readerState='positive_control'
-            elif(readerState=='positive_control'):
-                positiveControlRow = row
-                readerState = 'bead_values'
+            col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
 
-                currentRowSampleIDName=str(row.SampleIDName).strip()
-                currentRowPatientID=str(row.PatientID).strip()
+            # Determine where the columns are, position
+            colnames = [c.strip('"') for c in OLReader.columns.tolist()] #list colnames file
+            for c in range(0,len(colnames)):
+                name = colnames[c]
+                col_OneLambda[name] =  c
 
-                # In one case the user submitted data that was missing sampleIDs. This shouldn't be accepted.
-                #print('delimiter =(' + self.delimiter + ')')
-                #print('sampleIDName= ' + str(row.SampleIDName))
-                if(currentRowSampleIDName is None or len(currentRowSampleIDName) == 0 or currentRowSampleIDName=='nan'):
-                    # row.SampleIDName='?'
-                    currentRowSampleIDName = '?'
-                    feedbackText = 'Empty SampleIDName found, please provide SampleIDName in every row.'
-                    # Only report this once.
-                    if(feedbackText not in validationFeedback):
-                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+            # Data is the root element.
+            data = ET.Element("haml",xmlns='urn:HAML.Namespace')
+            # OLReader is a pandas DataFrame.
+            # Each row is a namedtuple
+            # The first row contains the negative control info.
+            # The second row contains positive control info.
 
-                if (currentRowPatientID is None or len(currentRowPatientID) == 0 or currentRowPatientID=='nan'):
-                    currentRowPatientID = '?'
-                    feedbackText = 'Empty PatientID found, please provide PatientID in every row.'
-                    # Only report this once.
-                    if (feedbackText not in validationFeedback):
-                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+            # State variable to iterate through. States cycle through negative_control->positive_control->bead_values
+            readerState = 'negative_control'
+            negativeControlRow=None
+            positiveControlRow=None
+            patientID='!!!'
+            sampleID = '!!!'
+            catalogID = ''
+
+            #rowlength = OLReader.shape[0]
+            for line, row in enumerate(OLReader.itertuples(),1):
+                if(readerState=='negative_control'):
+                    negativeControlRow = row
+                    readerState='positive_control'
+                elif(readerState=='positive_control'):
+                    positiveControlRow = row
+                    readerState = 'bead_values'
+
+                    currentRowSampleIDName=str(row.SampleIDName).strip()
+                    currentRowPatientID=str(row.PatientID).strip()
+
+                    # In one case the user submitted data that was missing sampleIDs. This shouldn't be accepted.
+                    #print('delimiter =(' + self.delimiter + ')')
+                    #print('sampleIDName= ' + str(row.SampleIDName))
+                    if(currentRowSampleIDName is None or len(currentRowSampleIDName) == 0 or currentRowSampleIDName=='nan'):
+                        # row.SampleIDName='?'
+                        currentRowSampleIDName = '?'
+                        feedbackText = 'Empty SampleIDName found, please provide SampleIDName in every row.'
+                        # Only report this once.
+                        if(feedbackText not in validationFeedback):
+                            validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+
+                    if (currentRowPatientID is None or len(currentRowPatientID) == 0 or currentRowPatientID=='nan'):
+                        currentRowPatientID = '?'
+                        feedbackText = 'Empty PatientID found, please provide PatientID in every row.'
+                        # Only report this once.
+                        if (feedbackText not in validationFeedback):
+                            validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
 
 
-                # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
-                # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
-                if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID):
-                    sampleID = currentRowSampleIDName
-                    patientID = currentRowPatientID
-                    #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
-                    #    patientID) + ' and catalogID:' + str(catalogID))
+                    # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
+                    # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+                    if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID):
+                        sampleID = currentRowSampleIDName
+                        patientID = currentRowPatientID
+                        #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
+                        #    patientID) + ' and catalogID:' + str(catalogID))
 
-                    # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
-                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                        {'sampleID': str(sampleID),
-                         'patientID': str(patientID),
-                         'reporting-centerID': 'ReportingCenterID',
-                         # TODO No reporting center in the input file. Should we pass that in somehow?
-                         'sample-test-date': self.formatRunDate(row.RunDate),
-                         'negative-control-MFI': str(int(round(float(str(negativeControlRow.RawData).replace(',', '.'))))),
-                         'positive-control-MFI': str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
-                         # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
-                         })
-                # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
-                if (str(row.SampleIDName).strip() != sampleID or str(row.PatientID).strip() != patientID or str(row.CatalogID).strip() != catalogID):
-                    catalogID = str(row.CatalogID).strip()
-                    #print('Found a new bead catalog: ' + str(catalogID))
+                        # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
+                        patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                            {'sampleID': str(sampleID),
+                             'patientID': str(patientID),
+                             'reporting-centerID': 'ReportingCenterID',
+                             # TODO No reporting center in the input file. Should we pass that in somehow?
+                             'sample-test-date': self.formatRunDate(row.RunDate),
+                             'negative-control-MFI': str(int(round(float(str(negativeControlRow.RawData).replace(',', '.'))))),
+                             'positive-control-MFI': str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
+                             # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
+                             })
+                    # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
+                    if (str(row.SampleIDName).strip() != sampleID or str(row.PatientID).strip() != patientID or str(row.CatalogID).strip() != catalogID):
+                        catalogID = str(row.CatalogID).strip()
+                        #print('Found a new bead catalog: ' + str(catalogID))
 
-                    current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
-                          {'kit-manufacturer': self.manufacturer,
-                           'lot': catalogID
-                           })
+                        current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                              {'kit-manufacturer': self.manufacturer,
+                               'lot': catalogID
+                               })
 
-            elif(readerState=='bead_values'):
-                if row.PatientID is None:
-                    # If we get here then there actually might be a problem.
-                    print('Reached the end of the input csv, breaking the loop. This means there was a newline at the end of the .csv, possibly malformed data.')
-                    break
+                elif(readerState=='bead_values'):
+                    if row.PatientID is None:
+                        # If we get here then there actually might be a problem.
+                        print('Reached the end of the input csv, breaking the loop. This means there was a newline at the end of the .csv, possibly malformed data.')
+                        break
 
-                else:
-                    # TODO: Are they going to be delimited by something other than commas? Is that possible?
-                    Specs = row.Specificity.split(",")
-                    Raw = int(round(float(str(row.RawData).replace(',','.'))))
-                    # TODO: We're not assigning the ranking correctly.
-                    #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
-                    Ranking=0
+                    else:
+                        # TODO: Are they going to be delimited by something other than commas? Is that possible?
+                        Specs = row.Specificity.split(",")
+                        Raw = int(round(float(str(row.RawData).replace(',','.'))))
+                        # TODO: We're not assigning the ranking correctly.
+                        #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
+                        Ranking=0
 
-                    # What locus is this data row for?
-                    locusDataRow=''
-                    for currentLocus in Specs:
-                        if(currentLocus != '-'):
-                            if(locusDataRow==''):
-                                # The only (or first) locus encountered.
-                                locusDataRow=currentLocus
+                        # What locus is this data row for?
+                        locusDataRow=''
+                        for currentLocus in Specs:
+                            if(currentLocus != '-'):
+                                if(locusDataRow==''):
+                                    # The only (or first) locus encountered.
+                                    locusDataRow=currentLocus
+                                else:
+                                    # The second locus encountered for the heterodimer.
+                                    locusDataRow=locusDataRow+ '~' + currentLocus
                             else:
-                                # The second locus encountered for the heterodimer.
-                                locusDataRow=locusDataRow+ '~' + currentLocus
-                        else:
-                            pass
+                                pass
 
-                    current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
-                        {'HLA-allele-specificity':str(locusDataRow),
-                            'raw-MFI':str(Raw),
-                            'Ranking':str(Ranking),
-                        })
+                        current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
+                            {'HLA-allele-specificity':str(locusDataRow),
+                                'raw-MFI':str(Raw),
+                                'Ranking':str(Ranking),
+                            })
 
 
-        # create a new XML file with the results
-        self.xmlData = ET.tostring(data)
-        self.prettyPrintXml()
-
+            # create a new XML file with the results
+            self.xmlData = ET.tostring(data)
+            self.prettyPrintXml()
+        except Exception as e:
+            validationFeedback+= 'Exception when reading file:' + str(e) + ';\n'
         return validationFeedback
     ########
     # Parse Immucor
