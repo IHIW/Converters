@@ -262,6 +262,8 @@ def getUploads(token=None, url=None):
         return False
     response = json.loads(responseData)
 
+    #print('uploadListResponse:' + str(response))
+
 
     return response
 

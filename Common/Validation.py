@@ -6,6 +6,9 @@ import datetime
 # pyglstring is a repository of sanity checks written by Bob Milius at NMDP/CIBMTR. Handy.
 from glstring import check
 
+# TODO: Many of these methods can be simplified/refactored. Make a method to check if something is an element in a list
+# TODO: Add the "required" flag to many of these methods.
+
 def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?'):
     # Return an empty string if there is a single file found.
     # Or else return text describing the problem.
@@ -52,22 +55,33 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
             resultsText = resultsText[0:len(resultsText) - 2] + ''
             return resultsText
 
-def validateBoolean(query=None, columnName='?'):
-    queryText=str(query).lower()
+def validateBoolean(query=None, columnName='?', required=True):
+    queryText=str(query).lower().strip()
+
+    if(not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
     # Try to be flexible on this one.
     if queryText in ['y','n','true','false','1','0', '1.0','0.0', 'unknown']:
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Yes/No Boolean value.')
 
-def validateDate(query=None, columnName='?', dateFormat='%Y-%m-%d'):
+def validateDate(query=None, columnName='?', dateFormat='%Y-%m-%d', required=True):
+    queryText = str(query).lower().strip()
+    if(not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
     try:
         dateObject = datetime.datetime.strptime(query, dateFormat)
     except Exception as e:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not match the expected date format (' + str(dateFormat) + ')')
     return ''
 
-def validateBloodGroup(query=None, columnName='?'):
+def validateBloodGroup(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
     # Easiest to just list the blood types, there aren't very many.
     # Potential problem: these won't look right: ("A positive", "Type A", Apos)
     validBloodGroups = ['A','B','O','AB', 'UNKNOWN']
@@ -76,7 +90,11 @@ def validateBloodGroup(query=None, columnName='?'):
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid blood type.')
 
-def validateDonorSourceType(query=None, columnName='?'):
+def validateDonorSourceType(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
     validDonorSourceTypes = ['DCD', 'DBD', 'LIVINGDIRECTED', 'LIVINGRELATED', 'LIVINGUNKNOWN', 'PKE','OTHER']
     if(str(query).upper().replace(' ','').replace('(','').replace(')','') in validDonorSourceTypes):
         return ''
@@ -90,30 +108,44 @@ def validateProzoneType(query=None, columnName='?'):
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid prozone type.')
 
-def validateOrganCategory(query=None, columnName='?'):
+def validateOrganCategory(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
     validOrganCategories = ['KIDNEY', 'HEART', 'LUNG', 'PANCREAS', 'KPD', 'LIVER', 'OTHER']
     if(str(query).upper() in validOrganCategories):
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid organ type.')
 
-def validateOrganStatus(query=None, columnName='?'):
+def validateOrganStatus(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
     validOrganCategories = ['STABLE GRAFT FUNCTION', 'REJECTION','GRAFT LOSS','UNKNOWN']
     if(str(query).upper() in validOrganCategories):
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid organ status.')
 
-def validateMaleFemale(query=None, columnName='?'):
+def validateMaleFemale(query=None, columnName='?', required=True):
     # Expecting a binary sex, either M or F.
     # We're evaluating chromosomes, not making statements about valid genders.
-    queryText = str(query).lower()
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
     if queryText in ['m', 'f', 'male', 'female', 'unknown']:
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not look like a Male/Female value.')
 
-def validateNumber(query=None, columnName='?'):
+def validateNumber(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
     try:
         convertedNumber = float(query)
         return ''
@@ -169,6 +201,8 @@ def getHmlIDsListFromUploads(uploadList=None):
 
 def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=None):
     # TODO: also optionally filter based on files submitted by lab members
+    if not isinstance(projectFilter, list):
+        projectFilter = [projectFilter]
     fileNameList = []
     for upload in uploads:
         #print('upload:' + str(upload))
@@ -177,8 +211,10 @@ def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=
         fileProject = upload['project']['id']
 
         if((fileTypeFilter is None or fileType==fileTypeFilter)
-            and (projectFilter is None or fileProject==projectFilter)):
+            and (projectFilter is None or fileProject in projectFilter)):
             fileNameList.append(fileName)
+
+    print('Uploads of file type ' + str(fileTypeFilter) + ':' + str(fileNameList))
 
     return fileNameList
 

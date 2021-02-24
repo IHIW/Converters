@@ -257,3 +257,9 @@ def createExcelValidationReport(errors=None, inputWorkbookData=None):
     outputWorkbook.close()
 
     return (outputWorkbook, outputWorkbookbyteStream)
+
+def writeExcelToFile(objectBytestream=None, fullFilePath=None):
+    print('Writing it to File: ' + str(fullFilePath))
+    f = open(fullFilePath, "wb")
+    f.write(objectBytestream.getvalue())
+    f.close()

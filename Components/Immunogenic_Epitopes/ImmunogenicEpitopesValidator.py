@@ -138,7 +138,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
         hamlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HAML')
         antibodyCsvUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='ANTIBODY_CSV')
         # Add the antibody_CSV files to the haml file list.
-        hamlUploadList.extend(antibodyCsvUploadList)
+        # TODO: I'm currently ignoring the Antibody CSV files. Is that okay?
+        #hamlUploadList.extend(antibodyCsvUploadList)
 
     except Exception as e:
         print('Exception when getting list of uploads:\n' + str(e) + '\n' + str(exc_info()))
@@ -159,25 +160,25 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
             currentRowValidationResults['recipient_sex'] += Validation.validateMaleFemale(query=dataRow['recipient_sex'], columnName='recipient_sex')
             currentRowValidationResults['recipient_year_of_birth'] += Validation.validateNumber(query=dataRow['recipient_year_of_birth'], columnName='recipient_year_of_birth')
             currentRowValidationResults['recipient_pregnancies'] += Validation.validateBoolean(query=dataRow['recipient_pregnancies'], columnName='recipient_pregnancies')
-            currentRowValidationResults['recipient_transfusions'] += Validation.validateBoolean(query=dataRow['recipient_transfusions'], columnName='recipient_transfusions')
-            currentRowValidationResults['recipient_dialysis_date'] += Validation.validateDate(query=dataRow['recipient_dialysis_date'], columnName='recipient_dialysis_date')
-            currentRowValidationResults['recipient_deceased_date'] += Validation.validateDate(query=dataRow['recipient_deceased_date'], columnName='recipient_deceased_date')
-            currentRowValidationResults['donor_year_of_birth'] += Validation.validateNumber(query=dataRow['donor_year_of_birth'], columnName='donor_year_of_birth')
-            currentRowValidationResults['recipient_blood_group'] += Validation.validateBloodGroup(query=dataRow['recipient_blood_group'], columnName='recipient_blood_group')
-            currentRowValidationResults['donor_source_type'] += Validation.validateDonorSourceType(query=dataRow['donor_source_type'], columnName='donor_source_type')
+            currentRowValidationResults['recipient_transfusions'] += Validation.validateBoolean(query=dataRow['recipient_transfusions'], columnName='recipient_transfusions', required=False)
+            currentRowValidationResults['recipient_dialysis_date'] += Validation.validateDate(query=dataRow['recipient_dialysis_date'], columnName='recipient_dialysis_date', required=False)
+            currentRowValidationResults['recipient_deceased_date'] += Validation.validateDate(query=dataRow['recipient_deceased_date'], columnName='recipient_deceased_date', required=False)
+            currentRowValidationResults['donor_year_of_birth'] += Validation.validateNumber(query=dataRow['donor_year_of_birth'], columnName='donor_year_of_birth', required=False)
+            currentRowValidationResults['recipient_blood_group'] += Validation.validateBloodGroup(query=dataRow['recipient_blood_group'], columnName='recipient_blood_group', required=False)
+            currentRowValidationResults['donor_source_type'] += Validation.validateDonorSourceType(query=dataRow['donor_source_type'], columnName='donor_source_type', required=False)
             currentRowValidationResults['donor_hla'] += Validation.validateHlaGenotypeEntry(query=dataRow['donor_hla'], searchList=hmlUploadList, allowPartialMatch=True, columnName='donor_hla', uploadList=uploadList)
-            currentRowValidationResults['donor_sex'] += Validation.validateMaleFemale(query=dataRow['donor_sex'], columnName='donor_sex')
-            currentRowValidationResults['donor_blood_group'] += Validation.validateBloodGroup(query=dataRow['donor_blood_group'], columnName='donor_blood_group')
+            currentRowValidationResults['donor_sex'] += Validation.validateMaleFemale(query=dataRow['donor_sex'], columnName='donor_sex', required=False)
+            currentRowValidationResults['donor_blood_group'] += Validation.validateBloodGroup(query=dataRow['donor_blood_group'], columnName='donor_blood_group', required=False)
             currentRowValidationResults['transplantation_date'] += Validation.validateDate(query=dataRow['transplantation_date'], columnName='transplantation_date')
-            currentRowValidationResults['transplant_organ_category'] += Validation.validateOrganCategory(query=dataRow['transplant_organ_category'], columnName='transplant_organ_category')
+            currentRowValidationResults['transplant_organ_category'] += Validation.validateOrganCategory(query=dataRow['transplant_organ_category'], columnName='transplant_organ_category', required=False)
             currentRowValidationResults['prozone_pre_tx'] += Validation.validateProzoneType(query=dataRow['prozone_pre_tx'], columnName='prozone_pre_tx')
             currentRowValidationResults['prozone_post_tx'] += Validation.validateProzoneType(query=dataRow['prozone_post_tx'], columnName='prozone_post_tx')
-            currentRowValidationResults['availability_pre_tx'] += Validation.validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx')
-            currentRowValidationResults['availability_post_tx'] += Validation.validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx')
+            currentRowValidationResults['availability_pre_tx'] += Validation.validateBoolean(query=dataRow['availability_pre_tx'], columnName='availability_pre_tx', required=False)
+            currentRowValidationResults['availability_post_tx'] += Validation.validateBoolean(query=dataRow['availability_post_tx'], columnName='availability_post_tx', required=False)
             currentRowValidationResults['date_antibody_pre_tx'] += Validation.validateDate(query=dataRow['date_antibody_pre_tx'], columnName='date_antibody_pre_tx')
             currentRowValidationResults['date_antibody_post_tx'] += Validation.validateDate(query=dataRow['date_antibody_post_tx'], columnName='date_antibody_post_tx')
-            currentRowValidationResults['immune_suppr_post_tx'] += Validation.validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx')
-            currentRowValidationResults['organ_status_post_tx'] += Validation.validateOrganStatus(query=dataRow['organ_status_post_tx'], columnName='organ_status_post_tx')
+            currentRowValidationResults['immune_suppr_post_tx'] += Validation.validateBoolean(query=dataRow['immune_suppr_post_tx'], columnName='immune_suppr_post_tx', required=False)
+            currentRowValidationResults['organ_status_post_tx'] += Validation.validateOrganStatus(query=dataRow['organ_status_post_tx'], columnName='organ_status_post_tx', required=False)
         else:
             # set default values
             for key in getColumnNames(isImmunogenic=isImmunogenic):
