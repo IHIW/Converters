@@ -293,16 +293,20 @@ def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
 
         return uploadList
 
-def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None):
+def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None):
     if(projectIDs is not None and not isinstance(projectIDs, list)):
         projectIDs = [projectIDs]
+
+    if(uploadTypeFilter is not None and not isinstance(uploadTypeFilter, list)):
+        uploadTypeFilter = [uploadTypeFilter]
 
     #print('Checking IDS:' + str(projectIDs))
     if fileName is None:
         print('fileName is none, cannot find any uploads with this parent')
         return None
     else:
-        allUploads=getUploads(token=token,url=url)
+        if(allUploads is None):
+            allUploads=getUploads(token=token,url=url)
 
         #print('Checking keyword ' + fileName + ' against uploads:\n' + str(allUploads))
 
@@ -312,6 +316,7 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
             if(upload['fileName'] is not None
                 and fileName.lower() in str(upload['fileName']).lower()
                 and (projectIDs is None or int(upload['project']['id']) in projectIDs)
+                and (uploadTypeFilter is None or str(upload['type']) in uploadTypeFilter)
             ):
                 uploadList.append(upload)
 

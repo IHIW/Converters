@@ -71,7 +71,7 @@ def immunogenic_epitope_handler(event, context):
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
 
-                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True, projectID=projectID)
+                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=projectID)
                     isValid=(validationResults == 'Valid')
                     print('validation results were retrieved, attempting to set status.')
                     print('ValidationResults:(\n' + str(validationResults) + '\n)')
@@ -84,7 +84,7 @@ def immunogenic_epitope_handler(event, context):
                     print('This is the Non Immunogenic Epitopes project!')
                     excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
                     inputExcelBytes = excelFileObject["Body"].read()
-                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=False, projectID=projectID)
+                    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=False, projectIDs=projectID)
                     isValid=(validationResults == 'Valid')
                     print('validation results were retrieved, attempting to set status.')
                     print('ValidationResults:(\n' + str(validationResults) + '\n)')
@@ -104,7 +104,7 @@ def immunogenic_epitope_handler(event, context):
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
-def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=None):
+def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=None):
     # This method returns a tuple, with (text validation status, inputExcelData, and a list of dictionaries representing row&column-specific error results)
     #print('Validating Epitopes Data Matrix:' + str(excelFile))
     validationErrors=[]
@@ -142,9 +142,9 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectID=Non
 
     try:
         uploadList = IhiwRestAccess.getUploads(token=token, url=url)
-        hmlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HML')
-        hamlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='HAML')
-        antibodyCsvUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectID, fileTypeFilter='ANTIBODY_CSV')
+        hmlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='HML')
+        hamlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='HAML')
+        antibodyCsvUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='ANTIBODY_CSV')
         # Add the antibody_CSV files to the haml file list.
         # TODO: I'm currently ignoring the Antibody CSV files. Is that okay?
         #hamlUploadList.extend(antibodyCsvUploadList)

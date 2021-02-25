@@ -24,7 +24,7 @@ def testValidateImmunogenicEpitopes(args=None):
 
     immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
     dqImmunogenicityProjectNumber = getProjectID(projectName='dq_immunogenicity')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectID=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 
     head, tail = split(args.excel)
@@ -39,7 +39,7 @@ def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
     nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectID=nonImmunogenicEpitopeProjectNumber)
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=nonImmunogenicEpitopeProjectNumber)
     print('Validation Results:\n' + str(validationResults))
 
     head, tail = split(excelFile)
