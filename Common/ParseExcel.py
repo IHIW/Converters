@@ -3,9 +3,15 @@
 # They're not really related to eachother, but this is how I got it to work.
 from xlrd import open_workbook
 from xlrd.sheet import ctype_text
+#from pandas import read_excel
+from openpyxl import load_workbook
 import xlsxwriter
 import io
 
+
+# TODO: This really needs to be upgraded to use openpyxl instead of xlrd.
+#  The disadvantage is xls (old style) documents are only supported in xlrd.
+#  latest versions of xlrd, however, don't support xlsx.
 def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     # Parse and validate excel file against a list of expected column names.
     # Return: a tuple containing:
@@ -29,11 +35,14 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     columnNames.sort()
 
     print('Opening and Parsing excel file:' + str(excelFile))
-    #print('It is of type:' + str(type(excelFile)))
+    print('Excel file is of type:' + str(type(excelFile)))
     print('Comparing against column names:' + str(columnNames))
 
     # Open the workbook
     xlWorkbook = openWorkbook(excelFile)
+
+    # I think it will be an openpyxl workbook object.
+    print('Opened workbook, it is the type:' + str(type(xlWorkbook)))
 
     if(xlWorkbook is not None):
 
@@ -203,6 +212,22 @@ def openWorkbook(excelFile):
         return xlWorkbook
     except Exception as e:
         print('Failed to open Excel file!')
+        print(str(e))
+        if(str(e)== 'Excel xlsx file; not supported'):
+            print('using pandas read_excel function')
+
+            if (type(excelFile) == str):
+                xlWorkbook = load_workbook(excelFile)
+            elif (type(excelFile) == bytes):
+                # Really hope this works...Not sure if openpyxl supports reading from bytestream.
+                # If not, then I can try to downgrade to xlrd 1.2, a bad solution.
+                xlWorkbook = load_workbook(excelFile)
+            else:
+                print('I do not know what type of file this is:' + str(type(excelFile)))
+
+            return xlWorkbook
+
+            # TODO: They broke/deprecated xlsx support this package. Hooray. Try to find a workaround.
         return None
 
 def createBytestreamExcelOutputFile():

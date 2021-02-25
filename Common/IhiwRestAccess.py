@@ -212,10 +212,18 @@ def getUrl(configFileName='validation_config.yml'):
 
 def getToken(url=None, user=None, password=None):
     try:
-        if(user is None or password is None):
+        if(user is None or password is None or len(user)==0 or len(password)==0 ):
             (user, password) = getCredentials()
-        if (url is None):
+        if (url is None or len(url)==0):
             url = getUrl()
+
+        if(user is None or len(user)==0):
+            print('Error when fetching Token. Empty username.')
+            return None
+
+        if(password is None or len(password)==0):
+            print('Error when fetching Token. Empty password.')
+            return None
 
         fullUrl = str(url) + "/api/authenticate"
         body = {'username': user, 'password': password}

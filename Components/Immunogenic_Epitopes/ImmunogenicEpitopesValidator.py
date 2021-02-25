@@ -41,7 +41,15 @@ def immunogenic_epitope_handler(event, context):
             url = IhiwRestAccess.getUrl()
             token = IhiwRestAccess.getToken(url=url)
 
+            if url is None or len(url) == 0:
+                print('Error, I could not find a valid URL!')
+
+            if token is None or len(token) == 0:
+                print('Error, I could not find a valid login token!')
+
+
             # TODO: What if there is no  upload? This will currently probaly just crash. Check if uploadFile is None.
+            # TODO: Indeed. Debug why there is no project.
             uploadFile = IhiwRestAccess.getUploadIfExists(fileName=excelKey, url=url, token=token)
             print('I found this upload object:' + str(uploadFile))
             projectName = uploadFile['project']['name']

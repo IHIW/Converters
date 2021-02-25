@@ -7,8 +7,8 @@
 PROJECT_PATH="/home/bmatern/github/Converters/Components/Immunogenic_Epitopes"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 HANDLER_FILE="ImmunogenicEpitopesValidator.py"
-#LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
-LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
+LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
+#LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
 
 cd $PROJECT_PATH
 
@@ -17,7 +17,8 @@ rm function.zip
 
 # Install package(s)
 source $ENVIRONMENT_PATH"/bin/activate"
-pip install --target ./package xlrd
+pip install --target ./package xlrd==1.2.0
+pip install --target ./package openpyxl
 pip install --target ./package pyyaml
 pip install --target ./package xlsxwriter
 pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
@@ -38,7 +39,7 @@ zip -j -g function.zip ../../Common/IhiwRestAccess.py
 zip -j -g function.zip ../../Common/S3_Access.py
 
 # Zip Config File
-zip -g function.zip ../../validation_config.yml
+zip -g function.zip validation_config.yml
 
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip

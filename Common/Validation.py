@@ -42,6 +42,7 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
         # We should allow this.
         # TODO: These uploads have a parent/child relationship. I should be checking this instead of by the text filename.
         # TODO: This no longer works with the new filename relationship, need to prioritize checking by parent/child.
+        # TODO: I'm not sure if necessary, since I'm only really looking at the HAML files in the validator.
         if(len(matchList) == 2 and (matchList[0] in matchList[1] or matchList[1] in matchList[0])):
             print('In data column ' + str(columnName) + ' For file entry (' + str(query) + '), '
                 + str(len(matchList)) + ' matching files were found, and they appear to be the same converted file:('
