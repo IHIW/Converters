@@ -17,7 +17,8 @@ rm function.zip
 
 # Install package(s)
 source $ENVIRONMENT_PATH"/bin/activate"
-pip install --target ./package xlrd
+pip install --target ./package xlrd==1.2.0
+pip install --target ./package openpyxl
 pip install --target ./package lxml
 pip install --target ./package pyyaml
 pip install --target ./package xlsxwriter
