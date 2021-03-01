@@ -159,14 +159,33 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                     reportedConsensusDescription = 'ReportedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'
                     identifiedSequences[consensusSequenceBlock.reference_sequence_id][reportedConsensusDescription] = str(consensusSequenceBlock.sequence)
 
-                    if(consensusSequenceBlock.variant is not None):
+                    if(consensusSequenceBlock.variant is not None and len(consensusSequenceBlock.variant) > 0):
+                        print('Variants Detected!')
+                        copyRefSeq = referenceLookup[consensusSequenceBlock.reference_sequence_id]
+
                         for variant in consensusSequenceBlock.variant:
-                            print('Variant ID:' + str(variant.id))
+                            print('Variant:' + str(variant))
+                            print('Length Reference:' + str(len(copyRefSeq)))
+                            referenceAtPosition=copyRefSeq[variant.start:variant.end]
+                            print('Comparing....' + str(referenceAtPosition) + ':' + str(variant.reference_bases))
+
+                            # Indices are relative to reference sequence.
+                            # Apply variants
+
+                        constructedConsensus = copyRefSeq[startIndex:endIndex]
+                        constructedConsensusDescription = 'ConstructedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'
+                        identifiedSequences[consensusSequenceBlock.reference_sequence_id][constructedConsensusDescription] = str(constructedConsensus)
+
+
+
                     else:
-                        print('Warning, variant is None.')
-                        print(str(consensusSequenceBlock))
-
-
+                        # No variants.
+                        # TODO: Is this where I validate if extracted reference = consensus?
+                        #  Do I just need to put the extracted reference as a constructed sequence again?
+                        pass
+                        #print('Warning, variant is None for consensus-sequence block ' + str( consensusSequenceBlock.description ) )
+                        #validationFeedback += 'Warning: No variants provided for consensus-sequence block ' + str( consensusSequenceBlock.description ) + ';' + newline
+                        #print(str(consensusSequenceBlock))
 
                 # TODO: For each consensus sequence block
                 # Apply Variants to reference
@@ -181,7 +200,7 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                             outputFile.write('>' + sequenceDescription + newline)
                             outputFile.write(sequence + newline)
                         else:
-                            print('Warning! Reference Sequence is length 0!!!' + sequenceDescription )
+                            print('Warning: Reference Sequence is length 0.' + sequenceDescription )
                         #
 
                     outputFile.close()
@@ -198,8 +217,6 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                     except Exception as e:
                         print('Failed to align sequences:' + alignedClustalOOutputFilename)
                         print(e)
-
-
 
                 # Load consensus sequence blocks.
 
