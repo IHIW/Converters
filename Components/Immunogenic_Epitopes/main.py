@@ -5,7 +5,7 @@ from io import BytesIO
 
 from Common.IhiwRestAccess import setValidationStatus, getProjectID
 from Common.S3_Access import writeFileToS3
-from Common.ParseExcel import parseExcelFile, createExcelValidationReport
+from Common.ParseExcel import parseExcelFile, createExcelValidationReport, writeExcelToFile
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 
@@ -19,25 +19,27 @@ def parseArgs():
 
     return parser.parse_args()
 
-def testValidateImmunogenicEpitopes(excelFile=None):
+def testValidateImmunogenicEpitopes(args=None):
     print('Starting up the immuno epitopes methods.')
 
     immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=True, projectID=immunogenicEpitopeProjectNumber)
+    dqImmunogenicityProjectNumber = getProjectID(projectName='dq_immunogenicity')
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 
-    head, tail = split(excelFile)
-    reportFileName = tail + '.Validation_Report.xlsx'
+    head, tail = split(args.excel)
+    reportFileName = tail.replace('.xlsx', '.Validation_Report.xlsx')
 
     # Commented for testing
     outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
-    writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+    #writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+    writeExcelToFile(fullFilePath=join(head,reportFileName), objectBytestream=outputWorkbookbyteStream)
 
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
     nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectID=nonImmunogenicEpitopeProjectNumber)
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=nonImmunogenicEpitopeProjectNumber)
     print('Validation Results:\n' + str(validationResults))
 
     head, tail = split(excelFile)
@@ -127,7 +129,7 @@ if __name__=='__main__':
         args=parseArgs()
         validatorType =args.validator
         if(validatorType=='IMMUNOGENIC_EPITOPES'):
-            testValidateImmunogenicEpitopes(excelFile=args.excel)
+            testValidateImmunogenicEpitopes(args=args)
         elif (validatorType == 'NON_IMMUNOGENIC_EPITOPES'):
             testValidateNonImmunogenicEpitopes(excelFile=args.excel)
         elif (validatorType == 'IMMUNOGENIC_EPITOPES_PROJECT_REPORT'):

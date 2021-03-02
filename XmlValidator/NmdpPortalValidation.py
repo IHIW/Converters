@@ -5,6 +5,7 @@ import requests
 from sys import exc_info
 from boto3 import client
 import xml.etree.ElementTree as ElementTree
+from time import sleep
 
 try:
     import Common.IhiwRestAccess
@@ -55,7 +56,9 @@ def nmdp_validation_handler(event, context):
     # This is the AWS Lambda handler function.
     xmlKey = None
     try:
-        print('This is the event:' + str(event)[0:50])
+        # Sleep 1 second, enough time to make sure the file is available.
+        sleep(1)
+        #print('This is the event:' + str(event)[0:50])
 
         content = json.loads(event['Records'][0]['Sns']['Message'])
 

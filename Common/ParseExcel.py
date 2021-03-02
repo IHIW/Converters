@@ -3,9 +3,15 @@
 # They're not really related to eachother, but this is how I got it to work.
 from xlrd import open_workbook
 from xlrd.sheet import ctype_text
+#from pandas import read_excel
+from openpyxl import load_workbook
 import xlsxwriter
 import io
 
+
+# TODO: This really needs to be upgraded to use openpyxl instead of xlrd.
+#  The disadvantage is xls (old style) documents are only supported in xlrd.
+#  latest versions of xlrd, however, don't support xlsx.
 def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     # Parse and validate excel file against a list of expected column names.
     # Return: a tuple containing:
@@ -29,105 +35,113 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
     columnNames.sort()
 
     print('Opening and Parsing excel file:' + str(excelFile))
-    #print('It is of type:' + str(type(excelFile)))
+    print('Excel file is of type:' + str(type(excelFile)))
     print('Comparing against column names:' + str(columnNames))
 
     # Open the workbook
     xlWorkbook = openWorkbook(excelFile)
 
-    # Get the first sheet.
-    sheetNames = xlWorkbook.sheet_names()
-    if(len(sheetNames) > 1):
-        # TODO: Handle multiple sheets. Might be necessary in the future.
-        print('Warning! Multiple sheets were detected in this workbook. There should only be one sheet.')
-        print('Sheet Names', sheetNames)
-    xlSheet = xlWorkbook.sheet_by_name(sheetNames[0])
-    print('Sheet name: %s' % xlSheet.name)
+    # I think it will be an openpyxl workbook object.
+    print('Opened workbook, it is the type:' + str(type(xlWorkbook)))
 
-    # First row contains the headers. Make sure we have all the expected headers.
-    headerRow = xlSheet.row(0)
-    # Empty List. this stores the column # in THE EXCEL FILE where the data lives.
-    # Because the excel file might have data in different order for some reason.
-    excelColumnIndexes=[None] * len(columnNames)
-    headerRowErrors= {}
-    for excelColumnIndex, cell in enumerate(headerRow):
-        cellType = ctype_text.get(cell.ctype, 'unknown type')
-        if(cellType != 'text'):
-            print('Warning! I expected the column header to be of type "text" but instead it is:' + cellType)
+    if(xlWorkbook is not None):
 
-        excelColumnName = str(cell.value).lower()
-        headerRow[excelColumnIndex]=excelColumnName # Store the name instead of the cell object for easier parsing.
-        try:
-            columnIndex = columnNames.index(excelColumnName)
-            excelColumnIndexes[columnIndex] = excelColumnIndex
-        except ValueError:
-            headerRowErrors[excelColumnName] = ('Warning! Spreadsheet has an extra column:' + str(excelColumnName))
-    #print('Header Row Error Messages:' + str(headerRowErrors))
+        # Get the first sheet.
+        sheetNames = xlWorkbook.sheet_names()
+        if(len(sheetNames) > 1):
+            # TODO: Handle multiple sheets. Might be necessary in the future.
+            print('Warning! Multiple sheets were detected in this workbook. There should only be one sheet.')
+            print('Sheet Names', sheetNames)
+        xlSheet = xlWorkbook.sheet_by_name(sheetNames[0])
+        print('Sheet name: %s' % xlSheet.name)
 
-    # Check that found all columns. The indexes should not be None, because they were found in the excel document.
-    # TODO: What happens if excel files have multiple columns with the same name? That might not be detected by this.
-    #  Make a test case for this.
-    missingColumns = []
-    for iteratorIndex, excelColumnIndex in enumerate(excelColumnIndexes):
-        if(excelColumnIndex is None):
-            print('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
-            missingColumns.append(columnNames[iteratorIndex])
-            headerRowErrors[columnNames[iteratorIndex]] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
-
-            '''
-            # Column is missing, so we can store this feedback in the first column.
-            firstExcelColumnName = str(headerRow[0])
-            print('This is the first column name:' + str(firstExcelColumnName))
-            headerRowErrors[firstExcelColumnName] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
-            '''
-            # TODO: Store a blank in the data for this column.
-
-
-    #validationErrors.append(headerRowErrors)
-    #print('All column headers were found in the excel file.')
-
-    # Iterate and Store the row data.
-    # Skip the first row, those are headers.
-    # TODO: Store any validation errors? I don't think I found any in here. If there is data missing?
-    for rowIndex in range(1, xlSheet.nrows):
-        #print('Processing excel row (0-based):' + str(rowIndex))
-        currentDataRow = {}
-        currentErrors = {}
-
-        for columnIndex in range(0, xlSheet.ncols):
-            cell = xlSheet.cell(rowIndex, columnIndex)  # Get cell object by row, col
-            cellValue = cell.value
+        # First row contains the headers. Make sure we have all the expected headers.
+        headerRow = xlSheet.row(0)
+        # Empty List. this stores the column # in THE EXCEL FILE where the data lives.
+        # Because the excel file might have data in different order for some reason.
+        excelColumnIndexes=[None] * len(columnNames)
+        headerRowErrors= {}
+        for excelColumnIndex, cell in enumerate(headerRow):
             cellType = ctype_text.get(cell.ctype, 'unknown type')
-            if(columnIndex not in excelColumnIndexes):
-                print('WARNING!!!!!!! i dont have that index(' + str(columnIndex) + '), This probably means that this column contains data with a wrong header.')
-                columnName = headerRow[columnIndex]
-                #print('This is in column ' + str(columnName))
-                currentErrors[columnName] = ('I did not expect to find data for a column named ' + str(columnName))
-                currentDataRow[columnName] = cellValue
-            else:
-                columnName = columnNames[excelColumnIndexes.index(columnIndex)]
-                #print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
-                if(str(cellType)=='number'):
-                    # Passing values as a number causes problems. Integers and number-like text strings get converted to decimal values.
-                    newValue=cellValue
-                    try:
-                        newValue=int(cellValue)
-                        newValue=str(int(cellValue))
-                    except Exception as e:
-                        print('Trouble converting a number-like string into a string format')
-                    cellValue=newValue
-                currentDataRow[columnName] = cellValue
+            if(cellType != 'text'):
+                print('Warning! I expected the column header to be of type "text" but instead it is:' + cellType)
 
-        # TODO: Loop thru missing data, and put a blank there.
-        for missingColumn in missingColumns:
-            currentDataRow[missingColumn] = ''
-            currentErrors[missingColumn] = ('Missing data for column ' + str(missingColumn))
+            excelColumnName = str(cell.value).lower()
+            headerRow[excelColumnIndex]=excelColumnName # Store the name instead of the cell object for easier parsing.
+            try:
+                columnIndex = columnNames.index(excelColumnName)
+                excelColumnIndexes[columnIndex] = excelColumnIndex
+            except ValueError:
+                headerRowErrors[excelColumnName] = ('Warning! Spreadsheet has an extra column:' + str(excelColumnName))
+        #print('Header Row Error Messages:' + str(headerRowErrors))
 
-        dataEntries.append(currentDataRow)
-        validationErrors.append(currentErrors)
+        # Check that found all columns. The indexes should not be None, because they were found in the excel document.
+        # TODO: What happens if excel files have multiple columns with the same name? That might not be detected by this.
+        #  Make a test case for this.
+        missingColumns = []
+        for iteratorIndex, excelColumnIndex in enumerate(excelColumnIndexes):
+            if(excelColumnIndex is None):
+                print('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
+                missingColumns.append(columnNames[iteratorIndex])
+                headerRowErrors[columnNames[iteratorIndex]] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
 
-    print('returning these validationErrors:\n' + str(validationErrors))
-    return (dataEntries, headerRow, validationErrors)
+                '''
+                # Column is missing, so we can store this feedback in the first column.
+                firstExcelColumnName = str(headerRow[0])
+                print('This is the first column name:' + str(firstExcelColumnName))
+                headerRowErrors[firstExcelColumnName] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
+                '''
+                # TODO: Store a blank in the data for this column.
+
+
+        #validationErrors.append(headerRowErrors)
+        #print('All column headers were found in the excel file.')
+
+        # Iterate and Store the row data.
+        # Skip the first row, those are headers.
+        # TODO: Store any validation errors? I don't think I found any in here. If there is data missing?
+        for rowIndex in range(1, xlSheet.nrows):
+            #print('Processing excel row (0-based):' + str(rowIndex))
+            currentDataRow = {}
+            currentErrors = {}
+
+            for columnIndex in range(0, xlSheet.ncols):
+                cell = xlSheet.cell(rowIndex, columnIndex)  # Get cell object by row, col
+                cellValue = cell.value
+                cellType = ctype_text.get(cell.ctype, 'unknown type')
+                if(columnIndex not in excelColumnIndexes):
+                    print('WARNING!!!!!!! i dont have that index(' + str(columnIndex) + '), This probably means that this column contains data with a wrong header.')
+                    columnName = headerRow[columnIndex]
+                    #print('This is in column ' + str(columnName))
+                    currentErrors[columnName] = ('I did not expect to find data for a column named ' + str(columnName))
+                    currentDataRow[columnName] = cellValue
+                else:
+                    columnName = columnNames[excelColumnIndexes.index(columnIndex)]
+                    #print('column ' + columnName + ' has data of type ' + str(cellType) + ' and value ' + str(cellValue))
+                    if(str(cellType)=='number'):
+                        # Passing values as a number causes problems. Integers and number-like text strings get converted to decimal values.
+                        newValue=cellValue
+                        try:
+                            newValue=int(cellValue)
+                            newValue=str(int(cellValue))
+                        except Exception as e:
+                            print('Trouble converting a number-like string into a string format')
+                        cellValue=newValue
+                    currentDataRow[columnName] = cellValue
+
+            # TODO: Loop thru missing data, and put a blank there.
+            for missingColumn in missingColumns:
+                currentDataRow[missingColumn] = ''
+                currentErrors[missingColumn] = ('Missing data for column ' + str(missingColumn))
+
+            dataEntries.append(currentDataRow)
+            validationErrors.append(currentErrors)
+
+        print('returning these validationErrors:\n' + str(validationErrors))
+        return (dataEntries, headerRow, validationErrors)
+    else:
+        print('No workbook data was found for excel file ' + str(excelFile))
+        return (None, None, None)
 
 def parseExcelFile(excelFile=None):
     # I'm determining the headers on the fly here, instead of validating against a list of expected headers.
@@ -186,15 +200,35 @@ def parseExcelFile(excelFile=None):
     return dataEntries
 
 def openWorkbook(excelFile):
-    # print('Opening Workbook...')
-    if (type(excelFile) == str):
-        xlWorkbook = open_workbook(excelFile)
-    elif (type(excelFile) == bytes):
-        xlWorkbook = open_workbook(file_contents=excelFile)
-    else:
-        print('I do not know what type of file this is:' + str(type(excelFile)))
-    # print('Workbook was opened.')
-    return xlWorkbook
+    try:
+        # print('Opening Workbook...')
+        if (type(excelFile) == str):
+            xlWorkbook = open_workbook(excelFile)
+        elif (type(excelFile) == bytes):
+            xlWorkbook = open_workbook(file_contents=excelFile)
+        else:
+            print('I do not know what type of file this is:' + str(type(excelFile)))
+        # print('Workbook was opened.')
+        return xlWorkbook
+    except Exception as e:
+        print('Failed to open Excel file!')
+        print(str(e))
+        if(str(e)== 'Excel xlsx file; not supported'):
+            print('using pandas read_excel function')
+
+            if (type(excelFile) == str):
+                xlWorkbook = load_workbook(excelFile)
+            elif (type(excelFile) == bytes):
+                # Really hope this works...Not sure if openpyxl supports reading from bytestream.
+                # If not, then I can try to downgrade to xlrd 1.2, a bad solution.
+                xlWorkbook = load_workbook(excelFile)
+            else:
+                print('I do not know what type of file this is:' + str(type(excelFile)))
+
+            return xlWorkbook
+
+            # TODO: They broke/deprecated xlsx support this package. Hooray. Try to find a workaround.
+        return None
 
 def createBytestreamExcelOutputFile():
     # Warning: I think you still  need to call workbook.close() after you're done modifying the file. Don't know what bugs this will cause.
@@ -248,3 +282,9 @@ def createExcelValidationReport(errors=None, inputWorkbookData=None):
     outputWorkbook.close()
 
     return (outputWorkbook, outputWorkbookbyteStream)
+
+def writeExcelToFile(objectBytestream=None, fullFilePath=None):
+    print('Writing it to File: ' + str(fullFilePath))
+    f = open(fullFilePath, "wb")
+    f.write(objectBytestream.getvalue())
+    f.close()

@@ -6,7 +6,7 @@ from Bio import SeqIO
 from Bio.Align.Applications import ClustalOmegaCommandline
 from lxml import etree
 import xml.etree.ElementTree as ElementTree
-import pyhml
+
 
 def getSampleIDs(hml=None):
     sampleIDs=[]
@@ -16,6 +16,7 @@ def getSampleIDs(hml=None):
 
 def getHmlid(xmlText=None):
     # HMLID Is apparently not in the hml object, gotta parse it from the text.
+    # TODO: parse the hmlid in pyhml
     #print('getting Hmlid')
     documentRoot = ElementTree.fromstring(xmlText)
     hmlIdNodes = documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}hmlid')
@@ -44,6 +45,9 @@ def getGlStrings(hml=None):
     return glStrings
 
 def parseXmlFromText(xmlText=None, tempDirectory=None):
+    # TODO: pyHML is huge. Im moving the import here so it doesnt crash if I run without this import.
+    import pyhml
+
     #print('Parsing XML Text.')
     # Parse using pyhml
     # pyHml needs an actual file to work in. Write it.
@@ -155,14 +159,33 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                     reportedConsensusDescription = 'ReportedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'
                     identifiedSequences[consensusSequenceBlock.reference_sequence_id][reportedConsensusDescription] = str(consensusSequenceBlock.sequence)
 
-                    if(consensusSequenceBlock.variant is not None):
+                    if(consensusSequenceBlock.variant is not None and len(consensusSequenceBlock.variant) > 0):
+                        print('Variants Detected!')
+                        copyRefSeq = referenceLookup[consensusSequenceBlock.reference_sequence_id]
+
                         for variant in consensusSequenceBlock.variant:
-                            print('Variant ID:' + str(variant.id))
+                            print('Variant:' + str(variant))
+                            print('Length Reference:' + str(len(copyRefSeq)))
+                            referenceAtPosition=copyRefSeq[variant.start:variant.end]
+                            print('Comparing....' + str(referenceAtPosition) + ':' + str(variant.reference_bases))
+
+                            # Indices are relative to reference sequence.
+                            # Apply variants
+
+                        constructedConsensus = copyRefSeq[startIndex:endIndex]
+                        constructedConsensusDescription = 'ConstructedConsensus_' + consensusSequenceBlock.reference_sequence_id + '_' + consensusSequenceBlock.description + '_(' + str(consensusSequenceBlock.start) + ':' + str(consensusSequenceBlock.end) + ')'
+                        identifiedSequences[consensusSequenceBlock.reference_sequence_id][constructedConsensusDescription] = str(constructedConsensus)
+
+
+
                     else:
-                        print('Warning, variant is None.')
-                        print(str(consensusSequenceBlock))
-
-
+                        # No variants.
+                        # TODO: Is this where I validate if extracted reference = consensus?
+                        #  Do I just need to put the extracted reference as a constructed sequence again?
+                        pass
+                        #print('Warning, variant is None for consensus-sequence block ' + str( consensusSequenceBlock.description ) )
+                        #validationFeedback += 'Warning: No variants provided for consensus-sequence block ' + str( consensusSequenceBlock.description ) + ';' + newline
+                        #print(str(consensusSequenceBlock))
 
                 # TODO: For each consensus sequence block
                 # Apply Variants to reference
@@ -177,7 +200,7 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                             outputFile.write('>' + sequenceDescription + newline)
                             outputFile.write(sequence + newline)
                         else:
-                            print('Warning! Reference Sequence is length 0!!!' + sequenceDescription )
+                            print('Warning: Reference Sequence is length 0.' + sequenceDescription )
                         #
 
                     outputFile.close()
@@ -194,8 +217,6 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                     except Exception as e:
                         print('Failed to align sequences:' + alignedClustalOOutputFilename)
                         print(e)
-
-
 
                 # Load consensus sequence blocks.
 
@@ -221,6 +242,34 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
     return isValid, validationFeedback
 
 
+
+
+def parseHamlFileForBeadData(hamlFileName= None,s3=None, bucket=None):
+    beadData={}
+
+    try:
+        xmlFileObject = s3.get_object(Bucket=bucket, Key=hamlFileName)
+    except Exception as err:
+        print('Failed loading HAML data for key ' + str(hamlFileName))
+        return beadData
+
+    xmlText = xmlFileObject["Body"].read()
+    xmlParser = etree.XMLParser()
+    try:
+        xmlTree = etree.fromstring(xmlText, xmlParser)
+
+        for element in xmlTree.iter("*"):
+            #print('Element Tag:' + str(element.tag))
+            if (str(element.tag) == str('{urn:HAML.Namespace}bead')):
+                #print('Found bead!:' + str(element))
+                specificity=element.get('HLA-allele-specificity')
+                mfi=element.get('raw-MFI')
+                beadData[specificity] = str(mfi)
+
+    except etree.XMLSyntaxError as err:
+        print('!!!!Could not parse haml file!')
+
+    return beadData
 
 
 def getGlStringFromHml(hmlFileName=None, s3=None, bucket=None):

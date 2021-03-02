@@ -96,7 +96,7 @@ def testSetValidationResults():
         print('FAILED to set validation status!')
 
 
-def testHmlParser(xmlFileName=None, outputDirectory=None):
+def testHmlParser(xmlFileName=None, outputDirectory=None, alignSequences=False):
     print('Testing the HML Parser with filename:' + str(xmlFileName))
     xmlText = open(xmlFileName, 'r').read()
     #print('xmlText:\n' + str(xmlText))
@@ -116,7 +116,7 @@ def testHmlParser(xmlFileName=None, outputDirectory=None):
     # Write some data from the HML to file (These are named based on sample ID)
     hmlObject.tobiotype(outputDirectory, dtype='fasta', by='subject')
     xmlDirectory=join(getcwd(),'XmlValidator/xml')
-    alignSequences=True
+
     isValid, validationResults = ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory, alignSequences=alignSequences)
     print('IsValid:' + str(isValid))
     print('validationResults:' + str(validationResults))
@@ -159,11 +159,13 @@ if __name__=='__main__':
             makedirs(outputDirectory)
 
         if (currentTest=='HMLPARSER'):
-            testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory)
+            testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory, alignSequences=True)
         elif(currentTest=='DELETEFILE'):
             testDeleteFile(uploadFileName=args.upload)
         elif (currentTest == 'GETBYFILENAME'):
             testGetUpload(uploadFileName=args.upload)
+        elif (currentTest == 'SCHEMA'):
+            testSchemaValidation(xmlFileName=xmlFilename,schemaFileName=schemaFileName)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 
