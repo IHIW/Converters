@@ -38,8 +38,8 @@ def csv_to_haml_lambda_handler(event, context):
 
         # Login token for rest methods...
         print('Getting a login token and URL...')
-        (user, password) = getCredentials(configFileName='converter_config.yml')
-        url = getUrl(configFileName='converter_config.yml')
+        (user, password) = getCredentials(configFileName='validation_config.yml')
+        url = getUrl(configFileName='validation_config.yml')
         token = getToken(user=user, password=password, url=url)
 
         # Wrapper, exception handling

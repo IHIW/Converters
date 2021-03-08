@@ -7,8 +7,8 @@
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 HANDLER_FILE="SchemaValidation.py"
-#LAMBDA_FUNCTION="validateXmlSchemaStaging"
-LAMBDA_FUNCTION="validateXmlSchemaProd"
+LAMBDA_FUNCTION="validateXmlSchemaStaging"
+#LAMBDA_FUNCTION="validateXmlSchemaProd"
 
 cd $PROJECT_PATH
 

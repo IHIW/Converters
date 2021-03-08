@@ -8,8 +8,8 @@ except Exception as e:
 
 def testRestAccess():
     print('Testing REST access to the website')
-    (user, password) = getCredentials(configFileName='converter_config.yml')
-    url = getUrl(configFileName='converter_config.yml')
+    (user, password) = getCredentials(configFileName='validation_config.yml')
+    url = getUrl(configFileName='validation_config.yml')
     token = getToken(user=user, password=password, url=url)
 
     response = createConvertedUploadObject(newUploadFileName='childfilename4.xlsx', newUploadFileType='XLSX'
