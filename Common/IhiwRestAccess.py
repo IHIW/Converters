@@ -85,6 +85,11 @@ def createConvertedUploadObject(newUploadFileName=None, newUploadFileType=None, 
     if(token is None):
         token = getToken(url=url)
 
+    if token is None or len(token) < 1:
+        print('Error. No login token available when creating converted upload object.')
+        return None
+
+
     try:
         fullUrl = str(url) + '/api/uploads/copyupload'
 
@@ -256,6 +261,10 @@ def getUploads(token=None, url=None):
     if(token is None):
         token = getToken(url=url)
 
+    if token is None or len(token) < 1:
+        print('Error. No login token available when getting uploads.')
+        return None
+
     fullUrl = str(url) + '/api/uploads'
     body = {}
 
@@ -300,6 +309,11 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
     if(uploadTypeFilter is not None and not isinstance(uploadTypeFilter, list)):
         uploadTypeFilter = [uploadTypeFilter]
 
+    if token is None or len(token) < 1:
+        print('Error. No login token available when getting uploads by partial keyword.')
+        return None
+
+
     #print('Checking IDS:' + str(projectIDs))
     if fileName is None:
         print('fileName is none, cannot find any uploads with this parent')
@@ -339,6 +353,11 @@ def getUploadByFilename(token=None, url=None, fileName=None):
         token = getToken(url=url)
     print('Getting upload by filename:' + str(fileName))
 
+    if token is None or len(token) < 1:
+        print('Error. No login token available when getting upload by Filename')
+        return None
+
+
     # Encoding the file name, in case it contains spaces
     fullUrl = str(url) + '/api/uploads/getbyfilename/' + urllib.parse.quote(fileName)
     #print('FullUrl:' +str(fullUrl))
@@ -372,6 +391,11 @@ def deleteUpload(token=None, url=None, uploadId=None):
     if(token is None):
         token = getToken(url=url)
     print('deleting upload by id:' + str(uploadId))
+
+    if token is None or len(token) < 1:
+        print('Error. No login token available when Deleting upload.')
+        return None
+
 
     fullUrl = str(url) + '/api/uploads/' + str(uploadId)
     body = {}

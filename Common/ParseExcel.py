@@ -1,10 +1,13 @@
 # Writing  uses the xlsxwriter module.
 # Reading uses the xlrd module.
 # They're not really related to eachother, but this is how I got it to work.
+# TODO: Get rid of xlrd, can i convert this to just openpyxl
 from xlrd import open_workbook
 from xlrd.sheet import ctype_text
 #from pandas import read_excel
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
+from openpyxl.styles import PatternFill
+from tempfile import NamedTemporaryFile
 import xlsxwriter
 import io
 
@@ -288,3 +291,103 @@ def writeExcelToFile(objectBytestream=None, fullFilePath=None):
     f = open(fullFilePath, "wb")
     f.write(objectBytestream.getvalue())
     f.close()
+
+
+def splitGlString(glString=None):
+    # A bit of a hack. Replace separators then split.
+    modifiedString = glString.replace('^','|').replace('+','|').replace('/','|').replace('HLA-','')
+    alleles = modifiedString.split('|')
+    print('Returning allele list:' + str(alleles))
+    return alleles
+
+
+def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, preTxFileName='PreTXFileName', postTxFileName='PostTXFileName', recipPreTxAntibodyData=None, recipPostTxAntibodyData=None, transReport=None, reportName=None):
+    if(reportName is None):
+        reportName = 'Transplantation Report'
+
+    # We can add a tab to existing report or create a new one.
+    if(transReport is None):
+        transReport = Workbook()
+        reportWorksheet = transReport.active
+        reportWorksheet.title = reportName
+    else:
+        reportWorksheet = transReport.create_sheet(reportName)
+    # TODO: Make this an excel file.  I want to highlight the donor/recip typing with colors.
+    # TODO: parse the GL Strings for this data. All alleles present in GL String, regardless of ambiguities.
+    #  Remove HLA-
+    donorAlleles = splitGlString(glString=donorTyping)
+    recipAlleles = splitGlString(glString=recipientTyping)
+
+    donorColor='FF7D7D' # Red
+    recipientColor='5555FF' # Blue
+    bothColor='FFBDFF' # Purple
+    blankColor='FFFFFF' # White
+
+
+    reportWorksheet['A1'] = 'Donor Typing:'
+    reportWorksheet['B1'] = str(donorTyping)
+    reportWorksheet['A1'].fill = PatternFill("solid", fgColor=donorColor)
+    reportWorksheet['A2'] = 'Recipient Typing:'
+    reportWorksheet['B2'] = str(recipientTyping)
+    reportWorksheet['A2'].fill = PatternFill("solid", fgColor=recipientColor)
+    reportWorksheet['A5'] = 'PreTX Bead Data'
+    reportWorksheet['B5'] = preTxFileName
+    reportWorksheet['D5'] = 'PostTX Bead Data'
+    reportWorksheet['E5'] = postTxFileName
+
+    combinedSpecificities = sorted(list(set(recipPreTxAntibodyData.keys()).union(set(recipPostTxAntibodyData.keys()))))
+
+    currentRow = 5 # Start at 6
+    for specificity in combinedSpecificities:
+        currentRow += 1
+
+        if specificity in recipPreTxAntibodyData.keys():
+            reportWorksheet['A' + str(currentRow)] = specificity
+            reportWorksheet['B' + str(currentRow)] = str(recipPreTxAntibodyData[specificity])
+        else:
+            reportWorksheet['A' + str(currentRow)] = specificity
+            reportWorksheet['B' + str(currentRow)] = '?'
+
+        if specificity in recipPostTxAntibodyData.keys():
+            reportWorksheet['D' + str(currentRow)] = specificity
+            reportWorksheet['E' + str(currentRow)] = str(recipPostTxAntibodyData[specificity])
+        else:
+            reportWorksheet['D' + str(currentRow)] = specificity
+            reportWorksheet['E' + str(currentRow)] = '?'
+
+        # Color Cells?
+        specificityDonorMatch = typingMatch(alleleList=donorAlleles, queryAllele=specificity)
+        specificityRecipientMatch = typingMatch(alleleList=recipAlleles, queryAllele=specificity)
+
+        if(specificityDonorMatch and specificityRecipientMatch):
+            cellColor = bothColor
+        elif (specificityDonorMatch and not specificityRecipientMatch):
+            cellColor = donorColor
+        elif(not specificityDonorMatch and  specificityRecipientMatch):
+            cellColor = recipientColor
+        else:
+            cellColor = blankColor
+
+        reportWorksheet['A' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+        #reportWorksheet['B' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+        reportWorksheet['D' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+        #reportWorksheet['E' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+
+    # TODO: Set Column Widths.
+    # TODO: Set Height of first two rows.
+    # TODO: Lock first 5 rows.
+
+    # Return it as a stream, so we can consume it or save it later.
+    with NamedTemporaryFile() as tmp:
+        transReport.save(tmp.name)
+        tmp.seek(0)
+        stream = tmp.read()
+        return stream
+
+
+def typingMatch(alleleList=None, queryAllele=None):
+    for allele in alleleList:
+        if(allele.strip().upper().replace('HLA-','') in queryAllele.strip().upper().replace('HLA-','') ):
+            return True
+    return False
+

@@ -1,7 +1,7 @@
 from boto3 import client
 #import json
 #import urllib
-
+from Common.ParseExcel import createExcelTransplantationReport
 
 try:
     import IhiwRestAccess
@@ -50,7 +50,7 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     # TODO: This should be a standalone upload, not a child upload. Need some work on this part.
 
     # TODO: This will also make multiple copies. I should check if the report file already exists and/or (probably) overwrite it
-    parentUploadName = '1592_1613480914383_OTHER_ProjectReport'
+    parentUploadName = '1497_1615205312528_PROJECT_DATA_MATRIX_ProjectReport'
     url = IhiwRestAccess.getUrl()
     token = IhiwRestAccess.getToken(url=url)
 
@@ -77,41 +77,11 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     else:
         raise Exception('Could not create login token when creating upload entries for report files.')
 
-
-
-
-
-
-def getTransplantationReportText(donorTyping=None, recipientTyping=None, recipHamlPreTxFilename=None, recipHamlPostTxFilename=None, s3=None, bucket=None):
-    # TODO: Make this an excel file.  I want to highlight the donor/recip typing with colors.
-    separator=','
-    newline='\n'
-    reportText=''
-
-    reportText+= 'DonorTyping:' + separator + str(donorTyping) + newline
-    reportText += 'RecipientTyping:' + separator + str(recipientTyping) + newline
-
-
+def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilename=None, recipHamlPostTxFilename=None, s3=None, bucket=None):
     recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPreTxFilename, s3=s3, bucket=bucket)
     recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPostTxFilename, s3=s3, bucket=bucket)
-
-    # Header
-    reportText += newline + newline + 'PreTX_Bead_Data' + separator + recipHamlPreTxFilename + separator + separator + 'PostTX_BeadData' + separator + recipHamlPostTxFilename + newline
-    combinedSpecificities = sorted(list(set(recipPreTxAntibodyData.keys()).union(set(recipPostTxAntibodyData.keys()))))
-
-    for specificity in combinedSpecificities:
-        if specificity in recipPreTxAntibodyData.keys():
-            reportText += specificity + separator + str(recipPreTxAntibodyData[specificity]) + separator + separator
-        else:
-            reportText += separator + separator + separator
-
-        if specificity in recipPostTxAntibodyData.keys():
-            reportText += specificity + separator + str(recipPostTxAntibodyData[specificity]) + newline
-        else:
-            reportText += newline
-
-    return reportText
-
+    transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData)
+    return transplantationReportSpreadsheet
 
 def createImmunogenicEpitopesReport(bucket=None):
     print('Creating an Immunogenic Epitopes Submission Report.')
@@ -263,8 +233,8 @@ def createImmunogenicEpitopesReport(bucket=None):
                         outputWorksheet.write(cellIndex, dataLine[header])
 
                 # TODO: make these excel files with highlighting.
-                transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(dataLineIndex+2) + '.csv'
-                transplantationReportText = getTransplantationReportText(donorTyping=donorGlString, recipientTyping=recipientGlString, recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName ,s3=s3, bucket=bucket)
+                transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(dataLineIndex+2) + '.xlsx'
+                transplantationReportText = getTransplantationReportSpreadsheet(donorTyping=donorGlString, recipientTyping=recipientGlString, recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName ,s3=s3, bucket=bucket)
                 transplantationReportFiles[transplantationReportFileName]=transplantationReportText
         else:
             print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']) )
