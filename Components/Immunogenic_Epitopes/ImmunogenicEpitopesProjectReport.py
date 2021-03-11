@@ -80,7 +80,7 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
 def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilename=None, recipHamlPostTxFilename=None, s3=None, bucket=None):
     recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPreTxFilename, s3=s3, bucket=bucket)
     recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPostTxFilename, s3=s3, bucket=bucket)
-    transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData)
+    transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
     return transplantationReportSpreadsheet
 
 def createImmunogenicEpitopesReport(bucket=None):

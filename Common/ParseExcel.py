@@ -321,19 +321,19 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     donorColor='FF7D7D' # Red
     recipientColor='5555FF' # Blue
     bothColor='FFBDFF' # Purple
-    blankColor='FFFFFF' # White
+    blankColor=None#'FFFFFF' # White
 
 
-    reportWorksheet['A1'] = 'Donor Typing:'
-    reportWorksheet['B1'] = str(donorTyping)
+    reportWorksheet['A1'] = 'Donor Typing: ' + str(donorTyping)
+    #reportWorksheet['B1'] = str(donorTyping)
     reportWorksheet['A1'].fill = PatternFill("solid", fgColor=donorColor)
-    reportWorksheet['A2'] = 'Recipient Typing:'
-    reportWorksheet['B2'] = str(recipientTyping)
+    reportWorksheet['A2'] = 'Recipient Typing: ' + str(recipientTyping)
+    #reportWorksheet['B2'] = str(recipientTyping)
     reportWorksheet['A2'].fill = PatternFill("solid", fgColor=recipientColor)
-    reportWorksheet['A5'] = 'PreTX Bead Data'
-    reportWorksheet['B5'] = preTxFileName
-    reportWorksheet['D5'] = 'PostTX Bead Data'
-    reportWorksheet['E5'] = postTxFileName
+    reportWorksheet['A4'] = 'PreTX Bead Data'
+    reportWorksheet['A5'] = preTxFileName
+    reportWorksheet['D4'] = 'PostTX Bead Data'
+    reportWorksheet['D5'] = postTxFileName
 
     combinedSpecificities = sorted(list(set(recipPreTxAntibodyData.keys()).union(set(recipPostTxAntibodyData.keys()))))
 
@@ -368,14 +368,26 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
         else:
             cellColor = blankColor
 
-        reportWorksheet['A' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
-        #reportWorksheet['B' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
-        reportWorksheet['D' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
-        #reportWorksheet['E' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+        if cellColor is not None:
+            reportWorksheet['A' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+            #reportWorksheet['B' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+            reportWorksheet['D' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
+            #reportWorksheet['E' + str(currentRow)].fill = PatternFill("solid", fgColor=cellColor)
 
-    # TODO: Set Column Widths.
-    # TODO: Set Height of first two rows.
-    # TODO: Lock first 5 rows.
+
+    # Some formatting to make things pretty
+    reportWorksheet.column_dimensions['A'].width = 35
+    reportWorksheet.column_dimensions['B'].width = 15
+    reportWorksheet.column_dimensions['C'].width = 2
+    reportWorksheet.column_dimensions['D'].width = 35
+    reportWorksheet.column_dimensions['E'].width = 15
+    reportWorksheet.merge_cells('A1:Z1')
+    reportWorksheet.merge_cells('A2:Z2')
+    reportWorksheet.merge_cells('A4:B4')
+    reportWorksheet.merge_cells('A5:B5')
+    reportWorksheet.merge_cells('D4:E4')
+    reportWorksheet.merge_cells('D5:E5')
+    reportWorksheet.freeze_panes = 'A6'
 
     # Return it as a stream, so we can consume it or save it later.
     with NamedTemporaryFile() as tmp:
