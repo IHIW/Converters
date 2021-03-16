@@ -318,9 +318,9 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     donorAlleles = splitGlString(glString=donorTyping)
     recipAlleles = splitGlString(glString=recipientTyping)
 
-    donorColor='FF7D7D' # Red
-    recipientColor='5555FF' # Blue
-    bothColor='FFBDFF' # Purple
+    donorColor='FFC2B3' # Red
+    recipientColor='99FFFF' # Blue
+    bothColor='E6CCFF' # Purple
     blankColor=None#'FFFFFF' # White
 
 
