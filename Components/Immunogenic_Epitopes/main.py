@@ -39,7 +39,7 @@ def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
     nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=nonImmunogenicEpitopeProjectNumber)
+    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=[nonImmunogenicEpitopeProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 
     head, tail = split(excelFile)
@@ -47,7 +47,8 @@ def testValidateNonImmunogenicEpitopes(excelFile=None):
 
     # Commented for testing
     outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
-    writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+    #writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+    writeExcelToFile(fullFilePath=join(head, reportFileName), objectBytestream=outputWorkbookbyteStream)
 
 
 def testSetValidationResults(args=None):

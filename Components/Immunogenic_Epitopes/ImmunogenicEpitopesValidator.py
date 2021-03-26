@@ -191,12 +191,15 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
             # set default values
             for key in getColumnNames(isImmunogenic=isImmunogenic):
                 currentRowValidationResults[key] = (currentRowValidationResults[key] if (key in currentRowValidationResults.keys()) else '')
-            currentRowValidationResults['hla_recipient'] += Validation.validateHlaGenotypeEntry(query=dataRow['hla_recipient'], searchList=hmlUploadList, allowPartialMatch=True, columnName='hla_recipient', uploadList=uploadList)
-            currentRowValidationResults['haml_recipient'] += Validation.validateUniqueEntryInList(query=dataRow['haml_recipient'], searchList=hamlUploadList, allowPartialMatch=True, columnName='haml_recipient')
-            currentRowValidationResults['prozone'] += Validation.validateBoolean(query=dataRow['prozone'], columnName='prozone')
-            currentRowValidationResults['availability'] += Validation.validateBoolean(query=dataRow['availability'], columnName='availability')
-            currentRowValidationResults['gender_recipient'] += Validation.validateMaleFemale(query=dataRow['gender_recipient'], columnName='gender_recipient')
-            currentRowValidationResults['age_recipient_tx'] += Validation.validateNumber(query=dataRow['age_recipient_tx'], columnName='age_recipient_tx')
+            currentRowValidationResults['recipient_hla'] += Validation.validateHlaGenotypeEntry(query=dataRow['recipient_hla'], searchList=hmlUploadList, allowPartialMatch=True, columnName='recipient_hla', uploadList=uploadList)
+            currentRowValidationResults['recipient_haml'] += Validation.validateUniqueEntryInList(query=dataRow['recipient_haml'], searchList=hamlUploadList, allowPartialMatch=True, columnName='recipient_haml')
+            currentRowValidationResults['prozone'] += Validation.validateProzoneType(query=dataRow['prozone'], columnName='prozone')
+            currentRowValidationResults['sample_availability'] += Validation.validateBoolean(query=dataRow['sample_availability'], columnName='sample_availability')
+            currentRowValidationResults['age_recipient_years'] += Validation.validateNumber(query=dataRow['age_recipient_years'], columnName='age_recipient_years', required=False)
+            currentRowValidationResults['recipient_sex'] += Validation.validateMaleFemale(query=dataRow['recipient_sex'], columnName='recipient_sex', required=False)
+            currentRowValidationResults['recipient_pregnancies'] += Validation.validateBoolean(query=dataRow['recipient_pregnancies'], columnName='recipient_pregnancies', required=False)
+            currentRowValidationResults['recipient_transfusions'] += Validation.validateBoolean(query=dataRow['recipient_transfusions'], columnName='recipient_transfusions', required=False)
+            currentRowValidationResults['recipient_transplantations'] += Validation.validateBoolean(query=dataRow['recipient_transplantations'], columnName='recipient_transplantations', required=False)
         validationErrors[dataRowIndex] = currentRowValidationResults
     validationFeedback = ''
     for validationErrorRow in validationErrors:
@@ -240,12 +243,16 @@ def getColumnNames(isImmunogenic=True):
             , 'organ_status_post_tx'
         ]
     else:
-        return ['hla_recipient'
-            , 'haml_recipient'
+        return ['recipient_hla'
+            , 'recipient_haml'
             , 'prozone'
-            , 'availability'
-            , 'gender_recipient'
-            , 'age_recipient_tx'
+            , 'sample_availability'
+            , 'age_recipient_years'
+            , 'recipient_sex'
+            , 'recipient_pregnancies'
+            , 'recipient_transfusions'
+            , 'recipient_transplantations'
+
         ]
 
 def createValidationReport(isReportValid=None, uploadFileName=None,errors=None, inputWorkbookData=None, bucket=None, token=None, url=None, validatorType=None):

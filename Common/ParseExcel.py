@@ -4,7 +4,6 @@
 # TODO: Get rid of xlrd, can i convert this to just openpyxl
 from xlrd import open_workbook
 from xlrd.sheet import ctype_text
-#from pandas import read_excel
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import PatternFill
 from tempfile import NamedTemporaryFile
@@ -259,28 +258,32 @@ def createExcelValidationReport(errors=None, inputWorkbookData=None):
     headerStyle = outputWorkbook.add_format({'bold': True})
     errorStyle = outputWorkbook.add_format({'bg_color': 'red'})
     # Write headers on new sheet.
-    sheetHeaders = inputWorkbookData[0].keys()
-    print('These are the headers:' + str(sheetHeaders))
-    for headerIndex, header in enumerate(sheetHeaders):
-        cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + '1'
-        outputWorksheet.write(cellIndex, header, headerStyle)
-    # Loop input Workbook data
-    for dataLineIndex, dataLine in enumerate(inputWorkbookData):
-        #print('Copying this line:' + str(dataLine))
-
+    if(inputWorkbookData is not None and len(inputWorkbookData)>0):
+        sheetHeaders = inputWorkbookData[0].keys()
+        print('These are the headers:' + str(sheetHeaders))
         for headerIndex, header in enumerate(sheetHeaders):
-            cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + str(dataLineIndex + 2)
+            cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + '1'
+            outputWorksheet.write(cellIndex, header, headerStyle)
+        # Loop input Workbook data
+        for dataLineIndex, dataLine in enumerate(inputWorkbookData):
+            #print('Copying this line:' + str(dataLine))
 
-            # Was there an error in this cell? Highlight it red and add error message
-            if (header in errors[dataLineIndex].keys() and len(str(errors[dataLineIndex][header]))>0):
-                outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
-                outputWorksheet.write_comment(cellIndex, errors[dataLineIndex][header])
-            else:
-                outputWorksheet.write(cellIndex, dataLine[header])
+            for headerIndex, header in enumerate(sheetHeaders):
+                cellIndex = getColumnNumberAsString(base0ColumnNumber=headerIndex) + str(dataLineIndex + 2)
 
-    # Widen the columns a bit so we can read them.
-    outputWorksheet.set_column('A:' + getColumnNumberAsString(len(sheetHeaders) - 1), 30)
-    # Freeze the header row.
+                # Was there an error in this cell? Highlight it red and add error message
+                if (header in errors[dataLineIndex].keys() and len(str(errors[dataLineIndex][header]))>0):
+                    outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
+                    outputWorksheet.write_comment(cellIndex, errors[dataLineIndex][header])
+                else:
+                    outputWorksheet.write(cellIndex, dataLine[header])
+
+        # Widen the columns a bit so we can read them.
+        outputWorksheet.set_column('A:' + getColumnNumberAsString(len(sheetHeaders) - 1), 30)
+        # Freeze the header row.
+    else:
+        outputWorksheet.write('A1','No Data Detected in Input File!!', errorStyle)
+        outputWorksheet.set_column('A:A', 30)
     outputWorksheet.freeze_panes(1, 0)
     outputWorkbook.close()
 
