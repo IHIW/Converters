@@ -25,6 +25,9 @@ def testValidateImmunogenicEpitopes(args=None):
 
     immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
     dqImmunogenicityProjectNumber = getProjectID(projectName='dq_immunogenicity')
+
+    # TODO: Haven't updated this to match the non-immu epitopes yet
+    raise Exception ('Update this method to match non-immu.')
     (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 

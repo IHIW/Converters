@@ -304,6 +304,9 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     if(reportName is None):
         reportName = 'Transplantation Report'
 
+    preTxAntibodies={}
+    postTxAntibodies={}
+
     # We can add a tab to existing report or create a new one.
     if(transReport is None):
         transReport = Workbook()
@@ -340,9 +343,15 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     for specificity in combinedSpecificities:
         currentRow += 1
 
+        # Color Cells?
+        specificityDonorMatch = typingMatch(alleleList=donorAlleles, queryAllele=specificity)
+        specificityRecipientMatch = typingMatch(alleleList=recipAlleles, queryAllele=specificity)
+
         if specificity in recipPreTxAntibodyData.keys():
             reportWorksheet['A' + str(currentRow)] = specificity
             reportWorksheet['B' + str(currentRow)] = str(recipPreTxAntibodyData[specificity])
+            if specificityRecipientMatch:
+                preTxAntibodies[specificity] = str(recipPreTxAntibodyData[specificity])
         else:
             reportWorksheet['A' + str(currentRow)] = specificity
             reportWorksheet['B' + str(currentRow)] = '?'
@@ -350,14 +359,13 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
         if specificity in recipPostTxAntibodyData.keys():
             reportWorksheet['D' + str(currentRow)] = specificity
             reportWorksheet['E' + str(currentRow)] = str(recipPostTxAntibodyData[specificity])
+            if specificityRecipientMatch:
+                postTxAntibodies[specificity] = str(recipPostTxAntibodyData[specificity])
         else:
             reportWorksheet['D' + str(currentRow)] = specificity
             reportWorksheet['E' + str(currentRow)] = '?'
 
-        # Color Cells?
-        specificityDonorMatch = typingMatch(alleleList=donorAlleles, queryAllele=specificity)
-        specificityRecipientMatch = typingMatch(alleleList=recipAlleles, queryAllele=specificity)
-
+        # Color cells.
         if(specificityDonorMatch and specificityRecipientMatch):
             cellColor = bothColor
         elif (specificityDonorMatch and not specificityRecipientMatch):
@@ -389,11 +397,12 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     reportWorksheet.freeze_panes = 'A6'
 
     # Return it as a stream, so we can consume it or save it later.
-    with NamedTemporaryFile() as tmp:
-        transReport.save(tmp.name)
-        tmp.seek(0)
-        stream = tmp.read()
-        return stream
+    return createBytestreamExcelOutputFile(workbookObject=transReport), preTxAntibodies, postTxAntibodies
+    #with NamedTemporaryFile() as tmp:
+    #    transReport.save(tmp.name)
+    #    tmp.seek(0)
+    #    stream = tmp.read()
+    #    return stream
 
 
 def typingMatch(alleleList=None, queryAllele=None):

@@ -2,6 +2,8 @@ from boto3 import client
 #import json
 #import urllib
 from Common.ParseExcel import createExcelTransplantationReport
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 
 try:
     import IhiwRestAccess
@@ -87,8 +89,8 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
 def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilename=None, recipHamlPostTxFilename=None, s3=None, bucket=None):
     recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPreTxFilename, s3=s3, bucket=bucket)
     recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPostTxFilename, s3=s3, bucket=bucket)
-    transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
-    return transplantationReportSpreadsheet
+    transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
+    return transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies
 
 def createImmunogenicEpitopesReport(bucket=None):
     print('Creating an Immunogenic Epitopes Submission Report.')
@@ -102,72 +104,73 @@ def createImmunogenicEpitopesReport(bucket=None):
     summaryFileName = 'ImmunogenicEpitopes.ProjectReport.xlsx'
     zipFileName = 'ImmunogenicEpitopes.ProjectReport.zip'
 
-
-
     dataMatrixUploadList = getDataMatrixUploads(projectIDs=[immuEpsProjectID, dqEpsProjectID], token=token, url=url)
 
     # Create Spreadsheet, Define Headers?
-    outputWorkbook, outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile()
-    outputWorksheet = outputWorkbook.add_worksheet()
-    # Define Styles
-    headerStyle = outputWorkbook.add_format({'bold': True})
-    errorStyle = outputWorkbook.add_format({'bg_color': 'red'})
+    outputWorkbook = Workbook()
+    summaryWorksheet = outputWorkbook.active
+    summaryWorksheet.freeze_panes = 'A2'
+
     # Write headers on new sheet.
-    summaryHeaders = ['data_matrix_filename','submitting_user','submitting_lab','submission_date', 'donor_glstring', 'recipient_glstring']
+    summaryHeaders = ('donor_glstring', 'recipient_glstring','antibodies_pretx','antibodies_posttx'
+        ,'data_matrix_filename','valid','submitting_user','submitting_lab','submission_date', 'transplantation_report')
+
     dataMatrixHeaders=ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=True)
 
     #print('These are the summary headers:' + str(summaryHeaders))
     #print('These are the data matrix headers:' + str(dataMatrixHeaders))
 
-    for headerIndex, header in enumerate(summaryHeaders):
-        cellIndex = ParseExcel.getColumnNumberAsString(base0ColumnNumber=headerIndex) + '1'
-        outputWorksheet.write(cellIndex, header, headerStyle)
+    summaryWorksheet.append(summaryHeaders)
+    summaryWorksheet.column_dimensions['A'].width = 40
+    summaryWorksheet.column_dimensions['B'].width = 40
+    summaryWorksheet.column_dimensions['C'].width = 40
+    summaryWorksheet.column_dimensions['D'].width = 40
+    summaryWorksheet.column_dimensions['E'].width = 40
+    summaryWorksheet.column_dimensions['F'].width = 12
+    summaryWorksheet.column_dimensions['G'].width = 25
+    summaryWorksheet.column_dimensions['H'].width = 25
+    summaryWorksheet.column_dimensions['I'].width = 25
+    summaryWorksheet.column_dimensions['J'].width = 40
+    summaryWorksheet.column_dimensions['K'].width = 40
 
-    for headerIndex, header in enumerate(dataMatrixHeaders):
-        cellIndex = ParseExcel.getColumnNumberAsString(base0ColumnNumber=headerIndex+len(summaryHeaders)) + '1'
-        outputWorksheet.write(cellIndex, header, headerStyle)
-
-    reportLineIndex = 1
+    #for headerIndex, header in enumerate(summaryHeaders):
+        #columnLetter = get_column_letter(headerIndex+1)
+        #cellIndex = columnLetter + '1'
+        #summaryWorksheet[cellIndex] = header
+    #    summaryWorksheet.column_dimensions[columnLetter].width = 35
 
     supportingUploadFilenames = []
-    # These are reports. Key=filename, value=(String) with file contents.
-    transplantationReportFiles={}
-    #supportingFiles = ['1497_1593502560693_HML_HmlRecipient.xml'] # Test data.
+    supportingSpreadsheets = {}
+
+    reportLineIndex = 0
 
     # preload an upload list to use repeatedly later
     allUploads = IhiwRestAccess.getUploads(token=token,url=url)
 
-    # Combine data matrices together.
-    for dataMatrixUpload in dataMatrixUploadList:
+    # Combine data matrices together for summary worksheet..
+    for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
         #print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
         #print('This is the upload: ' + str(dataMatrixUpload))
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
-
-        inputExcelBytes = excelFileObject["Body"].read()
+        inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())
         # validateEpitopesDataMatrix returns all the information we need.
-        (validationResults, inputExcelFileData, errorResultsPerRow) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=[immuEpsProjectID, dqEpsProjectID])
-        #print('This file has this validation status:' + validationResults)
-
-        if(inputExcelFileData is not None):
-            supportingUploadFilenames.append(dataMatrixUpload['fileName'])
+        (validationResults, validatedWorkbook) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=[immuEpsProjectID, dqEpsProjectID])
+        if(validatedWorkbook is not None):
+            supportingSpreadsheets[dataMatrixUpload['fileName']]=ParseExcel.createBytestreamExcelOutputFile(workbookObject=validatedWorkbook)
             dataMatrixFileName = dataMatrixUpload['fileName']
             submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + dataMatrixUpload['createdBy']['user']['email']
             submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
             submissionDate = dataMatrixUpload['createdAt']
 
 
-
             # Loop input Workbook data
-            for dataLineIndex, dataLine in enumerate(inputExcelFileData):
-            # print('Copying this line:' + str(dataLine))
+            #for dataLineIndex, dataLine in enumerate(inputExcelFileData):
+            firstSheet = validatedWorkbook[validatedWorkbook.sheetnames[0]]
+            for dataLineIndex, dataLine in enumerate(firstSheet.iter_rows(min_row=2)):
+
                 reportLineIndex += 1
-
-                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=0) + str(reportLineIndex), dataMatrixFileName)
-                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=1) + str(reportLineIndex), submittingUser)
-                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=2) + str(reportLineIndex), submittingLab)
-                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=3) + str(reportLineIndex), submissionDate)
-
+                print('Copying this line:' + str(dataLine))
                 donorGlString = '?'
                 recipientGlString = '?'
                 recipHamlPreTxFileName = '?'
@@ -175,44 +178,44 @@ def createImmunogenicEpitopesReport(bucket=None):
 
 
                 for headerIndex, header in enumerate(dataMatrixHeaders):
-                    cellIndex = ParseExcel.getColumnNumberAsString(base0ColumnNumber=headerIndex+len(summaryHeaders)) + str(reportLineIndex)
+                    columnLetter = validatedWorkbook.columnNameLookup[header]
+                    print('Checking header ' + str(header) + ' which is at column ' + columnLetter)
+
+                    cellIndex = columnLetter + str(dataLineIndex + 2)
+                    cellData = firstSheet[cellIndex].value
+                    print('Cell Index: ' + str(cellIndex))
+                    print('Data:' + str(cellData))
 
                     currentGlString = None
+
+
                     # Add supporting files.
                     fileResults=[]
                     if(header.endswith('_hla')):
-                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'], token=token, url=url, fileName=str(dataLine[header]), projectIDs=[immuEpsProjectID, dqEpsProjectID], allUploads=allUploads)
+                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'], token=token, url=url, fileName=str(cellData), projectIDs=[immuEpsProjectID, dqEpsProjectID], allUploads=allUploads)
 
                         if(len(fileResults) == 1):
                             # We found a single file mapped to this HLA result. Get a GlString.
                             currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3, bucket=bucket)
-                            glStringValidationResults = Validation.validateGlString(glString=currentGlString)
                         else:
                             # We didn't find a single file to calculate a glString from. Use the existing data
-                            currentGlString = dataLine[header]
-                            glStringValidationResults = errorResultsPerRow[dataLineIndex][header]
+                            currentGlString = cellData
+                        if(currentGlString is None or len(currentGlString) < 1):
+                            currentGlString=''
 
                         # print the glString in the appropriate column
                         if(header=='donor_hla'):
                             donorGlString=currentGlString
-                            if(len(glStringValidationResults) > 0):
-                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString, errorStyle)
-                                outputWorksheet.write_comment(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), glStringValidationResults)
-                            else:
-                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=4) + str(reportLineIndex), currentGlString)
+                            donorGlStringValidationResults = Validation.validateGlString(glString=donorGlString)
                         elif(header=='recipient_hla'):
                             recipientGlString=currentGlString
-                            if (len(glStringValidationResults) > 0):
-                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString, errorStyle)
-                                outputWorksheet.write_comment(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), glStringValidationResults)
-                            else:
-                                outputWorksheet.write(ParseExcel.getColumnNumberAsString(base0ColumnNumber=5) + str(reportLineIndex), currentGlString)
+                            recipientGlStringValidationResults = Validation.validateGlString(glString=recipientGlString)
                         else:
-                            raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(dataLine[header]))
+                            raise Exception ('I cannot understand to do with the data for column ' + str(header) + ':' + str(cellData))
 
                     elif('_haml_' in (header)):
                         # TODO: Include Antibody_CSV?
-                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'], token=token, url=url, fileName=str(dataLine[header]), projectIDs=[immuEpsProjectID, dqEpsProjectID], allUploads=allUploads)
+                        fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'], token=token, url=url, fileName=str(cellData), projectIDs=[immuEpsProjectID, dqEpsProjectID], allUploads=allUploads)
                         #print('I just found these haml results:' + str(fileResults))
 
                         # TODO: Assuming a single HAML file here. What if !=1 results are found?
@@ -230,33 +233,47 @@ def createImmunogenicEpitopesReport(bucket=None):
                         #print('Appending this file to the upload list:' + str(uploadFile))
                         supportingUploadFilenames.append(uploadFile['fileName'])
 
-                    # Was there an error in this cell? Highlight it red and add error message
-                    if (header in errorResultsPerRow[dataLineIndex].keys() and len(str(errorResultsPerRow[dataLineIndex][header])) > 0):
-                        # TODO: Make the error styles optional.
-                        outputWorksheet.write(cellIndex, dataLine[header], errorStyle)
-                        outputWorksheet.write_comment(cellIndex, errorResultsPerRow[dataLineIndex][header])
-                    else:
-                        # TODO: What if a dataline is missing a bit of information? Handle if this is missing in the input file.
-                        outputWorksheet.write(cellIndex, dataLine[header])
 
-                # TODO: make these excel files with highlighting.
                 transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(dataLineIndex+2) + '.xlsx'
-                transplantationReportText = getTransplantationReportSpreadsheet(donorTyping=donorGlString, recipientTyping=recipientGlString, recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName ,s3=s3, bucket=bucket)
-                transplantationReportFiles[transplantationReportFileName]=transplantationReportText
+                transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(donorTyping=donorGlString, recipientTyping=recipientGlString, recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName ,s3=s3, bucket=bucket)
+                supportingSpreadsheets[transplantationReportFileName]=transplantationReportText
+
+                if len(validationResults)==0:
+                    validationText='Valid'
+                else:
+                    validationText=str(len(validationResults)) + ' validation issues found'
+
+                preTxAntibodyText=''
+                postTxAntibodyText=''
+                for specificity in sorted(list(preTxAntibodies.keys())):
+                    preTxAntibodyText = preTxAntibodyText + specificity + ' : ' + str(preTxAntibodies[specificity]) + '\n'
+                preTxAntibodyText = preTxAntibodyText[:-1]
+                for specificity in sorted(list(postTxAntibodies.keys())):
+                    postTxAntibodyText = postTxAntibodyText + specificity + ' : ' + str(postTxAntibodies[specificity]) + '\n'
+                postTxAntibodyText = postTxAntibodyText[:-1]
+
+                # Make a tuple matching this:     summaryHeaders = ('donor_glstring', 'recipient_glstring','antibodies_pretx','antibodies_posttx'
+                #         ,'data_matrix_filename','valid','submitting_user','submitting_lab','submission_date', 'transplantation_report')
+                currentTuple=(donorGlString, recipientGlString,preTxAntibodyText,postTxAntibodyText, dataMatrixFileName,validationText,submittingUser,submittingLab,submissionDate, transplantationReportFileName
+                         )
+                summaryWorksheet.append(currentTuple)
+                print('Added Row: ' + str(tuple(summaryWorksheet.rows)[reportLineIndex]))
+                summaryWorksheet.row_dimensions[reportLineIndex+1].height=80
+
+
         else:
             print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']) )
             print('Upload ID of missing data matrix:' +  str(dataMatrixUpload['id']) )
 
+    # Text wrapping. For every cell.
+    for row in summaryWorksheet.iter_rows():
+        for cell in row:
+            cell.alignment = cell.alignment.copy(wrapText=True)
+
+
     createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
-
-    # Widen the columns a bit so we can read them.
-    outputWorksheet.set_column('A:' + ParseExcel.getColumnNumberAsString(len(dataMatrixHeaders) - 1), 30)
-    # Freeze the header row.
-    outputWorksheet.freeze_panes(1, 0)
-    outputWorkbook.close()
+    outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=outputWorkbook)
     S3_Access.writeFileToS3(newFileName=summaryFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
-
-
 
 
     # create zip file
@@ -264,7 +281,7 @@ def createImmunogenicEpitopesReport(bucket=None):
     supportingFileZip = zipfile.ZipFile(zipFileStream, 'a', zipfile.ZIP_DEFLATED, False)
 
     #supportingFileZip.writestr('HelloWorld.txt', 'Hello World!')
-    supportingFileZip.writestr(summaryFileName, outputWorkbookbyteStream.getvalue())
+    supportingFileZip.writestr(summaryFileName, outputWorkbookbyteStream)
 
     for supportingFile in list(set(supportingUploadFilenames)):
         print('Adding file ' + str(supportingFile) + ' to ' + str(zipFileName))
@@ -274,8 +291,9 @@ def createImmunogenicEpitopesReport(bucket=None):
         #  I think that's fine for hml & text-like files but this might cause problems with some file types.
         supportingFileZip.writestr(supportingFile, supportingFileObject["Body"].read())
 
-    for transplantationReportFileName in transplantationReportFiles:
-        supportingFileZip.writestr(transplantationReportFileName, transplantationReportFiles[transplantationReportFileName])
+    for transplantationReportFileName in supportingSpreadsheets:
+        supportingFileZip.writestr(transplantationReportFileName, supportingSpreadsheets[transplantationReportFileName])
+    
 
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)

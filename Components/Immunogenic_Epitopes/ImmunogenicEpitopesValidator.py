@@ -185,7 +185,11 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
         print('Validating Non Immunogenic Epitopes.')
         epitopeColumnNames = getColumnNames(isImmunogenic=False)
 
-    xlWorkbook = load_workbook(filename=excelFile)
+    try:
+        xlWorkbook = load_workbook(filename=excelFile)
+    except Exception:
+        print('Error: Could not load data matrix!')
+        return (['Error: Could not load data matrix!'],None)
 
     inputColumns = {}
     firstSheet = xlWorkbook[xlWorkbook.sheetnames[0]]
@@ -237,7 +241,7 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
                     validationErrors.append(currentValidationFeedback)
 
     reportWorkbook=xlWorkbook
-
+    reportWorkbook.columnNameLookup = inputColumns # Sneakily embedding a column lookup in the result worksheet.
     return validationErrors, reportWorkbook
 
 def getColumnNames(isImmunogenic=True):
