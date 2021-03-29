@@ -334,6 +334,12 @@ class Converter(object):
             allele = str(row.Allele).strip()
             assignment = str(row.Assignment).strip()
             rawMfi = str(row.Raw_Value).strip()
+            try:
+                beadID = str(row.Bead_ID).strip()
+            except Exception as e:
+                beadID = None
+
+            print('Stored Bead ID ' + str(beadID))
 
             # Initiate some data structure
             if sampleID not in csvData:
@@ -355,14 +361,14 @@ class Converter(object):
                 # TODO: Could modify this to check all unpaired alleles instead of just the first...
                 if(len(unpairedAlleles)==0):
                     # This is the first of a pair. Hopefully.
-                    csvData[sampleID][patientID][sampleTestDate][lotID][allele+'_UNPAIRED'] = (assignment, rawMfi)
+                    csvData[sampleID][patientID][sampleTestDate][lotID][allele+'_UNPAIRED'] = (beadID, assignment, rawMfi)
                 elif(len(unpairedAlleles)==1):
-                    # This entry should pair with previous unpaired allele. Double check MFI and assignment to be sure.
-                    if(csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0]] ==  (assignment, rawMfi) ):
+                    # This entry should pair with previous unpaired allele. Double check beadId, MFI and assignment to be sure.
+                    if(csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0]] ==  (beadID, assignment, rawMfi) ):
                         # print('MATCH!' + str(unpairedAlleles[0]) + ' : ' + str(allele))
                         # Remove the unpaired allele and store the paired one.
                         csvData[sampleID][patientID][sampleTestDate][lotID].pop(unpairedAlleles[0])
-                        csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0].replace('_UNPAIRED','~') + allele] = (assignment, rawMfi)
+                        csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0].replace('_UNPAIRED','~') + allele] = (beadID, assignment, rawMfi)
 
                     else:
                         validationFeedback += ('Trouble when matching heterodimer alleles, these do not match!:'+ str(unpairedAlleles[0]) + ' : ' + str(allele)  + ';\n')
@@ -372,7 +378,7 @@ class Converter(object):
                     validationFeedback += ('Trouble when matching heterodimer alleles, multiple unmatched alleles found!:'+ str(unpairedAlleles) + ';\n')
             else:
                 # These beads do not represent heterodimers. Store normally.
-                csvData[sampleID][patientID][sampleTestDate][lotID][allele] = (assignment, rawMfi)
+                csvData[sampleID][patientID][sampleTestDate][lotID][allele] = (beadID, assignment, rawMfi)
 
         # Write XML from that data.
         # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
@@ -418,7 +424,7 @@ class Converter(object):
 
                         for allele in csvData[sampleID][patientID][runDate][lotID]:
 
-                            beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
+                            baedID, beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
 
                             # Skip if it's NC or PC, we already printed those values.
                             if(allele=='NC' and beadAssignment=='NC') or (allele=='PC' and beadAssignment=='PC'):
