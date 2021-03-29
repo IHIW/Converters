@@ -26,6 +26,13 @@ import zipfile
 import io
 from time import sleep
 
+# TODO: In general I re-worked the epitopes validator, and i need the project report to match it.
+#  I don't have per-row validation feedback to generate on the fly.
+#  Perhaps it's better to collect the data matrixes in individual tabs
+#  Validate them individually and collect the validation issues on the single tab. That would have the submitter data.
+#  Then make a first tab as a summary of all the submitted data matrices.
+
+
 def immunogenic_epitope_project_report_handler(event, context):
     print('Lambda handler: Creating a project report for immunogenic epitopes.')
     # This is the AWS Lambda handler function.

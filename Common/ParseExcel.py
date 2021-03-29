@@ -2,15 +2,16 @@
 # Reading uses the xlrd module.
 # They're not really related to eachother, but this is how I got it to work.
 # TODO: Get rid of xlrd, can i convert this to just openpyxl
-from xlrd import open_workbook
-from xlrd.sheet import ctype_text
+#from xlrd import open_workbook
+#from xlrd.sheet import ctype_text
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import PatternFill
 from tempfile import NamedTemporaryFile
-import xlsxwriter
+#import xlsxwriter
 import io
 
 
+'''
 # TODO: This really needs to be upgraded to use openpyxl instead of xlrd.
 #  The disadvantage is xls (old style) documents are only supported in xlrd.
 #  latest versions of xlrd, however, don't support xlsx.
@@ -87,14 +88,6 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
                 missingColumns.append(columnNames[iteratorIndex])
                 headerRowErrors[columnNames[iteratorIndex]] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
 
-                '''
-                # Column is missing, so we can store this feedback in the first column.
-                firstExcelColumnName = str(headerRow[0])
-                print('This is the first column name:' + str(firstExcelColumnName))
-                headerRowErrors[firstExcelColumnName] = ('Warning! Spreadsheet does not contain this column:' + str(columnNames[iteratorIndex]))
-                '''
-                # TODO: Store a blank in the data for this column.
-
 
         #validationErrors.append(headerRowErrors)
         #print('All column headers were found in the excel file.')
@@ -145,6 +138,9 @@ def parseExcelFileWithColumns(excelFile=None, columnNames=None):
         print('No workbook data was found for excel file ' + str(excelFile))
         return (None, None, None)
 
+'''
+
+'''
 def parseExcelFile(excelFile=None):
     # I'm determining the headers on the fly here, instead of validating against a list of expected headers.
     if(excelFile is None):
@@ -200,44 +196,36 @@ def parseExcelFile(excelFile=None):
         dataEntries.append(currentDataRow)
 
     return dataEntries
+'''
+'''
+def openWorkbook(excelFile=None):
 
-def openWorkbook(excelFile):
     try:
-        # print('Opening Workbook...')
         if (type(excelFile) == str):
-            xlWorkbook = open_workbook(excelFile)
+            xlWorkbook = load_workbook(excelFile)
         elif (type(excelFile) == bytes):
-            xlWorkbook = open_workbook(file_contents=excelFile)
+            # Really hope this works...Not sure if openpyxl supports reading from bytestream.
+            # If not, then I can try to downgrade to xlrd 1.2, a bad solution.
+            xlWorkbook = load_workbook(excelFile)
         else:
             print('I do not know what type of file this is:' + str(type(excelFile)))
-        # print('Workbook was opened.')
         return xlWorkbook
     except Exception as e:
         print('Failed to open Excel file!')
         print(str(e))
-        if(str(e)== 'Excel xlsx file; not supported'):
-            print('using pandas read_excel function')
-
-            if (type(excelFile) == str):
-                xlWorkbook = load_workbook(excelFile)
-            elif (type(excelFile) == bytes):
-                # Really hope this works...Not sure if openpyxl supports reading from bytestream.
-                # If not, then I can try to downgrade to xlrd 1.2, a bad solution.
-                xlWorkbook = load_workbook(excelFile)
-            else:
-                print('I do not know what type of file this is:' + str(type(excelFile)))
-
-            return xlWorkbook
-
-            # TODO: They broke/deprecated xlsx support this package. Hooray. Try to find a workaround.
         return None
+'''
 
-def createBytestreamExcelOutputFile():
-    # Warning: I think you still  need to call workbook.close() after you're done modifying the file. Don't know what bugs this will cause.
-    output = io.BytesIO()
-    workbook = xlsxwriter.Workbook(output)
-    return (workbook, output)
 
+def createBytestreamExcelOutputFile(workbookObject=None):
+    with NamedTemporaryFile() as tmp:
+        workbookObject.save(tmp.name)
+        tmp.seek(0)
+        stream = tmp.read()
+        return stream
+
+
+'''
 def getColumnNumberAsString(base0ColumnNumber=None):
     # A method to get an excel letter representing the column numbers from a 0-based column index
     if(base0ColumnNumber is None or base0ColumnNumber<0):
@@ -248,7 +236,10 @@ def getColumnNumberAsString(base0ColumnNumber=None):
         base1ColumnNumber, remainder = divmod(base1ColumnNumber - 1, 26)
         columnIndex = chr(65 + remainder) + columnIndex
     return columnIndex
+'''
 
+
+'''
 def createExcelValidationReport(errors=None, inputWorkbookData=None):
     outputWorkbook, outputWorkbookbyteStream = createBytestreamExcelOutputFile()
 
@@ -288,12 +279,17 @@ def createExcelValidationReport(errors=None, inputWorkbookData=None):
     outputWorkbook.close()
 
     return (outputWorkbook, outputWorkbookbyteStream)
+'''
 
-def writeExcelToFile(objectBytestream=None, fullFilePath=None):
+'''
+def writeExcelToFile(workbookObject=None, fullFilePath=None):
     print('Writing it to File: ' + str(fullFilePath))
-    f = open(fullFilePath, "wb")
-    f.write(objectBytestream.getvalue())
-    f.close()
+    workbookObje
+    #f = open(fullFilePath, "wb")
+    #f.write(objectBytestream.getvalue())
+    #f.write(objectBytestream)
+    #f.close()
+'''
 
 
 def splitGlString(glString=None):

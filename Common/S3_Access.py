@@ -9,7 +9,9 @@ def writeFileToS3(s3ObjectBytestream=None, newFileName=None, bucket=None):
         s3 = boto3.resource("s3")
         print('saving file:' + str(newFileName))
         # This is valid in the case of XL spreadsheets, which are io.BytesIO streams. different stream types might break this.
-        body = s3ObjectBytestream.getvalue()
+        #body = s3ObjectBytestream.getvalue()
+        # This is for openpyxl bytestreams
+        body=s3ObjectBytestream
         s3.Bucket(bucket).put_object(Key=newFileName, Body=body)
         print('Done saving file.')
     except Exception as e:

@@ -4,8 +4,9 @@ from os.path import split, join
 from io import BytesIO
 
 from Common.IhiwRestAccess import setValidationStatus, getProjectID
+from Common.ParseExcel import createBytestreamExcelOutputFile
 from Common.S3_Access import writeFileToS3
-from Common.ParseExcel import parseExcelFile, createExcelValidationReport, writeExcelToFile
+#from Common.ParseExcel import writeExcelToFile
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 
@@ -39,16 +40,28 @@ def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
     nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=[nonImmunogenicEpitopeProjectNumber])
+    (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=[nonImmunogenicEpitopeProjectNumber])
     print('Validation Results:\n' + str(validationResults))
+
+    validationFeedback = ''
+    for validationError in validationResults:
+        #for validationColumnName in validationErrorRow.keys():
+        #currentValidationResult = validationErrorRow[validationColumnName]
+        if(validationError is not None and len(validationError) > 0):
+            validationFeedback = validationFeedback + validationError + ';\n'
 
     head, tail = split(excelFile)
     reportFileName = tail + '.Validation_Report.xlsx'
 
-    # Commented for testing
-    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
-    #writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
-    writeExcelToFile(fullFilePath=join(head, reportFileName), objectBytestream=outputWorkbookbyteStream)
+
+    # Write to S3 (commented for testing)
+    reportStreamData=createBytestreamExcelOutputFile(workbookObject=outputReportWorkbook)
+    #writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=reportStreamData)
+
+    # Write to local file
+    reportLocalFilePath = join(head, reportFileName)
+    print('Saving to ' + str(reportLocalFilePath))
+    outputReportWorkbook.save(reportLocalFilePath)
 
 
 def testSetValidationResults(args=None):
