@@ -15,6 +15,13 @@ def prepare_validation_handler(event, context):
     (user, password) = getCredentials(configFileName='validation_config.yml')
     url = getUrl(configFileName='validation_config.yml')
     token = getToken(user=user, password=password, url=url)
+    if(url is None or token is None or len(url)==0 or len(token)==0):
+        print('Unable to fetch URL and Token from Config File.')
+        event['url']="UNKNOWN"
+        event['token']="UNKNOWN"
+    else:
+        event['url']=url
+        event['token']=token
 
     # Wrapper, exception handling
     try:
