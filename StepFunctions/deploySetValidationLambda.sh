@@ -4,9 +4,10 @@
 # You need to provide the config file validation_config.yml with entries url: {} username: {} password: {}
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/bmatern/github/Converters/PositiveBeads"
+PROJECT_PATH="/home/bmatern/github/Converters/StepFunctions"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-LAMBDA_FUNCTION="validateHAMLStaging"
+LAMBDA_FUNCTION="sendValidationResultStaging"
+#LAMBDA_FUNCTION="convertCSVToHAMLProd"
 
 cd $PROJECT_PATH
 
@@ -14,18 +15,18 @@ cd $PROJECT_PATH
 rm function.zip
 
 # Install package(s)
-#source $ENVIRONMENT_PATH"/bin/activate"
-#pip install --target ./package pyyaml
-#deactivate
+source $ENVIRONMENT_PATH"/bin/activate"
+pip install --target ./package pyyaml
+deactivate
 
 # Zip packages
-#cd package
-#zip -r9 $PROJECT_PATH"/function.zip" .
+cd package
+zip -r9 $PROJECT_PATH"/function.zip" .
 
 # Zip Script
-#cd ..
-zip -g function.zip calculatePositiveBeads.py
-#zip -j -g function.zip ../Common/IhiwRestAccess.py
+cd ..
+zip -g function.zip setValidationStatus.py
+zip -j -g function.zip ../Common/IhiwRestAccess.py
 
 # Add Common Files
 #cd ..
