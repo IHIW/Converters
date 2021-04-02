@@ -9,6 +9,7 @@ def prepare_validation_handler(event, context):
         file_name_components = file_name.split(".")
         file_ending = file_name_components[len(file_name_components) - 1].upper()
         event['file_ending'] = file_ending
+        event['file_name'] = file_name
     else:
         event['file_ending'] = "UNKNOWN"
 

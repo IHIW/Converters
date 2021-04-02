@@ -159,7 +159,7 @@ if __name__=='__main__':
             makedirs(outputDirectory)
 
         if (currentTest=='HMLPARSER'):
-            testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory, alignSequences=True)
+            testHmlParser(xmlFileName=xmlFilename, outputDirectory=outputDirectory, alignSequences=False)
         elif(currentTest=='DELETEFILE'):
             testDeleteFile(uploadFileName=args.upload)
         elif (currentTest == 'GETBYFILENAME'):

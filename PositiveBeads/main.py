@@ -1,5 +1,5 @@
 import argparse
-from PositiveBeads.calculate_positive_beads_handler import calculatePositiveBeads
+from PositiveBeads.calculatePositiveBeads import calculatePositiveBeads
 
 def parseArgs():
     parser = argparse.ArgumentParser()
