@@ -19,7 +19,10 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
 pip install --target ./package pyyaml
+#pip install -Iv --target ./package biopython==1.71
+#pip install -Iv --target ./package numpy==1.14.2
 pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
+#pip install --target ./package pyhml
 deactivate
 
 # Zip packages
