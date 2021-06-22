@@ -44,17 +44,23 @@ def getGlStrings(hml=None):
                     glStrings.append(glString)
     return glStrings
 
-def parseXmlFromText(xmlText=None, tempDirectory=None):
+def parseXmlFromText(xmlText=None, tempDirectory=None, awsLambda=False):
     # TODO: pyHML is huge. Im moving the import here so it doesnt crash if I run without this import.
+    print ('importing pyhml.....')
     import pyhml
 
-    #print('Parsing XML Text.')
+    print('Parsing XML Text.')
     # Parse using pyhml
     # pyHml needs an actual file to work in. Write it.
     if(tempDirectory is None):
-        tempDirectory = getcwd()
+        if(awsLambda):
+            tempDirectory='/tmp'
+        else:
+            tempDirectory = getcwd()
+
     # use a unique filename
     tempFileName = join(tempDirectory,'temp_' + str(time.time()) + '.xml')
+    print('Temp Filename:' + str(tempFileName))
     with open(tempFileName,'w') as xmlOutputFile:
         xmlOutputFile.write(xmlText)
     hmlparser = pyhml.HmlParser(verbose=False, hmlversion='1.0.1')
@@ -113,7 +119,7 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                         if(not referenceSequence.name.startswith('HLA-')):
                             # Sometimes "HLA-" is not included in the allele name.
                             # TODO: This might break on some genes like MICA..
-                            print('Modifying reference allele name from ' + referenceSequence.name + ' to HLA-' + referenceSequence.name)
+                            #print('Modifying reference allele name from ' + referenceSequence.name + ' to HLA-' + referenceSequence.name)
                             referenceSequence.name = 'HLA-' + referenceSequence.name
 
                         if(referenceSequence.name in rawReferenceSequences[databaseVersion]):
@@ -209,10 +215,10 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                     # TODO: Thread? It takes lots of memory.
                     try:
                         alignedClustalOOutputFilename = outputFileName.replace('.fasta','_clustalAligned.fasta')
-                        print('Aligning file -> ' + str(alignedClustalOOutputFilename))
-                        cline = ClustalOmegaCommandline("clustalo", infile=outputFileName, outfile=alignedClustalOOutputFilename, verbose=True, auto=True, wrap=100000, threads=6, force=True)
-                        print(cline)
-                        if(alignSequences):
+                        if (alignSequences):
+                            print('Aligning file -> ' + str(alignedClustalOOutputFilename))
+                            cline = ClustalOmegaCommandline("clustalo", infile=outputFileName, outfile=alignedClustalOOutputFilename, verbose=True, auto=True, wrap=100000, threads=6, force=True)
+                            print(cline)
                             cline()
                     except Exception as e:
                         print('Failed to align sequences:' + alignedClustalOOutputFilename)

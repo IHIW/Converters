@@ -5,16 +5,18 @@ import os
 from sys import exc_info
 from boto3 import client
 from time import sleep
+from lxml import etree
+import xml.etree.ElementTree as ElementTree
 
 
 try:
     import Common.IhiwRestAccess as IhiwRestAccess
     import Common.Validation as Validation
-    import Common.ParseXml as ParseXml
+    #import Common.ParseXml as ParseXml
 except Exception as e:
     import IhiwRestAccess
     import Validation
-    import ParseXml
+    #import ParseXml
 
 s3 = client('s3')
 
@@ -55,7 +57,31 @@ def hml_parser_handler(event, context):
         if(fileType == 'HML'):
             print('This is an HML file, I will parse and validate it.')
 
-            hmlId, sampleIds, glStrings = ParseXml.parseXmlFromText(xmlText = xmlText)
+
+            #hmlObject = ParseXml.parseXmlFromText(xmlText=xmlText)
+            #sampleIds = ParseXml.getSampleIDs(hml=hmlObject)
+            #hmlId = ParseXml.getHmlid(xmlText=xmlText)
+            #glStrings = ParseXml.getGlStrings(hml=hmlObject)
+
+            glStrings=[]
+            documentRoot = ElementTree.fromstring(xmlText)
+            #glStringNodes = documentRoot.findall('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')
+            #if (len(glStringNodes) == 0):
+            #    print('No GL String nodes found')
+            #else:
+            for glStringNode in documentRoot.iter("*"):
+                # print('Element Tag:' + str(element.tag))
+                if (str(glStringNode.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
+
+                    print('glStringNode:' + str(glStringNode))
+                    glStringText = glStringNode.text
+
+                    if(glStringText is not None and len(glStringText.strip())>1):
+                        glStrings.append(glStringText.strip())
+                        print('added glString:' + str(glStringText.strip()))
+                else:
+                    print('Not glStringNode: ' + str(glStringNode))
+                    pass
 
             isGlStringsValid, glStringValidationFeedback = Validation.validateGlStrings(glStrings=glStrings)
             IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isGlStringsValid
