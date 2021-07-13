@@ -65,7 +65,7 @@ class Converter(object):
         print('Determining Date format of this string:' + dateString)
         self.dateFormat = None
         # TODO: Is there a more flexible way to do this? This breaks regularly with new date formats.
-        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y']
+        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y','%d.%m.%Y']
         for dateFormat in potentialDateFormats:
             try:
                 dateObject = datetime.datetime.strptime(dateString, dateFormat)
@@ -87,7 +87,12 @@ class Converter(object):
                     print('Checking if this file has a (' + str(delimiter) + ') delimiter')
                     # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
                     copyInputFile = copy.deepcopy(self.csvFile)
+
+                    # Sometimes fields are separated by quotes. A bit annoying, they probably saved it in excel or something.
+
+
                     OLReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, engine="python")
+                    print('Made reader. Reader  = ' + str(OLReader))
                     OLReader = OLReader.loc[:,~OLReader.columns.str.contains('^Unnamed')]  # eliminate empty columns at the end
 
                     if(len(OLReader.columns.tolist()) > 3
@@ -275,7 +280,8 @@ class Converter(object):
                         Raw = int(round(float(str(row.RawData).replace(',','.'))))
                         # TODO: We're not assigning the ranking correctly.
                         #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
-                        Ranking=0
+                        #Ranking=0
+                        Ranking = str(row.Rxn)
 
                         # What locus is this data row for?
                         locusDataRow=''
@@ -327,12 +333,39 @@ class Converter(object):
 
         for row in OLReader.itertuples():
             # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
-            sampleID = str(row.Sample_ID).strip()
-            patientID = str(row.Patient_ID).strip()
-            sampleTestDate = str(row.Run_Date).strip()
-            lotID = str(row.Lot_ID).strip()
+            if(not hasattr(row,'Sample_ID')):
+                validationFeedback += ('Sample_ID was Missing!;\n')
+                sampleID = '??'
+            else:
+                sampleID = str(row.Sample_ID).strip()
+            if(not hasattr(row,'Patient_ID')):
+                validationFeedback += ('Patient_ID was not found!;\n')
+                patientID = '??'
+            else:
+                patientID = str(row.Patient_ID).strip()
+
+            if (not hasattr(row, 'Run_Date')):
+                validationFeedback += ('Run_Date was not found!;\n')
+                sampleTestDate = '01/01/1900'
+            else:
+                sampleTestDate = str(row.Run_Date).strip()
+
+            if (hasattr(row, 'Lot_ID')):
+                lotID = str(row.Lot_ID).strip()
+            elif (hasattr(row, 'LotID')):
+                lotID = str(row.LotID).strip()
+            else:
+                validationFeedback += ('Lot_ID was not found!;\n')
+                lotID = '??'
+
             allele = str(row.Allele).strip()
-            assignment = str(row.Assignment).strip()
+
+            if (hasattr(row, 'Assignment')):
+                assignment = str(row.Assignment).strip()
+            else:
+                validationFeedback += ('Assignment was not found!;\n')
+                assignment = '??'
+
             rawMfi = str(row.Raw_Value).strip()
             try:
                 beadID = str(row.Bead_ID).strip()
