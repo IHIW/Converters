@@ -29,10 +29,10 @@ import copy
 
 class Converter(object):
 
-    def __init__(self, csvFile=None, manufacturer=None, xmlFile=None):
-        self.csvFile = csvFile
-        #self.csvText = csvText
+    def __init__(self, csvFileName=None, manufacturer=None, xmlFile=None):
+        self.csvFileName = csvFileName
         self.manufacturer = manufacturer
+        self.allFieldsQuoted = None
         self.xmlFile = xmlFile
         self.xmlText = None
         self.xmlData = None
@@ -42,9 +42,10 @@ class Converter(object):
         self.delimiter = None
         #self.decimal = None
         self.dateFormat = '%d-%m-%Y'
+        self.validationFeedback=''
 
-    def formatRunDate(self, RunDate):
-        # format the date to the correct haml style.
+    def formatRunDate(self, RunDate=None):
+        # format the date to the correct haml (ISO) style.
         # Parse the date
         try:
             dateObject = datetime.datetime.strptime(RunDate, self.dateFormat)
@@ -61,90 +62,76 @@ class Converter(object):
                 print('Cannot interpret date format! ' + RunDate)
                 return None
 
-    def DetermineDateFormat(self, dateString):
+    def DetermineDateFormat(self, dateString=None):
         print('Determining Date format of this string:' + dateString)
         self.dateFormat = None
         # TODO: Is there a more flexible way to do this? This breaks regularly with new date formats.
-        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y','%d.%m.%Y']
+        # TODO: Warning: It's very easy to mis-interpret days and months here.
+        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y','%d.%m.%Y','%d. %m. %Y']
         for dateFormat in potentialDateFormats:
             try:
                 dateObject = datetime.datetime.strptime(dateString, dateFormat)
-                #print('Hooray, ' + dateString + ' IS this format:' + str(dateFormat))
+                print('I believe that ' + dateString + ' is indeed this format:' + str(dateFormat))
                 self.dateFormat=dateFormat
             except Exception as e:
                 pass
                 #print(dateString + ' is not this format:' + str(dateFormat))
         if(self.dateFormat is None):
             print('Failed at determining date format! ')
+            raise Exception('Could not determine Date Format of this string:' + str(dateString))
 
-    def DetermineDelimiter(self, ):
-        print('Determining delimiter.')
+    def determineFormatAndManufacturer(self):
+        print('Determining File Format and Manufacturer')
+
+        # Lots of possible delimiters
         tryDelimiters=[',',';','\t']
-
         for delimiter in tryDelimiters:
-            if(self.delimiter is None):
-                try:
-                    print('Checking if this file has a (' + str(delimiter) + ') delimiter')
-                    # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
-                    copyInputFile = copy.deepcopy(self.csvFile)
+            if (self.delimiter is None):
 
-                    # Sometimes fields are separated by quotes. A bit annoying, they probably saved it in excel or something.
+                # Pandas CSV reader likes to specify the quoting behavior. Sometimes in CSV files all the columns are quoted, sometimes they aren't.
+                # Lets check both cases.
+                for checkAllFieldsQuoted in [True, False]:
+                    try:
+                        print('Checking if this file has a (' + str(delimiter) + ') delimiter,  checkAllFieldsQuoted=' + str(checkAllFieldsQuoted))
+                        pandasCsvReader = readCsvFile(csvFileName=self.csvFileName, delimiter=delimiter, allFieldsQuoted=checkAllFieldsQuoted)
+                        self.determineManufacturer(pandasCsvReader=pandasCsvReader)
+                        print('Manufacturer:' + str(self.manufacturer))
+                        if(self.manufacturer is not None):
+                            # That worked! Remember these settings
+                            self.delimiter=delimiter
+                            self.allFieldsQuoted=checkAllFieldsQuoted
+                            break
+                    except Exception as e:
+                        print('Exception when reading Csv File (delimiter=' + str(delimiter) + ' allFieldsQuoted=' + str(checkAllFieldsQuoted) + '):' + str(e))
 
+    def determineManufacturer(self, pandasCsvReader=None):
+        colOneLambda = ['PatientID', 'SampleIDName', 'RunDate', 'CatalogID', 'BeadID', 'Specificity', 'RawData','NC1BeadID','PC1BeadID', 'NC2BeadID','PC2BeadID', 'Rxn']
+        colImmucor = ['Sample ID', 'Patient ID', 'Lot ID', 'Run Date', 'Allele', 'Assignment', 'Raw Value']
 
-                    OLReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, engine="python")
-                    print('Made reader. Reader  = ' + str(OLReader))
-                    OLReader = OLReader.loc[:,~OLReader.columns.str.contains('^Unnamed')]  # eliminate empty columns at the end
+        if(self.manufacturer is None):
 
-                    if(len(OLReader.columns.tolist()) > 3
-                        and ('PatientID' in OLReader.columns.tolist() or 'Patient ID' in OLReader.columns.tolist())):
-                        # If I find multiple columns, and one of them is patient ID. Sanity check.
-                        print('This is a (' + str(delimiter) + ') delimited file.')
-                        self.delimiter=delimiter
-                except Exception as e:
-                    print('Exception when parsing the file using a (' + str(delimiter) + ') delimiter. Guess that is not correct.')
-        if(self.delimiter is None):
-            print('I can not find the delimiter. Look into this problem.')
+            # Get the columns from the csvReader:
+            # These replaces are to get rid of space characters.
+            # The \ufeff" character seems to indicate the encoding of the file.
+            # The proper solution is to switch the codec the file is decoded in, but instead I'm doing a replace, because it's easier.
+            colnames = [str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]
+            print('I found these columns (N='+ str(len(colnames)) + ') :' + str(colnames))
 
-    def DetermineManufacturer(self,):
-        col_OneLambda = ['PatientID', 'SampleIDName', 'RunDate', 'CatalogID', 'BeadID', 'Specificity', 'RawData','NC1BeadID','PC1BeadID', 'NC2BeadID','PC2BeadID', 'Rxn']
-        col_Immucor = ['Sample ID', 'Patient ID', 'Lot ID', 'Run Date', 'Allele', 'Assignment', 'Raw Value']
-        # TODO: Column names have changed. See sample files from Gijs.
-        #col_Immucor = ['Sample_ID', 'Patient_Name', 'Lot_ID', 'Run_Date', 'Allele', 'Raw_Value', 'Assignment']
-        OLReader = ''
-        if not self.manufacturer.strip():
-            print('Determining Manufacturer, csv file=' + str(self.csvFile))
-            try:
-                #print('Checking if it is a Immucor File:')
-                # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
-                copyInputFile = copy.deepcopy(self.csvFile)
-                #print('This is the copied object:' + str(copyInputFile))
+            # Check if there is an intersection of the sets. Overlapping is good.
+            # Does this work? think this will break if there are any overlapping column names. But there arent!
+            if (set(colnames) & set(colImmucor)):
+                self.manufacturer = 'Immucor'
+                print('This is an Immucor File.')
+            elif (set(colnames) & set(colOneLambda)):
+                self.manufacturer = 'OneLambda'
+                print('This is a One Lambda File.')
+            else:
+                print('Cannot determine manufacturer based on those column names.')
 
-                #pd.read_csv(io.BytesIO(obj['Body'].read()))
-                OLReader = pd.read_csv(copyInputFile,index_col = False,sep=self.delimiter,engine="python", na_filter=False)                     #try with , separator
-                OLReader = OLReader.loc[:, ~OLReader.columns.str.contains('^Unnamed')]                          #eliminate empty columns at the end
-
-                colnames = [str(c.strip('"').strip().replace(' ','_')) for c in OLReader.columns.tolist()]      #list colnames
-                OLReader.columns = colnames
-
-                # Check if there is an intersection of the sets. Overlapping is good.
-                # Does this work? think this will break if there are any overlapping column names.
-                if (set(colnames) & set(col_Immucor)):
-                    self.manufacturer = 'Immucor'
-                elif(set(colnames) & set(col_OneLambda)):
-                    self.manufacturer = 'OneLambda'
-                else:
-                    print('Cannot determine manufacturer! No matching column names.')
-                    self.manufacturer = None
-            except Exception as e:
-                #print('Exception Parsing Immucor file:' + str(e))
-                print('Exception determining column names. Cannot determine manufacturer!' + str(e))
-
-        return(self.manufacturer,OLReader)
-    
     #########
     # Get bead value
     #########
-    def GetBeadValue(self,NC2BeadID, BeadID, SampleIDName, SampleID,RawData):
+    def GetBeadValue(self,NC2BeadID=None, BeadID=None, SampleIDName=None, SampleID=None,RawData=None):
         if BeadID == NC2BeadID and SampleIDName == SampleID:
             # Some localizations allow a comma in these as a decimal format. Just make it a period.
             BeadValue = str(RawData).replace(',','.')
@@ -155,7 +142,7 @@ class Converter(object):
     #########
     # Prettify xml
     ######### 
-    def prettyPrintXml(self,):
+    def prettyPrintXml(self):
         # Generate xml text
         xmlText = self.xmlData.decode()
         self.xmlText = xmlText
@@ -177,7 +164,7 @@ class Converter(object):
     #################
     # Parse OneLambda
     #################
-    def ProcessOneLambda(self,OLReader):
+    def ProcessOneLambda(self, pandasCsvReader=None):
         #print('OneLambda to xml...',OLReader.head())
         print('OneLambda to xml...')
         # TODO return validation feedback.
@@ -188,7 +175,7 @@ class Converter(object):
             col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
 
             # Determine where the columns are, position
-            colnames = [c.strip('"') for c in OLReader.columns.tolist()] #list colnames file
+            colnames = [c.strip('"') for c in pandasCsvReader.columns.tolist()] #list colnames file
             for c in range(0,len(colnames)):
                 name = colnames[c]
                 col_OneLambda[name] =  c
@@ -209,7 +196,7 @@ class Converter(object):
             catalogID = ''
 
             #rowlength = OLReader.shape[0]
-            for line, row in enumerate(OLReader.itertuples(),1):
+            for line, row in enumerate(pandasCsvReader.itertuples(), 1):
                 if(readerState=='negative_control'):
                     negativeControlRow = row
                     readerState='positive_control'
@@ -312,7 +299,7 @@ class Converter(object):
     ########
     # Parse Immucor
     ########
-    def ProcessImmucor(self,OLReader=None, reportingCenterID='?'):
+    def ProcessImmucor(self, pandasCsvReader=None, reportingCenterID='?'):
         print('Immucor to xml...')
         # TODO: Do I add validation feedback anywhere?
         validationFeedback=''
@@ -321,7 +308,7 @@ class Converter(object):
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
         immucorColumnNames = {'Sample ID':-1, 'Patient ID':-1, 'Lot ID':-1, 'Run Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw Value':-1}
         #// Determine where the columns are
-        colnames = OLReader.columns.tolist()
+        colnames = pandasCsvReader.columns.tolist()
         for c in range(0,len(colnames)): 
             name = colnames[c]
             immucorColumnNames[name] =  c
@@ -331,7 +318,7 @@ class Converter(object):
         # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
         csvData = {}
 
-        for row in OLReader.itertuples():
+        for row in pandasCsvReader.itertuples():
             # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
             if(not hasattr(row,'Sample_ID')):
                 validationFeedback += ('Sample_ID was Missing!;\n')
@@ -484,6 +471,35 @@ class Converter(object):
 
 
     def convert(self):
+        # This should be theoretically easy. But it's not really,
+        # TODO: Because there are inconsistencies in the formats of the input files:
+        # Things that We must detect and react to:
+        # 1) Manufacturer, the Immucor and One Lambda kits use different column names in their export files.
+        # 2) Delimiter. Exporters do not use a consistent delimiter, I must detect if csv are separated by comma, semicolon, tab, Other?
+        # 3) Field Quoting. Sometimes the csv files use quotes around every text field, sometimes they don't. CSV readers need to know the quoting behavior.
+        # 4) Decimals. Sometimes they use a "." sometimes they use ",". Different countries use different formats
+        # 5) Date formats. One Lambda software at least uses the local settings for date formats. We're accepting a few formats here but we should limit it to only ISO format (YYYY-MM-DD)
+        # 6) Control Bead Formats. How do the manufacturers specify what the control beads are? This varies among files from the same manufacturer, and seems to be based on user settings?
+        # 7) Specificity formats. For One Lambda it seems to be a comma-separated list. QUESTION FOR HAML FORMAT: What do we do when there are multiple shared specificities for a bead?
+
+
+        self.determineFormatAndManufacturer()
+        print('Done Determining File Format. delimiter=(' + str(self.delimiter) + ') allFieldsQuoted=(' + str(self.allFieldsQuoted) + ') manufacturer=(' + str(self.manufacturer) + ')')
+
+        pandasCsvReader = readCsvFile(csvFileName=self.csvFileName, delimiter=self.delimiter, allFieldsQuoted=self.allFieldsQuoted)
+
+        if(self.delimiter is None or self.allFieldsQuoted is None or self.manufacturer is None):
+            self.validationFeedback=('Could not determine the format of the input File!\nSomething is strange about the csv file:\n'
+                + 'delimiter=(' + str(self.delimiter) + ')\nallFieldsQuoted=(' + str(self.allFieldsQuoted) + ')\nmanufacturer=(' + str(self.manufacturer) + ')')
+        elif self.manufacturer == 'OneLambda':
+            self.validationFeedback=self.ProcessOneLambda(pandasCsvReader=pandasCsvReader)
+        elif self.manufacturer == 'Immucor':
+            self.validationFeedback=self.ProcessImmucor(pandasCsvReader=pandasCsvReader)
+        else:
+            print('Not known manufacturer, unable to convert file')
+            return False
+    '''
+    def convert(self):
         global manufacturer
         self.DetermineDelimiter()
         manufacturer, Table = self.DetermineManufacturer()
@@ -497,7 +513,33 @@ class Converter(object):
         else:
             print('Not known manufacturer, unable to convert file')
             return False
+    '''
 
+
+def readCsvFile(csvFileName=None, delimiter=None, allFieldsQuoted=False):
+    #print('Reading csv File:' + str(csvFileName))
+
+    # Copying the file is necessary to work on S3 environment.
+    copyInputFile = copy.deepcopy(csvFileName)
+
+    try:
+        if(allFieldsQuoted):
+            # this seems to work for one lambda files
+            #print('Opening file with every quoted field:')
+            pandasCsvReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, quoting=csv.QUOTE_ALL)
+
+        else:
+            #print('Opening file, undefined quote behavior.')
+            # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
+            pandasCsvReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, engine="python")
+
+        pandasCsvReader = pandasCsvReader.loc[:,~pandasCsvReader.columns.str.contains('^Unnamed')]  # eliminate empty columns at the end
+
+        return pandasCsvReader
+
+    except Exception as e:
+        print('Exception when reading csv file ' + str(csvFileName) + ' : ' + str(e))
+        raise(e)
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -512,13 +554,11 @@ if __name__ == '__main__':
     args = parseArgs()
     csvFile = args.csv
     xmlFile = args.xml
-    manufacturer=''
 
     print('csvFile:' + csvFile)
-    print('manufacturer:' + manufacturer)
     print('xmlFile:' + str(xmlFile))
 
-    converter = Converter(csvFile=csvFile,manufacturer=manufacturer,xmlFile=xmlFile)
+    converter = Converter(csvFileName=csvFile, manufacturer=None, xmlFile=xmlFile)
     converter.convert()
 
     print('Validation Feedback:' + str(converter.validationFeedback))
