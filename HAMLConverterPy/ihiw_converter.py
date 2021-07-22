@@ -269,7 +269,7 @@ class Converter(object):
                         # TODO: We're not assigning the ranking correctly.
                         #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
                         #Ranking=0
-                        Ranking = str(row.Rxn)
+                        Ranking = str(int(row.Rxn))
 
                         # What locus is this data row for?
                         locusDataRow=''
