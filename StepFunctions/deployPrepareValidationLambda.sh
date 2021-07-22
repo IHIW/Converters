@@ -28,12 +28,6 @@ cd ..
 zip -g function.zip prepareValidation.py
 zip -j -g function.zip ../Common/IhiwRestAccess.py
 
-# Add Common Files
-#cd ..
-#zip -g HAMLConverterPy/function.zip Common/IhiwRestAccess.py
-#cd HAMLConverterPy
-
-
 # Zip Config File
 zip -g function.zip validation_config.yml
 

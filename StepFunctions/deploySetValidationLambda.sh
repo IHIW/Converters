@@ -28,14 +28,5 @@ cd ..
 zip -g function.zip setValidationStatus.py
 zip -j -g function.zip ../Common/IhiwRestAccess.py
 
-# Add Common Files
-#cd ..
-#zip -g HAMLConverterPy/function.zip Common/IhiwRestAccess.py
-#cd HAMLConverterPy
-
-
-# Zip Config File
-#zip -g function.zip validation_config.yml
-
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip

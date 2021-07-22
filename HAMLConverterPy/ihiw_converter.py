@@ -67,6 +67,7 @@ class Converter(object):
         self.dateFormat = None
         # TODO: Is there a more flexible way to do this? This breaks regularly with new date formats.
         # TODO: Warning: It's very easy to mis-interpret days and months here.
+        # TODO: We can try to parse the whole document....to find a date > 12
         potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y','%d.%m.%Y','%d. %m. %Y']
         for dateFormat in potentialDateFormats:
             try:
@@ -83,7 +84,7 @@ class Converter(object):
     def determineFormatAndManufacturer(self):
         print('Determining File Format and Manufacturer')
 
-        # Lots of possible delimiters
+        # Possible delimiters
         tryDelimiters=[',',';','\t']
         for delimiter in tryDelimiters:
             if (self.delimiter is None):
@@ -296,6 +297,7 @@ class Converter(object):
         except Exception as e:
             validationFeedback+= 'Exception when reading file:' + str(e) + ';\n'
         return validationFeedback
+
     ########
     # Parse Immucor
     ########
@@ -311,8 +313,7 @@ class Converter(object):
         colnames = pandasCsvReader.columns.tolist()
         for c in range(0,len(colnames)): 
             name = colnames[c]
-            immucorColumnNames[name] =  c
-
+            immucorColumnNames[name] = c
 
         # Parse Data
         # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
