@@ -7,11 +7,6 @@ from boto3 import client
 from time import sleep
 import xml.etree.ElementTree as ElementTree
 
-try:
-    import IhiwRestAccess
-except Exception:
-    import Common.IhiwRestAccess
-
 s3 = client('s3')
 
 
@@ -76,18 +71,36 @@ def parseMiringXml(xmlText=None):
 
 
 def miring_validation_handler(event, context):
-    print('I found the schema validation handler.')
-    # This is the AWS Lambda handler function.
+    print('I found the Miring validation handler.')
+
+    # Some default JSON to help with debugging, this will be replaced by the event payload
+    uploadDetails = {}
+    uploadDetails['is_valid'] = False
+    uploadDetails['validation_feedback'] = 'The input event payload does not seem to contain the expected upload data. Something went wrong in the step function flowchart.'
+    uploadDetails['validator_type'] = 'MIRING'
+
     xmlKey = None
     try:
         # Sleep 1 second, enough time to make sure the file is available.
-        sleep(1)
-        print('This is the event:' + str(event)[0:50])
+        #sleep(1)
 
-        content = json.loads(event['Records'][0]['Sns']['Message'])
+        # Fetching the upload detail bundle from the step function payload
+        if "Input" in event and "Payload" in event['Input']:
+            uploadDetails = event['Input']['Payload']
+        else:
+            print(str(uploadDetails['validation_feedback']))
+            return uploadDetails
 
-        bucket = content['Records'][0]['s3']['bucket']['name']
-        xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
+        bucket = uploadDetails['bucket']
+        # print('bucket:' + str(bucket))
+
+        xmlKey = uploadDetails['file_name']
+
+        # Filenames that have a space character need to be decoded.
+        decodedKey = urllib.parse.unquote_plus(xmlKey)
+        print('decodedKey:' + str(decodedKey))
+        xmlKey = decodedKey
+
         xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
         xmlText = xmlFileObject["Body"].read()
 
@@ -97,15 +110,7 @@ def miring_validation_handler(event, context):
         fileExtension = fileExtension.replace('.','')
         print('This file has the extension:' + fileExtension)
 
-        # Get access stuff from the REST Endpoints
-        url = IhiwRestAccess.getUrl()
-        token = IhiwRestAccess.getToken(url=url)
-
-        hmlUploadObject = IhiwRestAccess.getUploadByFilename(token=token, url=url, fileName=xmlKey)
-        if(hmlUploadObject is None or 'type' not in hmlUploadObject.keys() or hmlUploadObject['type'] is None):
-            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate by MIRING..' )
-            return None
-        fileType = hmlUploadObject['type']
+        fileType = uploadDetails['upload_type']
 
         validationResults = None
         if(fileType == 'HML'):
@@ -119,30 +124,26 @@ def miring_validation_handler(event, context):
             isValid, validationFeedback = parseMiringXml(xmlText=xmlResponse)
 
             #   5) Set validation status of the upload object.
-            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isValid
-                 , validationFeedback=validationFeedback, url=url, token=token, validatorType='MIRING')
+            uploadDetails['is_valid'] = isValid
+            uploadDetails['validation_feedback'] = validationFeedback
+            uploadDetails['validator_type'] = 'MIRING'
 
-            # It's not really necessary to return anything...but AWS likes to see if the lambda was successful.
-            return {
-                'statusCode': 200,
-                'body': json.dumps('MIRING Validation performed successfully.')
-
-            }
+            return uploadDetails
         else:
             print('This is not an HML file (file type=' + str(fileType) + ') I will not validate it by MIRING.')
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         if (xmlKey is not None):
-            url = IhiwRestAccess.getUrl()
-            token = IhiwRestAccess.getToken(url=url)
             validationStatus = 'Exception running MIRING Validation:' + str(e)
-            print('I will try to set the status.')
-            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback=validationStatus, url=url,
-                                token=token, validatorType='MIRING')
+            uploadDetails['is_valid'] = False
+            uploadDetails['validation_feedback'] = validationStatus
+            uploadDetails['validator_type'] = 'MIRING'
         else:
-            print('Failed setting the upload status because I could not identify the name of the xml file.')
-        return str(e)
+            print('Failed setting the upload status because I could not identify the name of the xml file!')
+
+
+    return uploadDetails
 
 
 def validateMiring(xmlText=None, xmlBucket=None,xmlKey=None):

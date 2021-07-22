@@ -40,4 +40,4 @@ def set_validation_status_handler(event, context):
         print(uploadDetails['validation_feedback'])
         return uploadDetails
 
-    return event
+    return uploadDetails
