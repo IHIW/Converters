@@ -5,16 +5,16 @@ def prepare_validation_handler(event, context):
 
     uploadDetails= {}
 
-    # extract file ending
+    # Get some info about the upload
     if "Input" in event and "detail" in event['Input'] and "requestParameters" in event['Input']['detail'] and "key" in \
             event['Input']['detail']['requestParameters']:
         file_name = event['Input']['detail']['requestParameters']['key']
         file_name_components = file_name.split(".")
         file_ending = file_name_components[len(file_name_components) - 1].upper()
-        uploadDetails['file_ending'] = file_ending
-        uploadDetails['file_name'] = file_name
+        uploadDetails['file_ending'] = str(file_ending)
+        uploadDetails['file_name'] = str(file_name)
         bucket_name = event['Input']['detail']['requestParameters']['bucketName']
-        uploadDetails['bucket'] = bucket_name
+        uploadDetails['bucket'] = str(bucket_name)
     else:
         uploadDetails['file_name'] = "UNKNOWN"
         uploadDetails['file_ending'] = "UNKNOWN"
@@ -28,16 +28,16 @@ def prepare_validation_handler(event, context):
         uploadDetails['url']= "UNKNOWN"
         uploadDetails['token']= "UNKNOWN"
     else:
-        uploadDetails['url']=url
-        uploadDetails['token']=token
+        uploadDetails['url']=str(url)
+        uploadDetails['token']=str(token)
 
     # Wrapper, exception handling
     try:
         uploadFile = getUploadIfExists(token=token, url=url, fileName=file_name)
-        uploadDetails['id'] = uploadFile['id']
-        uploadDetails['project_name'] = uploadFile['project']['name']
-        uploadDetails['project_id'] = uploadFile['project']['id']
-        uploadDetails['upload_type'] = uploadFile['type']
+        uploadDetails['id'] = str(uploadFile['id'])
+        uploadDetails['project_name'] = str(uploadFile['project']['name'])
+        uploadDetails['project_id'] = str(uploadFile['project']['id'])
+        uploadDetails['upload_type'] = str(uploadFile['type'])
 
     except Exception as e:
         print('Exception fetching uploaded object:' + str(e))
@@ -45,8 +45,5 @@ def prepare_validation_handler(event, context):
         uploadDetails['project_name'] = "UNKNOWN"
         uploadDetails['project_id'] = "UNKNOWN"
         uploadDetails['upload_type'] = "UNKNOWN"
-
-    # s3 bucket?
-
 
     return uploadDetails

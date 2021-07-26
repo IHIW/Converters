@@ -434,7 +434,7 @@ def getProjectID(configFileName='validation_config.yml', projectName=None):
         configDict = yaml.load(configStream, Loader=yaml.FullLoader)
         #print('configDict:' + str(configDict)) # Dont print this, it contains passwords.
         projectID = configDict['project_id'][projectName]
-        return projectID
+        return str(projectID)
     except Exception as e:
         print('Exception when loading project ID from config, does the config contain an entry for project_id:' + str(projectName) + '?:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)

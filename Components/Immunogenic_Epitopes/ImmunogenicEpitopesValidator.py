@@ -1,5 +1,4 @@
 from boto3 import client
-
 s3 = client('s3')
 from sys import exc_info
 import json
@@ -27,88 +26,97 @@ except Exception as e:
 
 def immunogenic_epitope_handler(event, context):
     print('I found the immunogenic epitope validation handler.')
-    # This is the AWS Lambda handler function.
-    try:
-        # Sleep 1 second, enough time to make sure the file is available.
-        sleep(1)
-        # Get the uploaded file.
-        content = json.loads(event['Records'][0]['Sns']['Message'])
+    # TODO: This should handle the case
 
-        bucket = content['Records'][0]['s3']['bucket']['name']
-        excelKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
+    # This is the AWS Lambda handler function.
+    uploadDetails = {}
+    uploadDetails['is_valid'] = False
+    uploadDetails['validation_feedback'] = 'The input event payload does not seem to contain the expected upload data. Something went wrong in the step function flowchart.'
+    uploadDetails['validator_type'] = 'DATA_MATRIX'
+
+    try:
+        print('Inside Try')
+        print('Event info, this should have [Input][Payload]:' + str(event))
+        # Sleep 1 second, enough time to make sure the file is available.
+        #sleep(1)
+        # Fetching the upload detail bundle from the step function payload
+        if "Input" in event and "Payload" in event['Input']:
+            uploadDetails = event['Input']['Payload']
+        else:
+            print(str(uploadDetails['validation_feedback']))
+            return uploadDetails
+
+        bucket = uploadDetails['bucket']
+        # print('bucket:' + str(bucket))
+
+        excelKey = uploadDetails['file_name']
         print('Excel Filename:' + excelKey)
 
         validationResults = None
         # Is this an excel file? It should have the xlsx extension.
-        if (str(excelKey).lower().endswith('.xls') or str(excelKey).lower().endswith('.xlsx')):
-            print('This is an excel file with the name:' + str(excelKey))
 
-            # Get the upload information.
-            url = IhiwRestAccess.getUrl()
-            token = IhiwRestAccess.getToken(url=url)
-
-            if url is None or len(url) == 0:
-                print('Error, I could not find a valid URL!')
-
-            if token is None or len(token) == 0:
-                print('Error, I could not find a valid login token!')
+        url = uploadDetails['url']
+        token = uploadDetails['token']
 
 
-            # TODO: What if there is no  upload? This will currently probaly just crash. Check if uploadFile is None.
-            # TODO: Indeed. Debug why there is no project.
-            uploadFile = IhiwRestAccess.getUploadIfExists(fileName=excelKey, url=url, token=token)
-            print('I found this upload object:' + str(uploadFile))
-            projectName = uploadFile['project']['name']
-            projectID =  uploadFile['project']['id']
-            print('The upload is for this project:' + str(projectName) + ',id=' + str(projectID))
-            fileType = uploadFile['type']
-            print('this upload is file type:' + str(fileType))
+        projectName = str(uploadDetails['project_name'])
+        projectID =  str(uploadDetails['project_id'])
+        print('The upload is for this project:' + str(projectName) + ',id=' + str(projectID))
+        fileType = uploadDetails['upload_type']
+        print('this upload is file type:' + str(fileType))
 
-            # Is this a data Matrix?
-            if (fileType != 'PROJECT_DATA_MATRIX'):
-                print('the file type ' + str(fileType) + ' is not a project data matrix, i will not validate it.')
+
+        # Is this a data Matrix?
+        if (fileType == 'PROJECT_DATA_MATRIX'):
+            immunogenicEpitopeProjectNumber=str(IhiwRestAccess.getProjectID(projectName='immunogenic_epitopes'))
+            nonImmunogenicEpitopeProjectNumber=str(IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes'))
+            dqImmunogenicityProjectNumber=str(IhiwRestAccess.getProjectID(projectName='dq_immunogenicity'))
+
+            if (projectID == immunogenicEpitopeProjectNumber or projectID == dqImmunogenicityProjectNumber):
+                print('This is the Immunogenic Epitopes project!')
+                validatorType='IMMUNOGENIC_EPITOPES'
+                isImmunogenic = True
+            elif (projectID == nonImmunogenicEpitopeProjectNumber):
+                print('This is the Non Immunogenic Epitopes project!')
+                validatorType = 'NON_IMMUNOGENIC_EPITOPES'
+                isImmunogenic = False
             else:
-                immunogenicEpitopeProjectNumber=IhiwRestAccess.getProjectID(projectName='immunogenic_epitopes')
-                nonImmunogenicEpitopeProjectNumber=IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
-                dqImmunogenicityProjectNumber=IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
+                print('This is not the (Non) Immunogenic Epitopes project! I will not validate it. Double-check the project names')
+                return None
 
-                if (projectID == immunogenicEpitopeProjectNumber or projectID == dqImmunogenicityProjectNumber):
-                    print('This is the Immunogenic Epitopes project!')
-                    validatorType='IMMUNOGENIC_EPITOPES'
-                    isImmunogenic = True
-                elif (projectID == nonImmunogenicEpitopeProjectNumber):
-                    print('This is the Non Immunogenic Epitopes project!')
-                    validatorType = 'NON_IMMUNOGENIC_EPITOPES'
-                    isImmunogenic = False
-                else:
-                    print('This is not the (Non) Immunogenic Epitopes project! I will not validate it. Double-check the project names')
-                    return None
+            excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
+            inputExcelBytes = BytesIO(excelFileObject["Body"].read())
 
-                excelFileObject = s3.get_object(Bucket=bucket, Key=excelKey)
-                inputExcelBytes = BytesIO(excelFileObject["Body"].read())
+            (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=isImmunogenic, projectIDs=projectID, url=url, token=token)
+            if(len(validationResults) == 0):
+                validationFeedback='Valid'
+            else:
+                validationFeedback = ''
+                for validationError in validationResults:
+                    # for validationColumnName in validationErrorRow.keys():
+                    # currentValidationResult = validationErrorRow[validationColumnName]
+                    if (validationError is not None and len(validationError) > 0):
+                        validationFeedback = validationFeedback + validationError + ';\n'
 
-                (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=inputExcelBytes, isImmunogenic=isImmunogenic, projectIDs=projectID, url=url, token=token)
-                if(len(validationResults) == 0):
-                    validationFeedback='Valid'
-                else:
-                    validationFeedback = ''
-                    for validationError in validationResults:
-                        # for validationColumnName in validationErrorRow.keys():
-                        # currentValidationResult = validationErrorRow[validationColumnName]
-                        if (validationError is not None and len(validationError) > 0):
-                            validationFeedback = validationFeedback + validationError + ';\n'
+            print('validation results were retrieved, attempting to set validation status.')
+            print('ValidationResults:(\n' + str(validationResults) + '\n)')
+            uploadDetails['is_valid'] = len(validationResults) == 0
+            uploadDetails['validation_feedback'] = validationFeedback
+            uploadDetails['validator_type'] = validatorType
 
-                print('validation results were retrieved, attempting to set status.')
-                print('ValidationResults:(\n' + str(validationResults) + '\n)')
-                IhiwRestAccess.setValidationStatus(uploadFileName=excelKey, isValid=len(validationResults) == 0,
-                    validationFeedback=validationFeedback, url=url, token=token, validatorType=validatorType)
-                createValidationReport(isReportValid=len(validationResults) == 0, parentUploadFileName=excelKey, outputReportWorkbook=outputReportWorkbook, bucket=bucket, token=token, url=url, validatorType=validatorType)
+            createValidationReport(isReportValid=len(validationResults) == 0, parentUploadFileName=excelKey
+                , outputReportWorkbook=outputReportWorkbook, bucket=bucket, token=token, url=url, validatorType=validatorType)
 
+        elif (fileType == 'XLSX'):
+            print('This file is the excel report file. I do not need to validate it (again)')
+            # Returning 'None' So we don't overwrite the existing validation status.
+            # TODO: It might be better to detect a validation status and pass it to the next step. This is better for step functions,
+            #   But to do that I need to access the parent Project_Data_Matrix and get it's validation status
 
         else:
-            print(excelKey + ' is not an excel file so I will not validate it.')
+            print('the file type ' + str(fileType) + ' is not a project data matrix, i will not validate it.')
 
-        return str(validationResults)
+        return uploadDetails
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
@@ -301,7 +309,11 @@ def createValidationReport(isReportValid=None, parentUploadFileName=None, output
     else:
         print('There is already a child upload(' + str(existingUpload) + ') for report file ' + str(reportFileName) + ' so I will not create one.')
 
-    IhiwRestAccess.setValidationStatus(uploadFileName=reportFileName, isValid=isReportValid, validationFeedback='Download this report for Detailed Validation Results.'
-        , validatorType=validatorType+'_REPORT',token=token,url=url)
+    # TODO: It might be better to detect a validation status in the handler for the XLSX Report, and pass it to the next step.
+    #   This is better for step functions, and lets the handler handle the xlsx files individually.
+    #   But to do that I need to access the parent Project_Data_Matrix and get it's validation status
+    IhiwRestAccess.setValidationStatus(uploadFileName=reportFileName, isValid=isReportValid,
+        validationFeedback='Download this report for Detailed Validation Results.'
+        , validatorType=validatorType + '_REPORT', token=token, url=url)
 
     S3_Access.writeFileToS3(newFileName=reportFileName, bucket=bucket, s3ObjectBytestream=reportStreamData)
