@@ -196,7 +196,7 @@ class Converter(object):
             #rowlength = OLReader.shape[0]
             for line, row in enumerate(pandasCsvReader.itertuples(), 1):
 
-                print('row:' + str(row))
+                #print('row:' + str(row))
 
 
                 currentRowSampleIDName = str(row.SampleIDName).strip()
