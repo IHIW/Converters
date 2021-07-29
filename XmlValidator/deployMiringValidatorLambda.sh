@@ -6,7 +6,6 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="MiringValidation.py"
 LAMBDA_FUNCTION="validateXmlMiringStaging"
 #LAMBDA_FUNCTION="validateXmlMiringProd"
 
@@ -18,7 +17,6 @@ rm function.zip
 # Install package(s)
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
-pip install --target ./package pyyaml
 pip install --target ./package requests
 deactivate
 
@@ -28,12 +26,7 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 
 # Zip Script
 cd ..
-zip -g function.zip $HANDLER_FILE
-zip -j -g function.zip ../Common/IhiwRestAccess.py
-
-
-# Zip Config File
-zip -g function.zip validation_config.yml
+zip -g function.zip MiringValidation.py
 
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip

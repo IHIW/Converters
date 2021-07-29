@@ -7,21 +7,16 @@ from boto3 import client
 import xml.etree.ElementTree as ElementTree
 from time import sleep
 
-try:
-    import Common.IhiwRestAccess
-except Exception as e:
-    import IhiwRestAccess
-
 s3 = client('s3')
 
 def parseNmdpXml(xmlText=None):
     validationFeedback=''
 
-    print('Parsing NMDP Xml Text:' + str(xmlText))
+    #print('Parsing NMDP Xml Text:' + str(xmlText))
 
     documentRoot = ElementTree.fromstring(xmlText)
 
-    print('DocumentRoot:' + str(documentRoot))
+    #print('DocumentRoot:' + str(documentRoot))
     statusText = documentRoot.findall('status')[0].text
 
     isValid = statusText.upper()=='VALID'
@@ -52,18 +47,36 @@ def parseNmdpXml(xmlText=None):
     return isValid, validationFeedback
 
 def nmdp_validation_handler(event, context):
-    print('I found the schema validation handler.')
+    print('I found the nmdp validation handler.')
     # This is the AWS Lambda handler function.
+    # Some default JSON to help with debugging, this will be replaced by the event payload
+    uploadDetails = {}
+    uploadDetails['is_valid'] = False
+    uploadDetails['validation_feedback'] = 'The input event payload does not seem to contain the expected upload data. Something went wrong in the step function flowchart.'
+    uploadDetails['validator_type'] = 'SCHEMA'
+
     xmlKey = None
     try:
         # Sleep 1 second, enough time to make sure the file is available.
-        sleep(1)
+        #sleep(1)
         #print('This is the event:' + str(event)[0:50])
 
-        content = json.loads(event['Records'][0]['Sns']['Message'])
+        # Fetching the upload detail bundle from the step function payload
+        if "Input" in event and "Payload" in event['Input']:
+            uploadDetails = event['Input']['Payload']
+        else:
+            print(str(uploadDetails['validation_feedback']))
+            return uploadDetails
 
-        bucket = content['Records'][0]['s3']['bucket']['name']
-        xmlKey = urllib.parse.unquote_plus(content['Records'][0]['s3']['object']['key'], encoding='utf-8')
+        bucket = uploadDetails['bucket']
+        # print('bucket:' + str(bucket))
+
+        xmlKey = uploadDetails['file_name']
+        # Filenames that have a space character need to be decoded.
+        decodedKey = urllib.parse.unquote_plus(xmlKey)
+        print('decodedKey:' + str(decodedKey))
+        xmlKey = decodedKey
+
         xmlFileObject = s3.get_object(Bucket=bucket, Key=xmlKey)
         xmlText = xmlFileObject["Body"].read()
 
@@ -73,15 +86,7 @@ def nmdp_validation_handler(event, context):
         fileExtension = fileExtension.replace('.','')
         print('This file has the extension:' + fileExtension)
 
-        # Get access stuff from the REST Endpoints
-        url = IhiwRestAccess.getUrl()
-        token = IhiwRestAccess.getToken(url=url)
-
-        hmlUploadObject = IhiwRestAccess.getUploadByFilename(token=token, url=url, fileName=xmlKey)
-        if(hmlUploadObject is None or 'type' not in hmlUploadObject.keys() or hmlUploadObject['type'] is None):
-            print('Could not find the Upload object for upload ' + str(xmlKey) + '\nI will not validate by NMDP..' )
-            return None
-        fileType = hmlUploadObject['type']
+        fileType = uploadDetails['upload_type']
 
         validationResults = None
         if(fileType == 'HML'):
@@ -94,31 +99,26 @@ def nmdp_validation_handler(event, context):
             #  Parse Xml response.
             isValid, validationFeedback = parseNmdpXml(xmlText=xmlResponse)
 
-            #   5) Set validation status of the upload object.
-            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=isValid
-                 , validationFeedback=validationFeedback, url=url, token=token, validatorType='NMDP')
+            #   Set validation status of the upload object.
+            uploadDetails['is_valid'] = isValid
+            uploadDetails['validation_feedback'] = validationFeedback
+            uploadDetails['validator_type'] = 'NMDP'
 
-            # It's not really necessary to return anything...but AWS likes to see if the lambda was successful.
-            return {
-                'statusCode': 200,
-                'body': json.dumps('NMDP Validation performed successfully.')
-
-            }
+            return uploadDetails
         else:
             print('This is not an HML file (file type=' + str(fileType) + ') I will not validate it by NMDP.')
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         if (xmlKey is not None):
-            url = IhiwRestAccess.getUrl()
-            token = IhiwRestAccess.getToken(url=url)
             validationStatus = 'Exception running NMDP Validation:' + str(e)
-            print('I will try to set the status.')
-            IhiwRestAccess.setValidationStatus(uploadFileName=xmlKey, isValid=False, validationFeedback=validationStatus, url=url,
-                                token=token, validatorType='NMDP')
+            uploadDetails['is_valid'] = False
+            uploadDetails['validation_feedback'] = validationStatus
+            uploadDetails['validator_type'] = 'NMDP'
         else:
-            print('Failed setting the upload status because I could not identify the name of the xml file.')
-        return str(e)
+            print('Failed setting the upload status because I could not identify the name of the xml file!')
+
+    return uploadDetails
 
 def validateNmdpPortal(xmlText=None, xmlBucket=None,xmlKey=None):
     try:

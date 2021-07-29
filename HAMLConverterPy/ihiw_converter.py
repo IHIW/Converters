@@ -67,6 +67,7 @@ class Converter(object):
         self.dateFormat = None
         # TODO: Is there a more flexible way to do this? This breaks regularly with new date formats.
         # TODO: Warning: It's very easy to mis-interpret days and months here.
+        # TODO: We can try to parse the whole document....to find a date > 12
         potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y','%d.%m.%Y','%d. %m. %Y']
         for dateFormat in potentialDateFormats:
             try:
@@ -83,7 +84,7 @@ class Converter(object):
     def determineFormatAndManufacturer(self):
         print('Determining File Format and Manufacturer')
 
-        # Lots of possible delimiters
+        # Possible delimiters
         tryDelimiters=[',',';','\t']
         for delimiter in tryDelimiters:
             if (self.delimiter is None):
@@ -165,20 +166,17 @@ class Converter(object):
     # Parse OneLambda
     #################
     def ProcessOneLambda(self, pandasCsvReader=None):
-        #print('OneLambda to xml...',OLReader.head())
         print('OneLambda to xml...')
-        # TODO return validation feedback.
         validationFeedback = ''
 
         try:
-
-            col_OneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
+            #columnsOneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
 
             # Determine where the columns are, position
-            colnames = [c.strip('"') for c in pandasCsvReader.columns.tolist()] #list colnames file
-            for c in range(0,len(colnames)):
-                name = colnames[c]
-                col_OneLambda[name] =  c
+            #colnames = [c.strip('"') for c in pandasCsvReader.columns.tolist()] #list colnames file
+            #for c in range(0,len(colnames)):
+            #    name = colnames[c]
+            #    columnsOneLambda[name] =  c
 
             # Data is the root element.
             data = ET.Element("haml",xmlns='urn:HAML.Namespace')
@@ -197,6 +195,38 @@ class Converter(object):
 
             #rowlength = OLReader.shape[0]
             for line, row in enumerate(pandasCsvReader.itertuples(), 1):
+
+                #print('row:' + str(row))
+
+
+                currentRowSampleIDName = str(row.SampleIDName).strip()
+                currentRowPatientID = str(row.PatientID).strip()
+                currentRowCatalogID = str(row.CatalogID).strip()
+
+                # Some quick error checking..
+                # In one case the user submitted data that was missing sampleIDs. This shouldn't be accepted.
+                # print('delimiter =(' + self.delimiter + ')')
+                # print('sampleIDName= ' + str(row.SampleIDName))
+                if (currentRowSampleIDName is None or len(currentRowSampleIDName) == 0 or currentRowSampleIDName == 'nan'):
+                    # row.SampleIDName='?'
+                    currentRowSampleIDName = '?'
+                    feedbackText = 'Empty SampleIDName found, please provide SampleIDName in every row.'
+                    # Only report this once.
+                    if (feedbackText not in validationFeedback):
+                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+
+                if (currentRowPatientID is None or len(currentRowPatientID) == 0 or currentRowPatientID == 'nan'):
+                    currentRowPatientID = '?'
+                    feedbackText = 'Empty PatientID found, please provide PatientID in every row.'
+                    # Only report this once.
+                    if (feedbackText not in validationFeedback):
+                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+
+                # State Machine Logic:
+                # First row is negative control
+                # Second row is positive control
+                # Many rows of bead_values
+                # Possibly circle back with another negative control.
                 if(readerState=='negative_control'):
                     negativeControlRow = row
                     readerState='positive_control'
@@ -204,56 +234,44 @@ class Converter(object):
                     positiveControlRow = row
                     readerState = 'bead_values'
 
-                    currentRowSampleIDName=str(row.SampleIDName).strip()
-                    currentRowPatientID=str(row.PatientID).strip()
-
-                    # In one case the user submitted data that was missing sampleIDs. This shouldn't be accepted.
-                    #print('delimiter =(' + self.delimiter + ')')
-                    #print('sampleIDName= ' + str(row.SampleIDName))
-                    if(currentRowSampleIDName is None or len(currentRowSampleIDName) == 0 or currentRowSampleIDName=='nan'):
-                        # row.SampleIDName='?'
-                        currentRowSampleIDName = '?'
-                        feedbackText = 'Empty SampleIDName found, please provide SampleIDName in every row.'
-                        # Only report this once.
-                        if(feedbackText not in validationFeedback):
-                            validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
-
-                    if (currentRowPatientID is None or len(currentRowPatientID) == 0 or currentRowPatientID=='nan'):
-                        currentRowPatientID = '?'
-                        feedbackText = 'Empty PatientID found, please provide PatientID in every row.'
-                        # Only report this once.
-                        if (feedbackText not in validationFeedback):
-                            validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
-
-
-                    # If the patientID or sampleIDhave changed, this is a new patient-antibody-assessment.
-                    # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+                    # For each new patient or sample, we need to add the patient-antibody-assessment and solid-phase-panel nodes
                     if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID):
+                        # Store some data for the current patient/sample/panel
                         sampleID = currentRowSampleIDName
                         patientID = currentRowPatientID
-                        #print('Converting a new sampleID:' + str(sampleID) + ' and patientID:' + str(
-                        #    patientID) + ' and catalogID:' + str(catalogID))
 
-                        # For each new patient, we need to add the patient-antibody-assessment and solid-phase-panel nodes
+                        try:
+                            negativeControlMFI = str(int(round(float(str(negativeControlRow.RawData).replace(',', '.')))))
+                            positiveControlMFI = str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
+                        except Exception as e:
+                            negativeControlMFI = '-1'
+                            positiveControlMFI = '-1'
+                            print('Could not identify values for negative control(' + str(negativeControlRow.RawData)
+                                  + ') or positive control(' + str(positiveControlRow.RawData)
+                                  + '). SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(
+                                currentRowPatientID) + '. Data was in an unexpected format.')
+                            print('Exception:' + str(e))
+
                         patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
                             {'sampleID': str(sampleID),
                              'patientID': str(patientID),
                              'reporting-centerID': 'ReportingCenterID',
                              # TODO No reporting center in the input file. Should we pass that in somehow?
                              'sample-test-date': self.formatRunDate(row.RunDate),
-                             'negative-control-MFI': str(int(round(float(str(negativeControlRow.RawData).replace(',', '.'))))),
-                             'positive-control-MFI': str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
+                             'negative-control-MFI': negativeControlMFI,
+                             'positive-control-MFI': positiveControlMFI
                              # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
                              })
-                    # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
-                    if (str(row.SampleIDName).strip() != sampleID or str(row.PatientID).strip() != patientID or str(row.CatalogID).strip() != catalogID):
-                        catalogID = str(row.CatalogID).strip()
-                        #print('Found a new bead catalog: ' + str(catalogID))
 
-                        current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
-                              {'kit-manufacturer': self.manufacturer,
-                               'lot': catalogID
-                               })
+                    # For any new sampleID or patientID,  this is a new solid-phase-panel.
+                    # TODO: We also need this If the catalogID has changed. If there are multiple catalogs in the input csv there should be new solid-phase panel for each.
+                    #   For now it works that we're creating new patient-antibody-assessment AND a new solid-phase-panel for every change.
+                    catalogID = currentRowCatalogID
+                    # print('Found a new bead catalog: ' + str(catalogID))
+                    current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                        {'kit-manufacturer': self.manufacturer,
+                            'lot': catalogID
+                        })
 
                 elif(readerState=='bead_values'):
                     if row.PatientID is None:
@@ -262,32 +280,60 @@ class Converter(object):
                         break
 
                     else:
-                        # TODO: Are they going to be delimited by something other than commas? Is that possible?
-                        Specs = row.Specificity.split(",")
-                        Raw = int(round(float(str(row.RawData).replace(',','.'))))
-                        # TODO: We're not assigning the ranking correctly.
-                        #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
-                        #Ranking=0
-                        Ranking = str(row.Rxn)
+                        # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
+                        #   We kind of want to do that with HML as well. Issue 189 on Github
 
-                        # What locus is this data row for?
-                        locusDataRow=''
-                        for currentLocus in Specs:
-                            if(currentLocus != '-'):
-                                if(locusDataRow==''):
-                                    # The only (or first) locus encountered.
-                                    locusDataRow=currentLocus
+                        # If the patientID, sampleID, or catalogID have changed, we need to define a new patient-antibody-assessment. This should be on a negative control row currently.
+                        if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID or currentRowCatalogID != catalogID):
+                            #print(' I detected a new Sample or Patient or Catalog ID. This should be the negative control row:' + str(row))
+                            negativeControlRow = row
+                            readerState = 'positive_control'
+
+                        else:
+                            # Parse the allele specificities, Ranking, and MFI
+                            # Are Specificities ever going to be delimited by something other than commas? Is that possible?
+                            Specs = row.Specificity.split(",")
+                            try:
+                                Raw = int(round(float(str(row.RawData).replace(',','.'))))
+                                #print('Raw:' + str(Raw))
+                            except Exception as e:
+                                Raw = -1
+                                print('Could not identify values for raw MFI(' + str(row.RawData)
+                                      + ') . SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(currentRowPatientID) + '. Data was in an unexpected format.')
+                                print('Exception:' + str(e))
+
+                            # TODO: We're not assigning the ranking in the best way.
+                            #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
+                            try:
+                                Ranking = str(int(row.Rxn))
+                                #print('This row seems fine:'                   + '\n' + str(row))
+                            except Exception as e:
+                                Ranking = -1
+                                print('Could not identify values for Ranking(' + str(row.Rxn)
+                                      + ') . SampleID = ' + str(currentRowSampleIDName)
+                                      + '. PatientID = ' + str(currentRowPatientID)
+                                      + '. Data was in an unexpected format:'
+                                      + '\n' + str(row))
+                                print('Exception:' + str(e))
+
+                            # What locus is this data row for?
+                            locusDataRow=''
+                            for currentLocus in Specs:
+                                if(currentLocus != '-'):
+                                    if(locusDataRow==''):
+                                        # The only (or first) locus encountered.
+                                        locusDataRow=currentLocus
+                                    else:
+                                        # The second locus encountered for the heterodimer.
+                                        locusDataRow=locusDataRow+ '~' + currentLocus
                                 else:
-                                    # The second locus encountered for the heterodimer.
-                                    locusDataRow=locusDataRow+ '~' + currentLocus
-                            else:
-                                pass
+                                    pass
 
-                        current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
-                            {'HLA-allele-specificity':str(locusDataRow),
-                                'raw-MFI':str(Raw),
-                                'Ranking':str(Ranking),
-                            })
+                            current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
+                                {'HLA-allele-specificity':str(locusDataRow),
+                                    'raw-MFI':str(Raw),
+                                    'Ranking':str(Ranking),
+                                })
 
 
             # create a new XML file with the results
@@ -296,72 +342,93 @@ class Converter(object):
         except Exception as e:
             validationFeedback+= 'Exception when reading file:' + str(e) + ';\n'
         return validationFeedback
+
     ########
     # Parse Immucor
     ########
     def ProcessImmucor(self, pandasCsvReader=None, reportingCenterID='?'):
         print('Immucor to xml...')
-        # TODO: Do I add validation feedback anywhere?
+
         validationFeedback=''
 
-        # TODO: These rankings are assigned based on whether the bead is positive. Is 8/6/2 arbitrary? I do not know where that came from.
+        # TODO: These rankings are assigned based on whether the bead is positive. Is 8/6/2 arbitrary? We're storing this value in the ranking for immucor files.
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
-        immucorColumnNames = {'Sample ID':-1, 'Patient ID':-1, 'Lot ID':-1, 'Run Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw Value':-1}
-        #// Determine where the columns are
-        colnames = pandasCsvReader.columns.tolist()
-        for c in range(0,len(colnames)): 
-            name = colnames[c]
-            immucorColumnNames[name] =  c
 
+        # A lookup for the columns. They're not very apparent in the pandas DataFrame so we need to find the data. I don't like Pandas, it is difficult.
+        immucorColumnNames = {'Sample_ID':-1, 'Patient_ID':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
+
+        # colnames = [str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]
+        #print('Bad Colnames:' + str(pandasCsvReader.columns.tolist()))
+        print('Good Colnames:' + str([str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]))
+
+
+        #colnames = pandasCsvReader.columns.tolist()
+        colnames = [str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]
+
+
+
+        for c in range(0,len(colnames)):
+            #print('c:' + str(c))
+            name = colnames[c]
+            #print('name:' + str(name))
+            immucorColumnNames[name] = c + 1 # 1-based vs 0-based indexing. Pandas stores data in 1-based. Dumb.
+            #print('immucorColNames:' + str(immucorColumnNames))
 
         # Parse Data
-        # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
+        # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (beadID, assignment, rawMFI)
         csvData = {}
 
         for row in pandasCsvReader.itertuples():
-            # If the patientID or sampleID have changed, this is a new patient-antibody-assessment.
-            if(not hasattr(row,'Sample_ID')):
+            try:
+                sampleID = str(row[immucorColumnNames['Sample_ID']]).strip()
+            except Exception as e:
                 validationFeedback += ('Sample_ID was Missing!;\n')
                 sampleID = '??'
-            else:
-                sampleID = str(row.Sample_ID).strip()
-            if(not hasattr(row,'Patient_ID')):
+
+            try:
+                patientID = str(row[immucorColumnNames['Patient_ID']]).strip()
+            except Exception as e:
                 validationFeedback += ('Patient_ID was not found!;\n')
                 patientID = '??'
-            else:
-                patientID = str(row.Patient_ID).strip()
 
-            if (not hasattr(row, 'Run_Date')):
+            try:
+                sampleTestDate = str(row[immucorColumnNames['Run_Date']]).strip()
+            except Exception as e:
                 validationFeedback += ('Run_Date was not found!;\n')
                 sampleTestDate = '01/01/1900'
-            else:
-                sampleTestDate = str(row.Run_Date).strip()
 
-            if (hasattr(row, 'Lot_ID')):
-                lotID = str(row.Lot_ID).strip()
-            elif (hasattr(row, 'LotID')):
-                lotID = str(row.LotID).strip()
-            else:
+            try:
+                lotID = str(row[immucorColumnNames['Lot_ID']]).strip()
+            except Exception as e:
                 validationFeedback += ('Lot_ID was not found!;\n')
                 lotID = '??'
 
-            allele = str(row.Allele).strip()
+            try:
+                allele = str(row[immucorColumnNames['Allele']]).strip()
+            except Exception as e:
+                validationFeedback += ('Allele was not found!;\n')
+                allele = '??'
 
-            if (hasattr(row, 'Assignment')):
-                assignment = str(row.Assignment).strip()
-            else:
+            try:
+                assignment = str(row[immucorColumnNames['Assignment']]).strip()
+            except Exception as e:
                 validationFeedback += ('Assignment was not found!;\n')
                 assignment = '??'
 
-            rawMfi = str(row.Raw_Value).strip()
             try:
-                beadID = str(row.Bead_ID).strip()
+                rawMfi = str(row[immucorColumnNames['Raw_Value']]).strip()
             except Exception as e:
-                beadID = None
+                validationFeedback += ('Raw_Value was not found!;\n')
+                rawMfi = '??'
 
-            print('Stored Bead ID ' + str(beadID))
+            try:
+                beadID = str(row[immucorColumnNames['Bead_ID']]).strip()
+            except Exception as e:
+                validationFeedback += ('Bead_ID was not found!;\n')
+                beadID = '??'
 
             # Initiate some data structure
+            # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (beadID, assignment, rawMFI)
             if sampleID not in csvData:
                 csvData[sampleID]={}
             if patientID not in csvData[sampleID]:
@@ -410,17 +477,18 @@ class Converter(object):
         for sampleID in csvData:
             for patientID in csvData[sampleID]:
                 for runDate in csvData[sampleID][patientID]:
-
                     # Get the PC and NC MFIs
                     # TODO: there may be an edge-case bug here. If there are multiple lot IDs we might have multiple postive and negative control MFIs, may be hidden
+
+                    # TODO: What if the mfi are not an integer?
                     for lotID in csvData[sampleID][patientID][runDate]:
                         if('NC' in csvData[sampleID][patientID][runDate][lotID]):
-                            ncMfi = csvData[sampleID][patientID][runDate][lotID]['NC'][1]
+                            ncMfi = csvData[sampleID][patientID][runDate][lotID]['NC'][2]
                         else:
                             ncMfi = '-1'
                             validationFeedback += 'Missing negative control for lot ' + str(lotID) + ';\n'
                         if('PC' in csvData[sampleID][patientID][runDate][lotID]):
-                            pcMfi = csvData[sampleID][patientID][runDate][lotID]['PC'][1]
+                            pcMfi = csvData[sampleID][patientID][runDate][lotID]['PC'][2]
                         else:
                             pcMfi = '-1'
                             validationFeedback += 'Missing postive control for lot ' + str(lotID) + ';\n'
@@ -498,40 +566,26 @@ class Converter(object):
         else:
             print('Not known manufacturer, unable to convert file')
             return False
-    '''
-    def convert(self):
-        global manufacturer
-        self.DetermineDelimiter()
-        manufacturer, Table = self.DetermineManufacturer()
-        #print('manufacturer', manufacturer)
-        if manufacturer == 'OneLambda':
-            print('manufacturer', manufacturer)
-            self.validationFeedback=self.ProcessOneLambda(Table)
-        elif manufacturer == 'Immucor':
-            print('manufacturer', manufacturer)
-            self.validationFeedback=self.ProcessImmucor(Table)
-        else:
-            print('Not known manufacturer, unable to convert file')
-            return False
-    '''
+
 
 
 def readCsvFile(csvFileName=None, delimiter=None, allFieldsQuoted=False):
     #print('Reading csv File:' + str(csvFileName))
 
     # Copying the file is necessary to work on S3 environment.
+    # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
     copyInputFile = copy.deepcopy(csvFileName)
 
+    # TODO: index_col=False ? That option was used in some cases, is it necessary?
     try:
         if(allFieldsQuoted):
             # this seems to work for one lambda files
             #print('Opening file with every quoted field:')
-            pandasCsvReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, quoting=csv.QUOTE_ALL)
+            pandasCsvReader = pd.read_csv(copyInputFile, sep=delimiter, quoting=csv.QUOTE_ALL)
 
         else:
             #print('Opening file, undefined quote behavior.')
-            # Copy the file object so we don't use up the buffer. This is important when it's reading from S3 streams.
-            pandasCsvReader = pd.read_csv(copyInputFile, index_col=False, sep=delimiter, engine="python")
+            pandasCsvReader = pd.read_csv(copyInputFile, sep=delimiter, engine="python")
 
         pandasCsvReader = pandasCsvReader.loc[:,~pandasCsvReader.columns.str.contains('^Unnamed')]  # eliminate empty columns at the end
 

@@ -6,7 +6,6 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/HAMLConverterPy"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="csv_to_haml_lambda_handler.py"
 LAMBDA_FUNCTION="convertCSVToHAMLStaging"
 #LAMBDA_FUNCTION="convertCSVToHAMLProd"
 
@@ -28,18 +27,9 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 
 # Zip Script
 cd ..
-zip -g function.zip $HANDLER_FILE
+zip -g function.zip csv_to_haml_lambda_handler.py
 zip -g function.zip ihiw_converter.py
 zip -j -g function.zip ../Common/IhiwRestAccess.py
-
-# Add Common Files
-cd ..
-zip -g HAMLConverterPy/function.zip Common/IhiwRestAccess.py
-cd HAMLConverterPy
-
-
-# Zip Config File
-zip -g function.zip validation_config.yml
 
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip

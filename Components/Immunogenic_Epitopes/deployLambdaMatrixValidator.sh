@@ -6,7 +6,6 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/bmatern/github/Converters/Components/Immunogenic_Epitopes"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
-HANDLER_FILE="ImmunogenicEpitopesValidator.py"
 LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
 #LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
 
@@ -17,10 +16,10 @@ rm function.zip
 
 # Install package(s)
 source $ENVIRONMENT_PATH"/bin/activate"
-pip install --target ./package xlrd==1.2.0
+#pip install --target ./package xlrd==1.2.0
 pip install --target ./package openpyxl
 pip install --target ./package pyyaml
-pip install --target ./package xlsxwriter
+#pip install --target ./package xlsxwriter
 pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
 deactivate
 
@@ -30,7 +29,7 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 
 # Zip Script
 cd ..
-zip -g function.zip $HANDLER_FILE
+zip -g function.zip ImmunogenicEpitopesValidator.py
 
 # Zip supporting files. -j flag will junk the relative paths.
 zip -j -g function.zip ../../Common/Validation.py

@@ -390,27 +390,38 @@ def deleteUpload(token=None, url=None, uploadId=None):
         url = getUrl()
     if(token is None):
         token = getToken(url=url)
-    print('deleting upload by id:' + str(uploadId))
+    print('deleting upload by id:(' + str(uploadId) + ')')
 
-    if token is None or len(token) < 1:
-        print('Error. No login token available when Deleting upload.')
-        return None
+    try:
+
+        if token is None or len(token) < 1:
+            print('Error. No login token available when Deleting upload.')
+            return None
 
 
-    fullUrl = str(url) + '/api/uploads/' + str(uploadId)
-    body = {}
+        fullUrl = str(url) + '/api/uploads/' + str(uploadId)
+        body = {}
 
-    encodedJsonData = str(json.dumps(body)).encode('utf-8')
-    updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='DELETE')
-    updateRequest.add_header('Content-Type', 'application/json')
-    updateRequest.add_header('Authorization', 'Bearer ' + token)
-    responseData = request.urlopen(updateRequest).read().decode("UTF-8")
-    print('Response from deleting upload:' + str(responseData))
-    if (responseData is None or len(responseData) < 1):
-        print('updateValidationStatus returned an empty response!')
-        return False
-    response = json.loads(responseData)
-    return response
+        encodedJsonData = str(json.dumps(body)).encode('utf-8')
+        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='DELETE')
+        updateRequest.add_header('Content-Type', 'application/json')
+        updateRequest.add_header('Authorization', 'Bearer ' + token)
+
+        # TODO: Something weird happening with permissions etc. Debug this, this occurs when I "Edit" an antibody_csv file
+        print('Delete Upload fullURL:(' + str(fullUrl) + ')')
+        print('Delete Upload token:(' + str(token) + ')')
+        print('Delete Upload updateRequest:(' + str(updateRequest) + ')')
+
+        responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+        print('Response from deleting upload:' + str(responseData))
+        if (responseData is None or len(responseData) < 1):
+            print('updateValidationStatus returned an empty response!')
+            return False
+        response = json.loads(responseData)
+        return response
+    except Exception as e:
+        print('Exception when deleting the upload:' + str(e))
+        raise e
 
 def getProjectID(configFileName='validation_config.yml', projectName=None):
     if(projectName is None):
@@ -423,7 +434,7 @@ def getProjectID(configFileName='validation_config.yml', projectName=None):
         configDict = yaml.load(configStream, Loader=yaml.FullLoader)
         #print('configDict:' + str(configDict)) # Dont print this, it contains passwords.
         projectID = configDict['project_id'][projectName]
-        return projectID
+        return str(projectID)
     except Exception as e:
         print('Exception when loading project ID from config, does the config contain an entry for project_id:' + str(projectName) + '?:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
