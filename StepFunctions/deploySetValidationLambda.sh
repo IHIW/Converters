@@ -6,7 +6,7 @@
 PROJECT_PATH="/home/bmatern/github/Converters/StepFunctions"
 ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
 LAMBDA_FUNCTION="sendValidationResultStaging"
-#LAMBDA_FUNCTION="convertCSVToHAMLProd"
+#LAMBDA_FUNCTION="sendValidationResultProd"
 
 cd $PROJECT_PATH
 
