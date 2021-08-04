@@ -313,14 +313,17 @@ def getDataMatrixUploads(projectIDs=None, token=None, url=None):
         projectIDs = [projectIDs]
     dataMatrixUploadList = []
     for upload in uploadList:
-        if (upload['project']['id'] in projectIDs):
+        uploadId = str(upload['project']['id'])
+        #print('UploadID:' + uploadId)
+        #print('ProjectIDs:' + str(projectIDs))
+        if (uploadId in projectIDs):
             if (upload['type'] == 'PROJECT_DATA_MATRIX'):
                 dataMatrixUploadList.append(upload)
             else:
-                # print('Disregarding this upload because it is not a data matrix.')
+                print('Disregarding this upload because it is not a data matrix.')
                 pass
         else:
-            # print('Disregarding this upload because it is not in our project.')
+            print('Disregarding this upload because it is not in our project.')
             pass
     print(
         'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectIDs) + '.\n')

@@ -45,11 +45,9 @@ def testDeleteUpload(uploadFileName=None):
 
 if __name__ == '__main__':
     print('Hello World!')
-    parentUploadFileName = '11_1627546967381_HML_Gendx_Ref3.hml'
-    #parentUploadFileName = '1497_1627550689215_HML_Gendx_Ref3.hml'
-    #parentUploadFileName = '1592_1627552367919_HML_Gendx_Ref3.hml'
-    childUploadFileName = 'childfilename4.xlsx'
+    parentUploadFileName = '2_1628063940575_HML_TestFile.LongName.LongName.LongName.LongName.LongName.LongName.LongName.2.hml'
+    childUploadFileName = '2_1628063940575_HML_TestFile.LongName.LongName.LongName.LongName.LongName.LongName.LongName_CHILD.2.hml'
 
     testCreateChildUpload(parentUploadFileName=parentUploadFileName, childUploadFileName = childUploadFileName)
 
-    testDeleteUpload(uploadFileName=childUploadFileName)
+    #testDeleteUpload(uploadFileName=childUploadFileName)
