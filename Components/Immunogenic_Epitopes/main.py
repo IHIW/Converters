@@ -26,18 +26,16 @@ def testValidateImmunogenicEpitopes(args=None):
     immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
     dqImmunogenicityProjectNumber = getProjectID(projectName='dq_immunogenicity')
 
-    # TODO: Haven't updated this to match the non-immu epitopes yet
-    raise Exception ('Update this method to match non-immu.')
-    (validationResults, inputExcelFileData, errorResultsPerRow) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
+    (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 
     head, tail = split(args.excel)
     reportFileName = tail.replace('.xlsx', '.Validation_Report.xlsx')
 
-    # Commented for testing
-    outputWorkbook, outputWorkbookbyteStream = createExcelValidationReport(errors=errorResultsPerRow, inputWorkbookData=inputExcelFileData)
-    #writeFileToS3(newFileName=reportFileName, bucket=args.bucket, s3ObjectBytestream=outputWorkbookbyteStream)
-    writeExcelToFile(fullFilePath=join(head,reportFileName), objectBytestream=outputWorkbookbyteStream)
+    reportLocalFilePath = join(head, reportFileName)
+    print('Saving to ' + str(reportLocalFilePath))
+    outputReportWorkbook.save(reportLocalFilePath)
+
 
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')

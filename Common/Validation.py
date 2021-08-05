@@ -209,7 +209,7 @@ def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=
         #print('upload:' + str(upload))
         fileName =upload['fileName']
         fileType = upload['type']
-        fileProject = upload['project']['id']
+        fileProject = str(upload['project']['id'])
 
         if((fileTypeFilter is None or fileType==fileTypeFilter)
             and (projectFilter is None or fileProject in projectFilter)):
