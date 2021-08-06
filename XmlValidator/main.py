@@ -1,6 +1,7 @@
 from os import makedirs, getcwd
 from os.path import isdir, join
 from sys import exc_info
+from requests.exceptions import ConnectionError
 import argparse
 
 #from  import parseXml
@@ -30,7 +31,7 @@ def parseArgs():
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
     parser.add_argument("-x", "--xml",  help="xml file to validate", type=str)
     parser.add_argument("-s", "--schema", help="schema file to validate against", type=str)
-    parser.add_argument("-t", "--test", help="what kind of test should we perform", type=str)
+    parser.add_argument("-t", "--test", help="what kind of test should we perform", required=True, type=str)
     parser.add_argument("-o", "--output", help="output directory", type=str)
 
     return parser.parse_args()
@@ -68,15 +69,27 @@ def testNmdpValidation():
     print('validationFeedbackText:\n' + str(validationFeedbackText))
 
 
-def testMiringValidation():
+def testMiringValidation(args=None):
     # Just a demo. First we validate a good HML document against the hml schema:
-    xmlPath = 'XmlValidator/xml/TestMiring.xml'
+
+    requestTimeoutSeconds = 5
+    #xmlPath = 'XmlValidator/xml/TestMiring.xml'
+    xmlPath = args.xml
     print('Validating MIRING,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'rb').read()
-    validationResultXml = MiringValidation.validateMiring(xmlText=xmlText)
+    try:
+        validationResultXml = MiringValidation.validateMiring(xmlText=xmlText, timeoutSeconds=requestTimeoutSeconds)
+        # print('validationResultsXml:' + validationResultXml + '\n')
+        isValid, validationFeedbackText = MiringValidation.parseMiringXml(xmlText=validationResultXml)
+    except ConnectionError as e:
+        print('Connection error occurred: ' + str(e))
+        isValid=False
+        validationFeedbackText = 'Connection Error during MIRING validation:' + str(e)
+    except Exception as e:
+        print('Exception occurred during MIRING Validation.')
+        isValid=False
+        validationFeedbackText = 'Error during validation:' + str(e)
 
-    #print('validationResultsXml:' + validationResultXml + '\n')
-    isValid, validationFeedbackText = MiringValidation.parseMiringXml(xmlText=validationResultXml)
 
     print('isValid:' + str(isValid))
     print('validationFeedbackText:\n' + str(validationFeedbackText))
@@ -166,6 +179,8 @@ if __name__=='__main__':
             testGetUpload(uploadFileName=args.upload)
         elif (currentTest == 'SCHEMA'):
             testSchemaValidation(xmlFileName=xmlFilename,schemaFileName=schemaFileName)
+        elif (currentTest == 'MIRING'):
+            testMiringValidation(args=args)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 

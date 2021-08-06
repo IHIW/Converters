@@ -6,6 +6,7 @@ from sys import exc_info
 from boto3 import client
 from time import sleep
 import xml.etree.ElementTree as ElementTree
+from requests.exceptions import ConnectionError
 
 s3 = client('s3')
 
@@ -13,7 +14,7 @@ s3 = client('s3')
 def parseMiringXml(xmlText=None):
     validationFeedback=''
 
-    print('Parsing MIRING Xml Text:' + str(xmlText))
+    #print('Parsing MIRING Xml Text:' + str(xmlText))
 
     documentRoot = ElementTree.fromstring(xmlText)
     #print('DocumentRoot:' + str(documentRoot))
@@ -73,6 +74,9 @@ def parseMiringXml(xmlText=None):
 def miring_validation_handler(event, context):
     print('I found the Miring validation handler.')
 
+    # Request timeout
+    timeoutSeconds=30
+
     # Some default JSON to help with debugging, this will be replaced by the event payload
     uploadDetails = {}
     uploadDetails['is_valid'] = False
@@ -116,12 +120,23 @@ def miring_validation_handler(event, context):
         if(fileType == 'HML'):
             print(' Sending upload file ' + str(fileName) + ' to the miring validator.')
 
-            #  Send message to Service
-            xmlResponse = validateMiring(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey)
+            # Exception handling to handle a timeout error
+            try:
+                #  Send message to Service
+                xmlResponse = validateMiring(xmlText=xmlText,xmlBucket=bucket,xmlKey=xmlKey, timeoutSeconds=timeoutSeconds)
 
-            print('Xml Response Text: ' + str(xmlResponse))
-            #  Parse Xml response.
-            isValid, validationFeedback = parseMiringXml(xmlText=xmlResponse)
+                #print('Xml Response Text: ' + str(xmlResponse))
+                #  Parse Xml response.
+                isValid, validationFeedback = parseMiringXml(xmlText=xmlResponse)
+
+            except ConnectionError as e:
+                print('Connection error occurred: ' + str(e))
+                isValid = False
+                validationFeedback = 'Connection Error during MIRING validation:' + str(e)
+            except Exception as e:
+                print('Exception occurred during MIRING Validation.')
+                isValid = False
+                validationFeedback = 'Error during validation:' + str(e)
 
             #   5) Set validation status of the upload object.
             uploadDetails['is_valid'] = isValid
@@ -146,24 +161,28 @@ def miring_validation_handler(event, context):
     return uploadDetails
 
 
-def validateMiring(xmlText=None, xmlBucket=None,xmlKey=None):
+def validateMiring(xmlText=None, xmlBucket=None,xmlKey=None, timeoutSeconds=None):
     try:
         print('Inside the MIRING Validator, i was given xml text that looks like: ' + str(xmlText)[0:100])
         fullUrl = 'http://miring.b12x.org/validator/ValidateMiring'
+        xmlText=xmlText.decode()
+        print('Done decoding text')
 
         headers = {
             'Content-Type': 'text/xml',
         }
 
         body = {
-            'xml': xmlText.decode()
+            'xml': xmlText
         }
 
-        response= requests.post(url=fullUrl, headers=headers, data=body)   #encodedJsonData
+        print('Sending Request....timeout=' + str(timeoutSeconds))
+        response= requests.post(url=fullUrl, headers=headers, data=body, timeout=timeoutSeconds)   #encodedJsonData
+        print('Response:' + str(response))
         return(response.text)
     except Exception as e:
         print('Unexpected problem during xml validation.')
         print(str(e))
         print(exc_info())
-        return (str(e) + '\n' + str(exc_info()))
+        raise e
 
