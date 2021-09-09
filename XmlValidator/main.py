@@ -50,12 +50,9 @@ def testSchemaValidation(xmlFileName=None, schemaFileName=None):
     xmlText = open(xmlFileName, 'rb').read()
     print(SchemaValidation.validateAgainstSchema(schemaText=schemaText, xmlText=xmlText) + '\n')
 
-def testNmdpValidation():
+def testNmdpValidation(args=None):
     # Just a demo. First we validate a good HML document against the hml schema:
-    #xmlPath = 'XmlValidator/xml/good.hml.1.0.1.xml'
-    xmlPath='/home/bmatern/UMCU/Test Files/HML/TestMiring.xml'
-    #xmlPath='/home/bmatern/UMCU/Test Files/HML/TestMiringBackup.BrokenNMDP.xml'
-    #xmlPath='/home/bmatern/UMCU/Test Files/HML/LONGNAMELONGNAMELONGNAMELONGNAMELONGNAMELONGNAMELONGNAME.xml'
+    xmlPath = args.xml
     print('Validating Nmdp Gateway,  XML: ' + str(xmlPath) + '\n')
     xmlText = open(xmlPath, 'r').read().strip()
     #print(validateNmdpPortal(xmlText=xmlText) + '\n')
@@ -72,7 +69,7 @@ def testNmdpValidation():
 def testMiringValidation(args=None):
     # Just a demo. First we validate a good HML document against the hml schema:
 
-    requestTimeoutSeconds = 5
+    requestTimeoutSeconds = 25
     #xmlPath = 'XmlValidator/xml/TestMiring.xml'
     xmlPath = args.xml
     print('Validating MIRING,  XML: ' + str(xmlPath) + '\n')
@@ -111,6 +108,9 @@ def testSetValidationResults():
 
 def testHmlParser(xmlFileName=None, outputDirectory=None, alignSequences=False):
     print('Testing the HML Parser with filename:' + str(xmlFileName))
+    if not isdir(outputDirectory):
+        makedirs(outputDirectory)
+
     xmlText = open(xmlFileName, 'r').read()
     #print('xmlText:\n' + str(xmlText))
 
@@ -127,7 +127,7 @@ def testHmlParser(xmlFileName=None, outputDirectory=None, alignSequences=False):
     print('glStringValidationFeedback:' + str(glStringValidationFeedback))
 
     # Write some data from the HML to file (These are named based on sample ID)
-    hmlObject.tobiotype(outputDirectory, dtype='fasta', by='subject')
+    hmlObject.tobiotype(outdir=outputDirectory, dtype='fasta', by='subject')
     xmlDirectory=join(getcwd(),'XmlValidator/xml')
 
     isValid, validationResults = ParseXml.extrapolateConsensusFromVariants(hml=hmlObject, outputDirectory=outputDirectory, xmlDirectory=xmlDirectory, alignSequences=alignSequences)
@@ -158,6 +158,7 @@ def testGetUpload(uploadFileName=None, configFileName='XmlValidator/validation_c
 
 if __name__=='__main__':
     try:
+        print ('Starting Execution...')
         args = parseArgs()
         xmlFilename = args.xml
         schemaFileName = args.schema
@@ -181,6 +182,8 @@ if __name__=='__main__':
             testSchemaValidation(xmlFileName=xmlFilename,schemaFileName=schemaFileName)
         elif (currentTest == 'MIRING'):
             testMiringValidation(args=args)
+        elif (currentTest == 'NMDP'):
+            testNmdpValidation(args=args)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
 

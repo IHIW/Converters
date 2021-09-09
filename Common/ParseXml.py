@@ -80,6 +80,9 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
             referenceInputFile=join(xmlDirectory, '3.39.0_FullLengthSequences.fasta')
         elif(databaseVersion=='3400'):
             referenceInputFile=join(xmlDirectory, '3.40.0_FullLengthSequences.fasta')
+        elif(databaseVersion is None or databaseVersion==''):
+            # TODO: Update this, handle it better if the reference database version is missing or not in this list
+            referenceInputFile=join(xmlDirectory, '3.45.0_FullLengthSequences.fasta')
         else:
             raise Exception('Unknown IPD-IMGT/HLA database version:' + str(databaseVersion))
 
@@ -106,6 +109,9 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
                 # Load reference sequences from file
                 for referenceDatabase in consensusSequence.reference_database:
                     databaseVersion = referenceDatabase.version.replace('.', '')
+                    if databaseVersion is None:
+                        # TODO: Provide Validation Feedback on this.
+                        print('Warning! No reference Database Version was found! Please provide a reference database version.')
                     loadReferencesFromFile(rawReferenceSequences=rawReferenceSequences, databaseVersion=databaseVersion, xmlDirectory=xmlDirectory)
                     for referenceSequence in referenceDatabase.reference_sequence:
                         identifiedSequences[referenceSequence.id] = {}
