@@ -80,6 +80,10 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
             referenceInputFile=join(xmlDirectory, '3.39.0_FullLengthSequences.fasta')
         elif(databaseVersion=='3400'):
             referenceInputFile=join(xmlDirectory, '3.40.0_FullLengthSequences.fasta')
+        elif (databaseVersion in ['3441','3440']):
+            referenceInputFile = join(xmlDirectory, '3.44.0_FullLengthSequences.fasta')
+        elif (databaseVersion in ['3430']):
+            referenceInputFile = join(xmlDirectory, '3.43.0_FullLengthSequences.fasta')
         elif(databaseVersion is None or databaseVersion==''):
             # TODO: Update this, handle it better if the reference database version is missing or not in this list
             referenceInputFile=join(xmlDirectory, '3.45.0_FullLengthSequences.fasta')
