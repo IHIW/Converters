@@ -11,6 +11,7 @@ def parseArgs():
     parser.add_argument("-p", "--parent", required=False, help="parent upload name", type=str)
     parser.add_argument("-c", "--child", required=False, help="child upload name", type=str)
     parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
+    parser.add_argument("-v", "--verbose", help="verbose operation", action="store_true")
 
     return parser.parse_args()
 
@@ -71,7 +72,7 @@ def testDeleteUpload(uploadFileName=None):
 
 def testQueryOrphans(args=None):
     print('Testing the query to find orphaned uploads')
-    queryOrphanedUploads(bucket=args.bucket)
+    queryOrphanedUploads(bucket=args.bucket, verbose=args.verbose)
 
 
 if __name__ == '__main__':
