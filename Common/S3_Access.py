@@ -23,3 +23,16 @@ def writeFileToS3(s3ObjectBytestream=None, newFileName=None, bucket=None):
         print('Done saving file.')
     except Exception as e:
         print('Problem saving file!\n' + str(e))
+
+def getUploadListFromS3(bucket=None):
+    print('Getting upload list from bucket:' + str(bucket))
+    try:
+        s3 = boto3.resource("s3")
+
+        objectList = s3.Bucket(bucket).objects.all()
+
+        print('Done getting Upload List.')
+
+        return objectList
+    except Exception as e:
+        print('Problem saving file!\n' + str(e))

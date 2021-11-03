@@ -2,6 +2,8 @@ import argparse
 from sys import exc_info
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename, deleteUpload
+from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
+
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -67,6 +69,11 @@ def testDeleteUpload(uploadFileName=None):
     print('Response from response:' + str(response))
 
 
+def testQueryOrphans(args=None):
+    print('Testing the query to find orphaned uploads')
+    queryOrphanedUploads(bucket=args.bucket)
+
+
 if __name__ == '__main__':
     print('Testing Rest Methods')
 
@@ -76,6 +83,8 @@ if __name__ == '__main__':
         print('Task=' + str(task))
         if(task== 'CREATE_CHILD_UPLOAD'):
             testCreateChildUpload(args=args)
+        if(task== 'QUERY_ORPHANS'):
+            testQueryOrphans(args=args)
         else:
             print('I do not understand which task to perform')
 
