@@ -1,25 +1,16 @@
 from boto3 import client
 #import json
 #import urllib
-from Common.ParseExcel import createExcelTransplantationReport
-from openpyxl import Workbook
-from openpyxl.utils import get_column_letter
+
 
 try:
     import IhiwRestAccess
-    import ParseExcel
-    import ParseXml
-    import Validation
     import S3_Access
-    import ImmunogenicEpitopesValidator
+
 except Exception as e:
     print('Failed in importing files: ' + str(e))
     from Common import IhiwRestAccess
-    from Common import ParseExcel
-    from Common import ParseXml
-    from Common import Validation
     from Common import S3_Access
-    import ImmunogenicEpitopesValidator
 
 s3 = client('s3')
 from sys import exc_info
@@ -28,72 +19,112 @@ import zipfile
 import io
 from time import sleep
 
-# TODO: In general I re-worked the epitopes validator, and i need the project report to match it.
-#  I don't have per-row validation feedback to generate on the fly.
-#  Perhaps it's better to collect the data matrixes in individual tabs
-#  Validate them individually and collect the validation issues on the single tab. That would have the submitter data.
-#  Then make a first tab as a summary of all the submitted data matrices.
 
-
-def immunogenic_epitope_project_report_handler(event, context):
-    print('Lambda handler: Creating a project report for immunogenic epitopes.')
+def reference_cell_line_project_report_handler(event, context):
+    print('Lambda handler: Creating a project report for reference_cell_lines.')
     # This is the AWS Lambda handler function.
     try:
         # Sleep 1 second, enough time to make sure the file is available.
         sleep(1)
+        print('This Lambda handler has not been implemented yet.')
         # TODO: get the bucket from the sns message ( there is no sns message, trigger one?)
         #bucket = content['Records'][0]['s3']['bucket']['name']
-        bucket = 'ihiw-management-upload-prod'
+        #bucket = 'ihiw-management-upload-prod'
         #bucket = 'ihiw-management-upload-staging'
 
         #adminUserID=
 
-        createImmunogenicEpitopesReport(bucket=bucket)
+        #createImmunogenicEpitopesReport(bucket=bucket)
 
     except Exception as e:
         print('Exception:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
 
-def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
-    # TODO: This should be a standalone upload, not a child upload. Need some work on this part.
+def createReferenceCellLinesReport(bucket=None, newline='\r\n'):
+    print('Creating a Reference Cell Lines Report.')
 
-    # TODO: This will also make multiple copies. I should check if the report file already exists and/or (probably) overwrite it
-    parentUploadName = '1497_1615205312528_PROJECT_DATA_MATRIX_ProjectReport'
-    url = IhiwRestAccess.getUrl()
-    token = IhiwRestAccess.getToken(url=url)
+    reportText = 'NGS HLA genes typing of Reference Cell Lines and Quality Control Project Report' + newline + newline
 
-    if(url is not None and token is not None and len(url)>0 and len(token)>0):
+    # Initialize my Zip Files
+    zipFileHmlStream = io.BytesIO()
+    hmlFileZip = zipfile.ZipFile(zipFileHmlStream, 'a', zipfile.ZIP_DEFLATED, False)
+    # TODO: A .Fastq zip as well?
 
-        IhiwRestAccess.createConvertedUploadObject(newUploadFileName=summaryFileName
-                                                   , newUploadFileType='OTHER'
-                                                   , previousUploadFileName=parentUploadName
-                                                   , url=url, token=token)
-        IhiwRestAccess.createConvertedUploadObject(newUploadFileName=zipFileName
-                                                   , newUploadFileType='OTHER'
-                                                   , previousUploadFileName=parentUploadName
-                                                   , url=url, token=token)
+    url=IhiwRestAccess.getUrl()
+    token=IhiwRestAccess.getToken(url=url)
+    print('Website URL:' + str(url))
+    print('bucket:' + str(bucket))
+    refCellLineProjectID = IhiwRestAccess.getProjectID(projectName='reference_cell_line')
 
-        IhiwRestAccess.setValidationStatus(uploadFileName=parentUploadName, isValid=True,
-                                           validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
-                                           token=token)
-        IhiwRestAccess.setValidationStatus(uploadFileName=summaryFileName, isValid=True,
-                                           validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
-                                           token=token)
-        IhiwRestAccess.setValidationStatus(uploadFileName=zipFileName, isValid=True,
-                                           validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
-                                           token=token)
-    else:
-        raise Exception('Could not create login token when creating upload entries for report files.')
+    projectHMLUploads = IhiwRestAccess.getFilteredUploads(projectIDs=[refCellLineProjectID], uploadTypes='HML', token=token, url=url)
+    projectFastqUploads = IhiwRestAccess.getFilteredUploads(projectIDs=[refCellLineProjectID], uploadTypes='FASTQ', token=token, url=url)
 
-def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilename=None, recipHamlPostTxFilename=None, s3=None, bucket=None):
-    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPreTxFilename, s3=s3, bucket=bucket)
-    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPostTxFilename, s3=s3, bucket=bucket)
-    transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
-    return transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies
+    reportText += 'Total HML Files submitted: ' + str(len(projectHMLUploads)) + newline
+    reportText += 'Total FASTQ Files submitted: ' + str(len(projectFastqUploads)) + newline
 
-def createImmunogenicEpitopesReport(bucket=None):
-    print('Creating an Immunogenic Epitopes Submission Report.')
+    # Key = submitter ihiw_user.id, Value = Name, Lab
+    userIDs = {}
+    for upload in projectHMLUploads:
+        userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ', ' + upload['createdBy']['lab']['institution']
+    for upload in projectFastqUploads:
+        userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ', ' + upload['createdBy']['lab']['institution']
+    print('Unique Submitter IDs:' + str(sorted(list(userIDs.keys()))))
+
+    # for each submitter
+    for userID in sorted(list(userIDs.keys())):
+        reportText += newline + 'User ' + str(userID) + ' (' + str(userIDs[userID]) + ')' + newline
+
+        currentUserHMLs =  [hmlUpload for hmlUpload in projectHMLUploads if hmlUpload['createdBy']['id'] == userID]
+        reportText += str(len(currentUserHMLs)) + ' HML Files Submitted:' + newline
+        for hmlUpload in currentUserHMLs:
+            reportText += '\t' + str(hmlUpload['fileName']) + newline
+
+            # Get HML Information, especially Sample IDs.
+            xmlFileObject = None
+            try:
+                hmlFileObject = s3.get_object(Bucket=bucket, Key=hmlUpload['fileName'])
+                hmlFileZip.writestr(hmlUpload['fileName'], hmlFileObject["Body"].read())
+
+            except Exception as err:
+                reportText += 'Could not fetch upload from S3: ' + str(hmlUpload['fileName'])
+
+            # TODO: Get Sample ID Lists from Each HML Object, write the sample IDs in the report.
+
+        currentUserFASTQs = [fastqUpload for fastqUpload in projectFastqUploads if fastqUpload['createdBy']['id'] == userID]
+        reportText += str(len(currentUserFASTQs)) + ' FASTQ Files Submitted:' + newline
+        for fastqUpload in currentUserFASTQs:
+            reportText += '\t' + str(fastqUpload['fileName']) + newline
+
+
+
+
+    # supportingFileZip.writestr('HelloWorld.txt', 'Hello World!')
+    hmlFileZip.writestr('SummaryReport.txt', reportText)
+
+    '''    for supportingFile in list(set(supportingUploadFilenames)):
+        print('Adding file ' + str(supportingFile) + ' to ' + str(zipFileName))
+
+        supportingFileObject = s3.get_object(Bucket=bucket, Key=supportingFile)
+        # TODO: We're writing a string in the zip file.
+        #  I think that's fine for hml & text-like files but this might cause problems with some file types.
+        supportingFileZip.writestr(supportingFile, supportingFileObject["Body"].read())'''
+
+
+    # Store Report S3
+
+    hmlFileZip.close()
+    S3_Access.writeFileToS3(newFileName='NGS.RefCellLines.HMLs.zip', bucket=bucket, s3ObjectBytestream=zipFileHmlStream)
+
+
+    # TODO: Find Project Leader
+
+        # TODO: Change the rest method to create upload, to allow the validation user? Or else I need admin rights...
+        # TODO: Create Upload Object for the Leader (if possible?)
+
+    print('Report Text:' + str(reportText))
+
+    '''
 
     url=IhiwRestAccess.getUrl()
     token=IhiwRestAccess.getToken(url=url)
@@ -298,36 +329,11 @@ def createImmunogenicEpitopesReport(bucket=None):
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
+    '''
+
+    #print('Done. Summary is here: ' + str(summaryFileName) + '\nSupporting zip is here: ' + str(zipFileName)  + '\nin bucket: ' + str(bucket))
 
 
-    print('Done. Summary is here: ' + str(summaryFileName) + '\nSupporting zip is here: ' + str(zipFileName)
-          + '\nin bucket: ' + str(bucket))
-
-def getDataMatrixUploads(projectIDs=None, token=None, url=None):
-    # collect all data matrix files.
-    uploadList = IhiwRestAccess.getUploads(token=token, url=url)
-    #print('I found these uploads:' + str(uploadList))
-    #print('This is my upload list:' + str(uploadList))
-    print('Parsing ' + str(len(uploadList)) + ' uploads to find data matrices for project(s) ' + str(projectIDs) + '..')
-    if(not isinstance(projectIDs, list)):
-        projectIDs = [projectIDs]
-    dataMatrixUploadList = []
-    for upload in uploadList:
-        uploadId = str(upload['project']['id'])
-        #print('UploadID:' + uploadId)
-        #print('ProjectIDs:' + str(projectIDs))
-        if (uploadId in projectIDs):
-            if (upload['type'] == 'PROJECT_DATA_MATRIX'):
-                dataMatrixUploadList.append(upload)
-            else:
-                print('Disregarding this upload because it is not a data matrix.')
-                pass
-        else:
-            print('Disregarding this upload because it is not in our project.')
-            pass
-    print(
-        'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectIDs) + '.\n')
-    return dataMatrixUploadList
 
 
 

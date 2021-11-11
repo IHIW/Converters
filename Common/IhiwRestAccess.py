@@ -281,8 +281,42 @@ def getUploads(token=None, url=None):
 
     #print('uploadListResponse:' + str(response))
 
-
     return response
+
+def getFilteredUploads(projectIDs=None, uploadTypes=None, token=None, url=None):
+    # Lets make a list. Passing a None is fine, that means no filter.
+    if(projectIDs is None):
+        pass
+    elif(not isinstance(projectIDs, list)):
+        projectIDs = [projectIDs]
+
+    if(uploadTypes is None):
+        pass
+    elif(not isinstance(uploadTypes, list)):
+        uploadTypes = [uploadTypes]
+
+    # Convert to String for consistency..
+    projectIDs = [str(projectID) for projectID in projectIDs]
+    uploadTypes = [str(uploadType) for uploadType in uploadTypes]
+
+    # Get Uploads
+    uploadList = getUploads(token=token, url=url)
+
+    filteredUploadList = []
+    for upload in uploadList:
+        uploadProjectId = str(upload['project']['id'])
+        uploadType = str(upload['type'])
+        #print('uploadProjectId:' + uploadProjectId)
+        #print('uploadType:' + uploadType)
+
+        if ((projectIDs is None or uploadProjectId in projectIDs)
+            and (uploadTypes is None or uploadType in uploadTypes)):
+            filteredUploadList.append(upload)
+        else:
+            pass
+
+    print('I found a total of ' + str(len(filteredUploadList)) + ' filtered uploads for projects ' + str(projectIDs) + ' and upload types ' + str(uploadTypes) +'.\n')
+    return filteredUploadList
 
 def getIhiwUserById(token=None, url=None, ihiwUserId=None):
     if(url is None):
