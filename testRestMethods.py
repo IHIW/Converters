@@ -3,11 +3,13 @@ from sys import exc_info
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, getUploadByFilename, deleteUpload
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
+from Common.S3_Access import revalidateUpload
 
 
 def parseArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--task", required=True, help="task to perform", type=str)
+    parser.add_argument("-u", "--upload", required=True, help="upload", type=str)
     parser.add_argument("-p", "--parent", required=False, help="parent upload name", type=str)
     parser.add_argument("-c", "--child", required=False, help="child upload name", type=str)
     parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
@@ -76,6 +78,12 @@ def testQueryOrphans(args=None):
     print('Bucket:' + str(args.bucket))
     queryOrphanedUploads(bucket=args.bucket, verbose=args.verbose, defaultProjectID=args.default)
 
+def testRevalidateUpload(args=None):
+    print('Revalidating Upload')
+    print('Bucket:' + str(args.bucket))
+    print('Upload:' + str(args.upload))
+    revalidateUpload(bucket=args.bucket, uploadFilename=args.upload)
+
 
 if __name__ == '__main__':
     print('Testing Rest Methods')
@@ -86,8 +94,10 @@ if __name__ == '__main__':
         print('Task=' + str(task))
         if(task== 'CREATE_CHILD_UPLOAD'):
             testCreateChildUpload(args=args)
-        if(task== 'QUERY_ORPHANS'):
+        elif(task== 'QUERY_ORPHANS'):
             testQueryOrphans(args=args)
+        elif(task== 'REVALIDATE_UPLOAD'):
+            testRevalidateUpload(args=args)
         else:
             print('I do not understand which task to perform')
 

@@ -36,3 +36,22 @@ def getUploadListFromS3(bucket=None):
         return objectList
     except Exception as e:
         print('Problem saving file!\n' + str(e))
+
+
+def revalidateUpload(bucket=None, uploadFilename=None):
+    print('Touching the upload ' + str(uploadFilename) + ' in bucket ' + str(bucket))
+    try:
+        # TODO: Understand the difference between Resource and Client
+        s3Resource = boto3.resource("s3")
+        s3Client = client('s3')
+
+        # Read ByteSteam
+        fileObject = s3Client.get_object(Bucket=bucket, Key=uploadFilename)
+        byteStream = fileObject["Body"].read()
+
+        # Put the object back where I found it
+        # TODO: Copying the object to itself, in place, does not trigger the cloudtrail, and the step functions.  "Put" does work
+        s3Resource.Bucket(bucket).put_object(Key=uploadFilename, Body=byteStream)
+
+    except Exception as e:
+        print('Problem Revalidating Upload:\n' + str(e))
