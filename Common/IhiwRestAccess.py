@@ -284,6 +284,37 @@ def getUploads(token=None, url=None):
 
     return response
 
+def getIhiwUserById(token=None, url=None, ihiwUserId=None):
+    if(url is None):
+        url = getUrl()
+    if(token is None):
+        token = getToken(url=url)
+
+    if token is None or len(token) < 1:
+        print('Error. No login token available when getting uploads.')
+        return None
+
+    try:
+
+        fullUrl = str(url) + '/api/ihiw-users/' + str(ihiwUserId)
+        body = {}
+
+        encodedJsonData = str(json.dumps(body)).encode('utf-8')
+        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
+        updateRequest.add_header('Content-Type', 'application/json')
+        updateRequest.add_header('Authorization', 'Bearer ' + token)
+        responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+        #print('Response:' + str(responseData))
+        if (responseData is None or len(responseData) < 1):
+            print('getIhiwUserById returned an empty response!')
+            return False
+        response = json.loads(responseData)
+
+        return response
+    except urllib.error.HTTPError as e:
+        print(str(e) + ' when searching for user ' + str(ihiwUserId))
+        return None
+
 def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
     # TODO: It would be better to do this inside a rest method somewhere. Getting all the uploads and looping through might not be most efficient.
     if parentId is None:
