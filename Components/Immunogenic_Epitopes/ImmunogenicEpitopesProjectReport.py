@@ -57,6 +57,7 @@ def immunogenic_epitope_project_report_handler(event, context):
 
 def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     # TODO: This should be a standalone upload, not a child upload. Need some work on this part.
+    # Probably need to modify the REST method to allow validation user to do this.
 
     # TODO: This will also make multiple copies. I should check if the report file already exists and/or (probably) overwrite it
     parentUploadName = '1497_1615205312528_PROJECT_DATA_MATRIX_ProjectReport'
@@ -91,6 +92,10 @@ def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, 
     recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPostTxFilename, s3=s3, bucket=bucket)
     transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
     return transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies
+
+
+
+
 
 def createImmunogenicEpitopesReport(bucket=None):
     print('Creating an Immunogenic Epitopes Submission Report.')
@@ -163,31 +168,30 @@ def createImmunogenicEpitopesReport(bucket=None):
             submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + dataMatrixUpload['createdBy']['lab']['institution']
             submissionDate = dataMatrixUpload['createdAt']
 
-
             # Loop input Workbook data
             #for dataLineIndex, dataLine in enumerate(inputExcelFileData):
             firstSheet = validatedWorkbook[validatedWorkbook.sheetnames[0]]
             for dataLineIndex, dataLine in enumerate(firstSheet.iter_rows(min_row=2)):
 
                 reportLineIndex += 1
-                print('Copying this line:' + str(dataLine))
+                currentExcelRow = dataLineIndex+2
+
+                print('Copying this line(Row=' + str(currentExcelRow) + '):' + str(dataLine))
                 donorGlString = '?'
                 recipientGlString = '?'
                 recipHamlPreTxFileName = '?'
                 recipHamlPostTxFileName = '?'
 
-
                 for headerIndex, header in enumerate(dataMatrixHeaders):
                     columnLetter = validatedWorkbook.columnNameLookup[header]
-                    print('Checking header ' + str(header) + ' which is at column ' + columnLetter)
+                    #print('Checking header ' + str(header) + ' which is at column ' + columnLetter)
 
-                    cellIndex = columnLetter + str(dataLineIndex + 2)
+                    cellIndex = columnLetter + str(currentExcelRow)
                     cellData = firstSheet[cellIndex].value
-                    print('Cell Index: ' + str(cellIndex))
-                    print('Data:' + str(cellData))
+                    #print('Cell Index: ' + str(cellIndex))
+                    #print('Data:' + str(cellData))
 
                     currentGlString = None
-
 
                     # Add supporting files.
                     fileResults=[]
@@ -215,8 +219,14 @@ def createImmunogenicEpitopesReport(bucket=None):
 
                     elif('_haml_' in (header)):
                         # TODO: Include Antibody_CSV?
+                        print('Fetching HAML Files')
+
+                        #print('all uploads:' + str(allUploads))
+                        print('FileName:' + str(cellData))
                         fileResults=IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'], token=token, url=url, fileName=str(cellData), projectIDs=[immuEpsProjectID, dqEpsProjectID], allUploads=allUploads)
-                        #print('I just found these haml results:' + str(fileResults))
+
+
+                        print('I just found these haml results:' + str(fileResults))
 
                         # TODO: Assuming a single HAML file here. What if !=1 results are found?
                         if(header=='recipient_haml_pre_tx' and len(fileResults)==1):
@@ -233,32 +243,41 @@ def createImmunogenicEpitopesReport(bucket=None):
                         #print('Appending this file to the upload list:' + str(uploadFile))
                         supportingUploadFilenames.append(uploadFile['fileName'])
 
+                #print('In that row I found these GLStrings ')
+                #print('Donor:' +str(donorGlString))
+                #print('recipientGlString:' + str(recipientGlString))
 
-                transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(dataLineIndex+2) + '.xlsx'
-                transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(donorTyping=donorGlString, recipientTyping=recipientGlString, recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName ,s3=s3, bucket=bucket)
-                supportingSpreadsheets[transplantationReportFileName]=transplantationReportText
+                if(len(donorGlString) > 0 and len(recipientGlString) > 0):
 
-                if len(validationResults)==0:
-                    validationText='Valid'
+
+                    transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(currentExcelRow) + '.xlsx'
+                    transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(donorTyping=donorGlString, recipientTyping=recipientGlString, recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName ,s3=s3, bucket=bucket)
+                    supportingSpreadsheets[transplantationReportFileName]=transplantationReportText
+
+                    if len(validationResults)==0:
+                        validationText='Valid'
+                    else:
+                        validationText=str(len(validationResults)) + ' validation issues found'
+
+                    preTxAntibodyText=''
+                    postTxAntibodyText=''
+                    for specificity in sorted(list(preTxAntibodies.keys())):
+                        preTxAntibodyText = preTxAntibodyText + specificity + ' : ' + str(preTxAntibodies[specificity]) + '\n'
+                    preTxAntibodyText = preTxAntibodyText[:-1]
+                    for specificity in sorted(list(postTxAntibodies.keys())):
+                        postTxAntibodyText = postTxAntibodyText + specificity + ' : ' + str(postTxAntibodies[specificity]) + '\n'
+                    postTxAntibodyText = postTxAntibodyText[:-1]
+
+                    # Make a tuple matching this:     summaryHeaders = ('donor_glstring', 'recipient_glstring','antibodies_pretx','antibodies_posttx'
+                    #         ,'data_matrix_filename','valid','submitting_user','submitting_lab','submission_date', 'transplantation_report')
+                    currentTuple=(donorGlString, recipientGlString,preTxAntibodyText,postTxAntibodyText, dataMatrixFileName,validationText,submittingUser,submittingLab,submissionDate, transplantationReportFileName
+                             )
+                    summaryWorksheet.append(currentTuple)
+                    print('Added Row: ' + str(tuple(summaryWorksheet.rows)[reportLineIndex]))
+                    summaryWorksheet.row_dimensions[reportLineIndex+1].height=80
+
                 else:
-                    validationText=str(len(validationResults)) + ' validation issues found'
-
-                preTxAntibodyText=''
-                postTxAntibodyText=''
-                for specificity in sorted(list(preTxAntibodies.keys())):
-                    preTxAntibodyText = preTxAntibodyText + specificity + ' : ' + str(preTxAntibodies[specificity]) + '\n'
-                preTxAntibodyText = preTxAntibodyText[:-1]
-                for specificity in sorted(list(postTxAntibodies.keys())):
-                    postTxAntibodyText = postTxAntibodyText + specificity + ' : ' + str(postTxAntibodies[specificity]) + '\n'
-                postTxAntibodyText = postTxAntibodyText[:-1]
-
-                # Make a tuple matching this:     summaryHeaders = ('donor_glstring', 'recipient_glstring','antibodies_pretx','antibodies_posttx'
-                #         ,'data_matrix_filename','valid','submitting_user','submitting_lab','submission_date', 'transplantation_report')
-                currentTuple=(donorGlString, recipientGlString,preTxAntibodyText,postTxAntibodyText, dataMatrixFileName,validationText,submittingUser,submittingLab,submissionDate, transplantationReportFileName
-                         )
-                summaryWorksheet.append(currentTuple)
-                print('Added Row: ' + str(tuple(summaryWorksheet.rows)[reportLineIndex]))
-                summaryWorksheet.row_dimensions[reportLineIndex+1].height=80
+                    print('Warning: Could not find a GLString for row ' + str(currentExcelRow))
 
 
         else:
