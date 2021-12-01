@@ -358,6 +358,8 @@ def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
         if(allUploads is None):
             allUploads=getUploads(token=token,url=url)
 
+        print('Found ' + str(len(allUploads)) + ' total uploads')
+
         uploadList = []
         for upload in allUploads:
             if(upload['parentUpload'] is not None
