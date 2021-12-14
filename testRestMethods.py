@@ -2,7 +2,7 @@ import argparse
 from sys import exc_info
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
-    getUploadByFilename, deleteUpload, getUploadsByParentId
+    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 
@@ -103,6 +103,33 @@ def testGetChildUpload(args=None):
     print('Response from response:' + str(response))
 
 
+def testQueryUnvalidatedUploads(args=None):
+    print('Looking for uploads without validation status')
+
+    (user, password) = getCredentials(configFileName='validation_config.yml')
+    url = getUrl(configFileName='validation_config.yml')
+    token = getToken(user=user, password=password, url=url)
+
+    uploadList = getUploads(token=token, url=url)
+    print('I found ' + str(len(uploadList)) + ' total uploads.')
+
+    validatedUploads=[]
+    unvalidatedUploads=[]
+    for upload in uploadList:
+        validations = upload['validations']
+        if(len(validations)<1):
+            unvalidatedUploads.append(upload)
+        else:
+            validatedUploads.append(upload)
+    print('There are ' + str(len(validatedUploads)) + ' validated uploads.\n')
+    print('There are ' + str(len(unvalidatedUploads)) + ' unvalidated uploads, here are their names:')
+
+    for upload in unvalidatedUploads:
+        print(str(upload['fileName']))
+
+
+
+
 if __name__ == '__main__':
     print('Testing Rest Methods')
 
@@ -114,9 +141,11 @@ if __name__ == '__main__':
             testCreateChildUpload(args=args)
         elif(task== 'GET_CHILD_UPLOADS'):
             testGetChildUpload(args=args)
-        elif(task== 'QUERY_ORPHANS'):
+        elif (task == 'QUERY_ORPHANS'):
             testQueryOrphans(args=args)
-        elif(task== 'REVALIDATE_UPLOAD'):
+        elif(task== 'QUERY_UNVALIDATED_UPLOADS'):
+            testQueryUnvalidatedUploads(args=args)
+        elif task== 'REVALIDATE_UPLOAD':
             testRevalidateUpload(args=args)
         else:
             print('I do not understand which task to perform')
