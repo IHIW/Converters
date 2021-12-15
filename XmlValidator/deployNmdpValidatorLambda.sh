@@ -1,10 +1,10 @@
 # This script will install dependencies, bundle the lambda function, and deploy to the AWS lambda environment.
-# Y must have the AWS commandline environment already installed
+# You must have the AWS commandline environment already installed
 # And you must have previously run "aws configure" to set up your machine for access to the AWS Environment.
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
-ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
+PROJECT_PATH="/home/ben/github/Converters/XmlValidator"
+ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
 LAMBDA_FUNCTION="validateXmlNMDPStaging"
 #LAMBDA_FUNCTION="validateXmlNMDPProd"
 

@@ -31,6 +31,7 @@ def parseMiringXml(xmlText=None):
     # I want to report Errors and Warnings in the feedback text, but ignore the info. That's probably too much info.
     # <miring-validation-errors>  <validation-warnings>, <validation-info>
 
+    validationErrors={}
     # Loop Validation Errors
     validationErrorNodes = documentRoot.findall('miring-validation-errors')
     if(len(validationErrorNodes)>0):
@@ -38,15 +39,31 @@ def parseMiringXml(xmlText=None):
         #print('There are ' + str(len(miringResultNodes)) + ' miring result nodes under validation errors.')
         for miringResultNode in miringResultNodes:
             ruleID = str(miringResultNode.get('miring-rule-id'))
-            description = str(miringResultNode.findall('description')[0].text)
-            solution = str(miringResultNode.findall('solution')[0].text)
-            xPath = str(miringResultNode.findall('xpath')[0].text)
-            currentFeedbackText = ('MIRING violation, Rule:' + ruleID + ' at xpath location ' + str(xPath)
-                + '\n' + description
-                + '\n' + solution)
 
-            validationFeedback += currentFeedbackText + '\n'
+            # Cleanup if we have a bunch of the same error repeatably:
+            if ruleID in validationErrors.keys():
+                validationErrors[ruleID]['count'] += 1
 
+            else:
+                errorInfo = {}
+                errorInfo['description'] = str(miringResultNode.findall('description')[0].text)
+                errorInfo['solution'] = str(miringResultNode.findall('solution')[0].text)
+                errorInfo['xPath'] = str(miringResultNode.findall('xpath')[0].text)
+                errorInfo['count']=1
+                validationErrors[ruleID] = errorInfo
+
+
+    for ruleID in sorted(list(validationErrors.keys())):
+        errorInfo = validationErrors[ruleID]
+        currentFeedbackText = ('*MIRING violation, Rule:' + ruleID + ' at xpath location ' + str(errorInfo['xPath'])
+            + '\n' + errorInfo['description']
+            + '\n' + errorInfo['solution'])
+        if errorInfo['count'] > 1:
+            currentFeedbackText = currentFeedbackText + '\n\t(Document contains ' + str(errorInfo['count']) + ' errors like this.)'
+        validationFeedback += currentFeedbackText + '\n'
+
+
+    validationWarnings={}
     # Loop Validation Warnings
     validationWarningNodes = documentRoot.findall('validation-warnings')
     if(len(validationWarningNodes)>0):
@@ -54,19 +71,34 @@ def parseMiringXml(xmlText=None):
         print('There are ' + str(len(miringResultNodes)) + ' miring result nodes under validation warnings.')
         for miringResultNode in miringResultNodes:
             ruleID = str(miringResultNode.get('miring-rule-id'))
-            description = str(miringResultNode.findall('description')[0].text)
-            solution = str(miringResultNode.findall('solution')[0].text)
-            xPath = str(miringResultNode.findall('xpath')[0].text)
-            currentFeedbackText = ('MIRING Warning, Rule:' + ruleID + ' at xpath location ' + str(xPath)
-                + '\n' + description
-                + '\n' + solution)
 
-            validationFeedback += currentFeedbackText + '\n'
+            # Cleanup if we have a bunch of the same error repeatably:
+            if ruleID in validationWarnings.keys():
+                validationWarnings[ruleID]['count'] += 1
+
+            else:
+                errorInfo = {}
+                errorInfo['description'] = str(miringResultNode.findall('description')[0].text)
+                errorInfo['solution'] = str(miringResultNode.findall('solution')[0].text)
+                errorInfo['xPath'] = str(miringResultNode.findall('xpath')[0].text)
+                errorInfo['count']=1
+                validationWarnings[ruleID] = errorInfo
+
+    for ruleID in sorted(list(validationWarnings.keys())):
+        errorInfo= validationWarnings[ruleID]
+        currentFeedbackText = (
+            '*MIRING Warning, Rule:' + ruleID + ' at xpath location ' + str(errorInfo['xPath'])
+            + '\n' + errorInfo['description']
+            + '\n' + errorInfo['solution'])
+        if errorInfo['count'] > 1:
+            currentFeedbackText = currentFeedbackText + '\n\t(Document contains ' + str(errorInfo['count']) + ' warnings like this.)'
+        validationFeedback += currentFeedbackText + '\n'
+
     if(len(validationFeedback.strip()) < 1):
         validationFeedback='Valid\n'
 
     # add a plug for this excellent validator
-    validationFeedback += 'More info on MIRING rules at http://miring.b12x.org'
+    validationFeedback += '\nPlease note that this document was uploaded successfully, and has NOT been rejected by the IHIW database.\nMIRING warnings are intended to be helpful indicators, and this document is likely very usable. \nMore info on MIRING rules at http://miring.b12x.org'
 
     return (isHmlCompliant and isMiringCompliant), validationFeedback
 
@@ -128,6 +160,7 @@ def miring_validation_handler(event, context):
                 #print('Xml Response Text: ' + str(xmlResponse))
                 #  Parse Xml response.
                 isValid, validationFeedback = parseMiringXml(xmlText=xmlResponse)
+                print('Is file valid?' + str(isValid))
 
             except ConnectionError as e:
                 print('Connection error occurred: ' + str(e))

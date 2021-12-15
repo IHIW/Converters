@@ -30,16 +30,35 @@ def parseNmdpXml(xmlText=None):
     validationErrorNodes = validationErrorsNodes[0].findall('error')
     print('I found ' + str(len(validationErrorNodes)) + ' errors nodes.')
 
+    validationErrors = {}
 
     for validationErrorNode in validationErrorNodes:
         lineNumber = str(validationErrorNode.get('line'))
         severity = str(validationErrorNode.get('severity'))
         description = str(validationErrorNode.text)
 
-        currentFeedbackText = (severity + ': Line ' + str(lineNumber)
-            + '\n' + description)
+        # There is an error code (ex. cvc-complex-type.2.4.a) in the beginning of the description.
+        errorCode = description.split(':')[0]
+        #print('ErrorCode:' + str(errorCode))
+
+        if errorCode in validationErrors.keys():
+            validationErrors[errorCode]['count'] += 1
+        else:
+            errorInfo = {}
+            errorInfo['lineNumber'] = lineNumber
+            errorInfo['severity'] = severity
+            errorInfo['description'] = description
+            errorInfo['count'] = 1
+            validationErrors[errorCode] = errorInfo
+
+    for ruleID in sorted(list(validationErrors.keys())):
+        errorInfo= validationErrors[ruleID]
+        currentFeedbackText = ('*' + errorInfo['severity'] + ': Line ' + str(errorInfo['lineNumber']) + '\n' + errorInfo['description'])
+        if errorInfo['count'] > 1:
+            currentFeedbackText = currentFeedbackText + '\n\t(Document contains ' + str(errorInfo['count']) + ' errors like this.)'
 
         validationFeedback += currentFeedbackText + '\n'
+
 
     if(len(validationFeedback.strip()) < 1):
         validationFeedback='Valid\n'
