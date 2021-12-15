@@ -71,7 +71,7 @@ def csv_to_haml_lambda_handler(event, context):
             if(converter.xmlText is not None and len(converter.xmlText) > 0):
                 try:
                     # Delete the Children of this parent Upload.
-                    #print('Looking for children of this upload object..')
+                    print('Looking for children of this upload object..')
                     childUploads = getUploadsByParentId(token=token,url=url,parentId=uploadDetails['id'])
                     # TODO: Test this, we should be able to delete previous children of an upload file (this happens when we re-upload the CSV on the IHIW database)
                     print('We found these children: ' + str(childUploads))

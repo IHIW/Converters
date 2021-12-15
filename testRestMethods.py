@@ -1,8 +1,9 @@
 import argparse
 from sys import exc_info
+import time
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
-    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads
+    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploadsByParentId_Deprecated, getUploads
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 
@@ -92,15 +93,19 @@ def testGetChildUpload(args=None):
     url = getUrl(configFileName='validation_config.yml')
     token = getToken(user=user, password=password, url=url)
 
-    print('Getting an upload object:' + str(args.parent))
+    print('Getting the parent upload object:' + str(args.parent))
     response = getUploadByFilename(token=token, url=url, fileName = args.parent)
     #print('Response from getUploadByFilename:' + str(response))
     uploadId = str(response['id'])
     print('Upload '+str(args.parent) + ' has the id:' + uploadId)
 
-    print('Getting Children:' + str(uploadId))
+
+    print('Getting Children using the new fast method:'  + str(uploadId))
+    start = time.time()
     response = getUploadsByParentId(token=token, url=url, parentId=uploadId)
     print('Response from response:' + str(response))
+    duration = time.time() - start
+    print('That took ' + str(duration) + ' seconds.')
 
 
 def testQueryUnvalidatedUploads(args=None):

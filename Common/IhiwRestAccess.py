@@ -349,25 +349,39 @@ def getIhiwUserById(token=None, url=None, ihiwUserId=None):
         print(str(e) + ' when searching for user ' + str(ihiwUserId))
         return None
 
-def getUploadsByParentId(token=None, url=None, parentId=None, allUploads=None):
-    # TODO: It would be better to do this inside a rest method somewhere. Getting all the uploads and looping through might not be most efficient.
+def getUploadsByParentId(token=None, url=None, parentId=None):
+    if (url is None):
+        url = getUrl()
+    if (token is None):
+        token = getToken(url=url)
+
     if parentId is None:
         print('Parent ID is none, cannot find any uploads with this parent')
         return None
     else:
-        if(allUploads is None):
-            allUploads=getUploads(token=token,url=url)
+        if token is None or len(token) < 1:
+            print('Error. No login token available when getting uploads.')
+            return None
 
-        print('Found ' + str(len(allUploads)) + ' total uploads')
+        try:
+            fullUrl = str(url) + '/api/uploads/children/' + urllib.parse.quote(parentId)
+            body = {}
 
-        uploadList = []
-        for upload in allUploads:
-            if(upload['parentUpload'] is not None
-                and str(upload['parentUpload']['id']) == str(parentId)
-            ):
-                uploadList.append(upload)
+            encodedJsonData = str(json.dumps(body)).encode('utf-8')
+            updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
+            updateRequest.add_header('Content-Type', 'application/json')
+            updateRequest.add_header('Authorization', 'Bearer ' + token)
+            responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+            # print('Response:' + str(responseData))
+            if (responseData is None or len(responseData) < 1):
+                print('getUploadsByParentId returned an empty response!')
+                return False
+            response = json.loads(responseData)
 
-        return uploadList
+            return response
+        except urllib.error.HTTPError as e:
+            print(str(e) + ' when searching for children of upload ' + str(parentId))
+            return None
 
 def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None):
     if(projectIDs is not None and not isinstance(projectIDs, list)):
