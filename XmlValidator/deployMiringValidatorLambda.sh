@@ -5,8 +5,8 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/ben/github/Converters/XmlValidator"
 ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
-#LAMBDA_FUNCTION="validateXmlMiringStaging"
-LAMBDA_FUNCTION="validateXmlMiringProd"
+LAMBDA_FUNCTION="validateXmlMiringStaging"
+#LAMBDA_FUNCTION="validateXmlMiringProd"
 
 cd $PROJECT_PATH
 
