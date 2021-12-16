@@ -416,7 +416,7 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
                 uploadList.append(upload)
 
                 # Also append the children of this upload
-                childUploads = getUploadsByParentId(token=token, url=url, parentId=upload['id'], allUploads=allUploads)
+                childUploads = getUploadsByParentId(token=token, url=url, parentId=upload['id'])
                 for childUpload in childUploads:
                     uploadList.append(childUpload)
 

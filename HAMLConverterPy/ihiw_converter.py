@@ -1,12 +1,8 @@
 import argparse
-import os,sys
 import xml.etree.ElementTree as ET #using System.Xml;
-import xml.etree
 from lxml import etree
 import pandas as pd
 import datetime
-import boto3
-import io
 import csv
 import copy
 

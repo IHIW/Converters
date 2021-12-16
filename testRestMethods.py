@@ -3,7 +3,7 @@ from sys import exc_info
 import time
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
-    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploadsByParentId_Deprecated, getUploads
+    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 

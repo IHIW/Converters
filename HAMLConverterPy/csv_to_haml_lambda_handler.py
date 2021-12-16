@@ -38,7 +38,7 @@ def csv_to_haml_lambda_handler(event, context):
 
         # Filenames that have a space character need to be decoded.
         decodedKey = urllib.parse.unquote_plus(csvKey)
-        print('decodedCsvKey:' + str(decodedKey))
+        #print('decodedCsvKey:' + str(decodedKey))
         csvKey = decodedKey
 
         url = uploadDetails['url']
@@ -50,14 +50,14 @@ def csv_to_haml_lambda_handler(event, context):
 
             # Get the CSV object from S3
             csvFileObject = s3.get_object(Bucket=bucket, Key=csvKey)
-            print('csvFileObject:' + str(csvFileObject))
+            #print('csvFileObject:' + str(csvFileObject))
             #csvText = csvFileObject["Body"].read().decode()
             #print('csvFileText:' + str(csvText))
             s3ObjectBytestream = io.BytesIO(csvFileObject['Body'].read())
-            print('s3 object:' + str(s3ObjectBytestream))
+            #print('s3 object:' + str(s3ObjectBytestream))
 
             xmlOutput = (csvKey.replace('ANTIBODY_CSV','HAML') + '.haml')
-            print('outputfilename:' + str(xmlOutput))
+            #print('outputfilename:' + str(xmlOutput))
             #xmlFileObject = event['s3']['Keyxml']
 
 
@@ -65,7 +65,7 @@ def csv_to_haml_lambda_handler(event, context):
             converter = Converter(csvFileName=s3ObjectBytestream,manufacturer=None,xmlFile=None)
             converter.convert()
 
-            print('I found this validation feedback from the conversion:' + str(converter.validationFeedback))
+            #print('I found this validation feedback from the conversion:' + str(converter.validationFeedback))
 
             # Somehow check if the convert was successful.
             if(converter.xmlText is not None and len(converter.xmlText) > 0):
@@ -74,7 +74,7 @@ def csv_to_haml_lambda_handler(event, context):
                     print('Looking for children of this upload object..')
                     childUploads = getUploadsByParentId(token=token,url=url,parentId=uploadDetails['id'])
                     # TODO: Test this, we should be able to delete previous children of an upload file (this happens when we re-upload the CSV on the IHIW database)
-                    print('We found these children: ' + str(childUploads))
+                    #print('We found these children: ' + str(childUploads))
                     for childUpload in childUploads:
                         if(childUpload['type'] == 'HAML'):
                             childUploadFileName = childUpload['fileName']
@@ -89,15 +89,15 @@ def csv_to_haml_lambda_handler(event, context):
 
                 try:
                     response = createConvertedUploadObject(newUploadFileName=xmlOutput, newUploadFileType='HAML', previousUploadFileName=csvKey, token=token, url=url)
-                    print('response from new upload:' + str(response))
+                    #print('response from new upload:' + str(response))
 
                     # Write out the xml text
                     # This should trigger the XML validation.
-                    print('encoding this string:' + str(type(converter.xmlText)))
+                    #print('encoding this string:' + str(type(converter.xmlText)))
                     encoded_string = converter.xmlText.encode("utf-8")
-                    print('encoded text:' + str(encoded_string))
+                    #print('encoded text:' + str(encoded_string))
                     s3 = boto3.resource("s3")
-                    print('saving file:' + str(xmlOutput))
+                    #print('saving file:' + str(xmlOutput))
                     s3.Bucket(bucket).put_object(Key=xmlOutput, Body=encoded_string)
 
                     # Set validation status of the .csv file
