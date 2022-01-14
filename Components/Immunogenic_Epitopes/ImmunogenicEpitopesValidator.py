@@ -132,6 +132,8 @@ def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlU
     currentValidationFeedback = ''
     if(isImmunogenic):
         if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName,  uploadList=uploadList)
+        elif(headerName == 'recipient_sample_id'): currentValidationFeedback = ''
+        elif(headerName == 'donor_sample_id'): currentValidationFeedback = ''
         elif(headerName=='recipient_haml_pre_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName)
         elif(headerName=='recipient_haml_post_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName)
         elif(headerName=='recipient_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName)
@@ -159,6 +161,7 @@ def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlU
         else: currentValidationFeedback = 'Unknown Column Name:' + str(headerName)
     else:
         if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName, uploadList=uploadList)
+        elif (headerName == 'recipient_sample_id'): currentValidationFeedback = ''
         elif(headerName=='recipient_haml'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName)
         elif(headerName=='prozone'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
         elif(headerName=='sample_availability'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
@@ -255,7 +258,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
 def getColumnNames(isImmunogenic=True):
     if (isImmunogenic):
         return [
-            'recipient_hla'
+            'recipient_sample_id'
+            , 'recipient_hla'
             , 'recipient_haml_pre_tx'
             , 'recipient_haml_post_tx'
             , 'recipient_sex'
@@ -266,6 +270,7 @@ def getColumnNames(isImmunogenic=True):
             , 'recipient_deceased_date'
             , 'donor_year_of_birth'
             , 'recipient_blood_group'
+            , 'donor_sample_id'
             , 'donor_source_type'
             , 'donor_hla'
             , 'donor_sex'
@@ -282,7 +287,9 @@ def getColumnNames(isImmunogenic=True):
             , 'organ_status_post_tx'
         ]
     else:
-        return ['recipient_hla'
+        return [
+            'recipient_sample_id'
+            , 'recipient_hla'
             , 'recipient_haml'
             , 'prozone'
             , 'sample_availability'

@@ -114,23 +114,28 @@ def testQueryUnvalidatedUploads(args=None):
     (user, password) = getCredentials(configFileName='validation_config.yml')
     url = getUrl(configFileName='validation_config.yml')
     token = getToken(user=user, password=password, url=url)
+    print('Quering URL ' + str(url))
 
     uploadList = getUploads(token=token, url=url)
     print('I found ' + str(len(uploadList)) + ' total uploads.')
 
     validatedUploads=[]
     unvalidatedUploads=[]
+    antibodyCsvWithoutChildren=[]
     for upload in uploadList:
         validations = upload['validations']
         if(len(validations)<1):
             unvalidatedUploads.append(upload)
         else:
             validatedUploads.append(upload)
+
+
     print('There are ' + str(len(validatedUploads)) + ' validated uploads.\n')
     print('There are ' + str(len(unvalidatedUploads)) + ' unvalidated uploads, here are their names:')
 
     for upload in unvalidatedUploads:
         print(str(upload['fileName']))
+        print(str(upload))
 
 
 

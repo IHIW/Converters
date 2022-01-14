@@ -144,7 +144,7 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
 
     #createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
 
-    createImmunogenicEpitopesReport(bucket=args.bucket)
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
 
 
 if __name__=='__main__':

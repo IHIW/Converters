@@ -169,11 +169,13 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
     # Convert to String for consistency..
     projectIDs = [str(projectID) for projectID in projectIDs]
+    projectString = str('_'.join(projectIDs))
 
-    antibodyPreTxFileName = 'Project.' + str('_'.join(projectIDs)) + '.Antibody.PreTx.xlsx'
-    antibodyPostTxFileName = 'Project.' + str('_'.join(projectIDs)) + '.Antibody.PostTx.xlsx'
-    summaryFileName = 'Project.' + str('_'.join(projectIDs)) + '.SummaryReport.xlsx'
-    summaryWithTypingFileName = 'Project.' + str('_'.join(projectIDs)) + '.SampleSummary.xlsx'
+
+    antibodyPreTxFileName = 'Project.' + projectString + '.Antibody.PreTx.xlsx'
+    antibodyPostTxFileName = 'Project.' + projectString+ '.Antibody.PostTx.xlsx'
+    summaryFileName = 'Project.' + projectString+ '.SummaryReport.xlsx'
+    summaryWithTypingFileName = 'Project.' + projectString+ '.SampleSummary.xlsx'
 
     dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url)
 
@@ -221,14 +223,14 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
     # Combine data matrices together for summary worksheet..
     for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
-        # print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
-        # print('This is the upload: ' + str(dataMatrixUpload))
+        print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
+        #print('This is the upload: ' + str(dataMatrixUpload))
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
         inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())
         # validateEpitopesDataMatrix returns all the information we need.
         (validationResults, validatedWorkbook) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(
-            excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=[immuEpsProjectID, dqEpsProjectID])
+            excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=projectIDs)
         if (validatedWorkbook is not None):
             supportingSpreadsheets[dataMatrixUpload['fileName']] = ParseExcel.createBytestreamExcelOutputFile(
                 workbookObject=validatedWorkbook)
@@ -254,6 +256,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                 recipHamlPreTxFileName = '?'
                 recipHamlPostTxFileName = '?'
 
+                '''
                 for headerIndex, header in enumerate(dataMatrixHeaders):
                     columnLetter = validatedWorkbook.columnNameLookup[header]
                     # print('Checking header ' + str(header) + ' which is at column ' + columnLetter)
@@ -271,8 +274,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                         fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
                                                                                         token=token, url=url,
                                                                                         fileName=str(cellData),
-                                                                                        projectIDs=[immuEpsProjectID,
-                                                                                                    dqEpsProjectID],
+                                                                                        projectIDs=projectIDs,
                                                                                         allUploads=allUploads)
 
                         if (len(fileResults) == 1):
@@ -369,6 +371,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
                 else:
                     print('Warning: Could not find a GLString for row ' + str(currentExcelRow))
+                    
+                '''
 
 
         else:
@@ -380,9 +384,11 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
         for cell in row:
             cell.alignment = cell.alignment.copy(wrapText=True)
 
+    '''
     createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=outputWorkbook)
     S3_Access.writeFileToS3(newFileName=summaryFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+    '''
 
 
 '''
