@@ -283,7 +283,7 @@ def getUploads(token=None, url=None):
 
     return response
 
-def getFilteredUploads(projectIDs=None, uploadTypes=None, token=None, url=None):
+def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
     # Lets make a list. Passing a None is fine, that means no filter.
     if(projectIDs is None):
         pass
@@ -295,12 +295,15 @@ def getFilteredUploads(projectIDs=None, uploadTypes=None, token=None, url=None):
     elif(not isinstance(uploadTypes, list)):
         uploadTypes = [uploadTypes]
 
+    #print('Getting Filtered uploads from url ' + str(url) + ' for projects ' + str(projectIDs) + ' and uploadTypes ' + str(uploadTypes))
+
     # Convert to String for consistency..
     projectIDs = [str(projectID) for projectID in projectIDs]
     uploadTypes = [str(uploadType) for uploadType in uploadTypes]
 
     # Get Uploads
     uploadList = getUploads(token=token, url=url)
+    #print('Found ' + str(len(uploadList)) + ' total uploads.')
 
     filteredUploadList = []
     for upload in uploadList:
@@ -309,8 +312,8 @@ def getFilteredUploads(projectIDs=None, uploadTypes=None, token=None, url=None):
         #print('uploadProjectId:' + uploadProjectId)
         #print('uploadType:' + uploadType)
 
-        if ((projectIDs is None or uploadProjectId in projectIDs)
-            and (uploadTypes is None or uploadType in uploadTypes)):
+        if ((len(projectIDs)==0 or uploadProjectId in projectIDs)
+            and (len(uploadTypes)==0 or uploadType in uploadTypes)):
             filteredUploadList.append(upload)
         else:
             pass
