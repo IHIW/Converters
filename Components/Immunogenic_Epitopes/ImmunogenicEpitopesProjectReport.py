@@ -95,9 +95,6 @@ def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, 
     transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
     return transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies
 
-
-
-
 def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
     print('Creating Project Zip Files for project(s) ' + str(projectIDs))
     #print('URL=' + str(url))
@@ -155,8 +152,99 @@ def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
     # TODO: Make Upload Object for (each) project leader
     print('Done')
 
+def getDataMatrixValue(validatedWorkbook=None, columnName=None, currentExcelRow=None, firstSheet=None):
+    try:
+        data = firstSheet[validatedWorkbook.columnNameLookup[columnName] + str(currentExcelRow)].value
+        if data is None:
+            return '?'
+        else:
+            return data
+    except Exception as e:
+        return '?'
+
+
+def parseGlString(glstring=None):
+    # Parse GL String, locus delimiters. Keep copies of genes together, I guess.
+    print('parsing GL String:' + str(glstring))
+    glStringTyping={}
+
+    # Split by locus
+    for locusToken in glstring.split('^'):
+        print('Found locus:' + str(locusToken))
+        if('A*' in locusToken):
+            glStringTyping['A']=locusToken
+        elif ('B*' in locusToken):
+            glStringTyping['B'] = locusToken
+        elif ('C*' in locusToken):
+            glStringTyping['C'] = locusToken
+        elif ('DRB1*' in locusToken):
+            glStringTyping['DRB1'] = locusToken
+        elif ('DRB3*' in locusToken):
+            glStringTyping['DRB3'] = locusToken
+        elif ('DRB4*' in locusToken):
+            glStringTyping['DRB4'] = locusToken
+        elif ('DRB5*' in locusToken):
+            glStringTyping['DRB5'] = locusToken
+        elif ('DQB1*' in locusToken):
+            glStringTyping['DQB1'] = locusToken
+        elif ('DQA1*' in locusToken):
+            glStringTyping['DQA1'] = locusToken
+        elif ('DPB1*' in locusToken):
+            glStringTyping['DPB1'] = locusToken
+        elif ('DPA1*' in locusToken):
+            glStringTyping['DPA1'] = locusToken
+        else:
+            print('Unknown Locus:' + str(locusToken))
+
+    return glStringTyping
+
+
+
+def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs=None, bucket=None):
+    print('getting typingData for (' + str(hla) + ')')
+
+    fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
+        token=token, url=url,
+        fileName=str(hla),
+        projectIDs=projectIDs,
+        allUploads=allUploads)
+
+    typings={}
+    typings['A'] = '?'
+    typings['B'] = '?'
+    typings['C'] = '?'
+    typings['DRB1'] = '?'
+    typings['DRB3'] = '?'
+    typings['DRB4'] = '?'
+    typings['DRB5'] = '?'
+    typings['DQB1'] = '?'
+    typings['DQA1'] = '?'
+    typings['DPB1'] = '?'
+    typings['DPA1'] = '?'
+
+    print('FileResults:' + str(fileResults))
+
+    if(len(fileResults)>0):
+        # If it's an HML File Fetch the file, parse for GL Strings, Get the Typing
+        #print('I found ' + str(len(fileResults)) + ' files, parsing for GLStrings...')
+        for fileResult in fileResults:
+            #print('Checking file for glstrings:' + str(fileResult['fileName']))
+            currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResult['fileName'], s3=s3, bucket=bucket)
+            #print('Found this GLString:' + str(currentGlString))
+            if currentGlString is not None:
+                typings.update(parseGlString(glstring=currentGlString))
+            else:
+                print('Warning, No GL Strings found for HML file ' + fileResult['fileName'])
+
+    else:
+        typings.update(parseGlString(glstring=hla))
+
+    return typings
+
+
+
 def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
-    print('Creating an Immunogenic Epitopes Submission Report.')
+    print('Creating an Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
 
     if url is None:
         url = IhiwRestAccess.getUrl()
@@ -177,35 +265,50 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     summaryFileName = 'Project.' + projectString+ '.SummaryReport.xlsx'
     summaryWithTypingFileName = 'Project.' + projectString+ '.SampleSummary.xlsx'
 
-    dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url)
+    # preload an upload list to use repeatedly later
+    allUploads = IhiwRestAccess.getUploads(token=token, url=url)
+
+    dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
 
     # Create Spreadsheet, Define Headers?
-    outputWorkbook = Workbook()
-    summaryWorksheet = outputWorkbook.active
-    summaryWorksheet.freeze_panes = 'A2'
+    summaryWithTypingWorkbook = Workbook()
+    summaryWithTypingWorksheet = summaryWithTypingWorkbook.active
+    summaryWithTypingWorksheet.freeze_panes = 'A2'
+
+    summaryWithTypingHeaders = ('upload_filename', 'row#', 'submitter'
+        , 'recipient_sample_id','recipient_hla', 'R_A', 'R_B', 'R_C', 'R_DRB1', 'R_DRB3', 'R_DRB4', 'R_DRB5', 'R_DQB1', 'R_DQA1', 'R_DPB1', 'R_DPA1'
+        , 'donor_sample_id', 'donor_hla', 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1')
+
+    for headerIndex, header in enumerate(summaryWithTypingHeaders):
+        columnLetter = get_column_letter(headerIndex+1)
+        cellIndex = columnLetter + '1'
+        summaryWithTypingWorksheet[cellIndex] = header
+        summaryWithTypingWorksheet.column_dimensions[columnLetter].width = 35
 
     # Write headers on new sheet.
-    summaryHeaders = ('donor_glstring', 'recipient_glstring', 'antibodies_pretx', 'antibodies_posttx'
-                      , 'data_matrix_filename', 'valid', 'submitting_user', 'submitting_lab', 'submission_date',
-                      'transplantation_report')
+    #summaryHeaders = ('donor_glstring', 'recipient_glstring', 'antibodies_pretx', 'antibodies_posttx'
+    #                  , 'data_matrix_filename', 'valid', 'submitting_user', 'submitting_lab', 'submission_date',
+    #                  'transplantation_report')
 
     dataMatrixHeaders = ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=True)
 
     # print('These are the summary headers:' + str(summaryHeaders))
     # print('These are the data matrix headers:' + str(dataMatrixHeaders))
 
-    summaryWorksheet.append(summaryHeaders)
-    summaryWorksheet.column_dimensions['A'].width = 40
-    summaryWorksheet.column_dimensions['B'].width = 40
-    summaryWorksheet.column_dimensions['C'].width = 40
-    summaryWorksheet.column_dimensions['D'].width = 40
-    summaryWorksheet.column_dimensions['E'].width = 40
-    summaryWorksheet.column_dimensions['F'].width = 12
-    summaryWorksheet.column_dimensions['G'].width = 25
-    summaryWorksheet.column_dimensions['H'].width = 25
-    summaryWorksheet.column_dimensions['I'].width = 25
-    summaryWorksheet.column_dimensions['J'].width = 40
-    summaryWorksheet.column_dimensions['K'].width = 40
+    '''
+    summaryWithTypingWorksheet.append(summaryHeaders)
+    summaryWithTypingWorksheet.column_dimensions['A'].width = 40
+    summaryWithTypingWorksheet.column_dimensions['B'].width = 40
+    summaryWithTypingWorksheet.column_dimensions['C'].width = 40
+    summaryWithTypingWorksheet.column_dimensions['D'].width = 40
+    summaryWithTypingWorksheet.column_dimensions['E'].width = 40
+    summaryWithTypingWorksheet.column_dimensions['F'].width = 12
+    summaryWithTypingWorksheet.column_dimensions['G'].width = 25
+    summaryWithTypingWorksheet.column_dimensions['H'].width = 25
+    summaryWithTypingWorksheet.column_dimensions['I'].width = 25
+    summaryWithTypingWorksheet.column_dimensions['J'].width = 40
+    summaryWithTypingWorksheet.column_dimensions['K'].width = 40
+    '''
 
     # for headerIndex, header in enumerate(summaryHeaders):
     # columnLetter = get_column_letter(headerIndex+1)
@@ -218,8 +321,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
     reportLineIndex = 0
 
-    # preload an upload list to use repeatedly later
-    allUploads = IhiwRestAccess.getUploads(token=token, url=url)
+
 
     # Combine data matrices together for summary worksheet..
     for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
@@ -230,7 +332,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
         inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())
         # validateEpitopesDataMatrix returns all the information we need.
         (validationResults, validatedWorkbook) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(
-            excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=projectIDs)
+            excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=projectIDs, uploadList=allUploads)
         if (validatedWorkbook is not None):
             supportingSpreadsheets[dataMatrixUpload['fileName']] = ParseExcel.createBytestreamExcelOutputFile(
                 workbookObject=validatedWorkbook)
@@ -247,132 +349,172 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
             firstSheet = validatedWorkbook[validatedWorkbook.sheetnames[0]]
             for dataLineIndex, dataLine in enumerate(firstSheet.iter_rows(min_row=2)):
 
-                reportLineIndex += 1
+
                 currentExcelRow = dataLineIndex + 2
 
-                print('Copying this line(Row=' + str(currentExcelRow) + '):' + str(dataLine))
-                donorGlString = '?'
-                recipientGlString = '?'
-                recipHamlPreTxFileName = '?'
-                recipHamlPostTxFileName = '?'
+                recipientSampleId = getDataMatrixValue(columnName='recipient_sample_id', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                recipientHla = getDataMatrixValue(columnName='recipient_hla', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                donorSampleId = getDataMatrixValue(columnName='donor_sample_id', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                donorHla = getDataMatrixValue(columnName='donor_hla', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
 
-                '''
-                for headerIndex, header in enumerate(dataMatrixHeaders):
-                    columnLetter = validatedWorkbook.columnNameLookup[header]
-                    # print('Checking header ' + str(header) + ' which is at column ' + columnLetter)
+                # Check if there is some data here, for now it's good enough if there is some HLA typing included
+                # TODO: Check other columns? Maybe good data without an hla typing somehow?
+                if(len(str(recipientHla).strip()) > 1 and len(str(donorHla).strip()) > 1):
+                    reportLineIndex += 1
 
-                    cellIndex = columnLetter + str(currentExcelRow)
-                    cellData = firstSheet[cellIndex].value
-                    # print('Cell Index: ' + str(cellIndex))
-                    # print('Data:' + str(cellData))
+                    # Get the Donor GLString/HML File
+                    # Get the Recipient GLString/HML File
+                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket)
+                    donorTypings = constructTypings(allUploads=allUploads, hla=donorHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket)
 
-                    currentGlString = None
 
-                    # Add supporting files.
-                    fileResults = []
-                    if (header.endswith('_hla')):
-                        fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
-                                                                                        token=token, url=url,
-                                                                                        fileName=str(cellData),
-                                                                                        projectIDs=projectIDs,
-                                                                                        allUploads=allUploads)
 
-                        if (len(fileResults) == 1):
-                            # We found a single file mapped to this HLA result. Get a GlString.
-                            currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3,
-                                                                          bucket=bucket)
-                        else:
-                            # We didn't find a single file to calculate a glString from. Use the existing data
-                            currentGlString = cellData
-                        if (currentGlString is None or len(currentGlString) < 1):
-                            currentGlString = ''
+                    # Put the typing in the spreadsheets.
 
-                        # print the glString in the appropriate column
-                        if (header == 'donor_hla'):
-                            donorGlString = currentGlString
-                            donorGlStringValidationResults = Validation.validateGlString(glString=donorGlString)
-                        elif (header == 'recipient_hla'):
-                            recipientGlString = currentGlString
-                            recipientGlStringValidationResults = Validation.validateGlString(glString=recipientGlString)
-                        else:
-                            raise Exception(
-                                'I cannot understand to do with the data for column ' + str(header) + ':' + str(
-                                    cellData))
 
-                    elif ('_haml_' in (header)):
-                        # TODO: Include Antibody_CSV?
-                        print('Fetching HAML Files')
+                    # TODO: What about HAML?
 
-                        # print('all uploads:' + str(allUploads))
-                        print('FileName:' + str(cellData))
-                        fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'],
-                                                                                        token=token, url=url,
-                                                                                        fileName=str(cellData),
-                                                                                        projectIDs=[immuEpsProjectID,
-                                                                                                    dqEpsProjectID],
-                                                                                        allUploads=allUploads)
 
-                        print('I just found these haml results:' + str(fileResults))
 
-                        # TODO: Assuming a single HAML file here. What if !=1 results are found?
-                        if (header == 'recipient_haml_pre_tx' and len(fileResults) == 1):
-                            recipHamlPreTxFileName = fileResults[0]['fileName']
-                        elif (header == 'recipient_haml_post_tx' and len(fileResults) == 1):
-                            recipHamlPostTxFileName = fileResults[0]['fileName']
+                    # Write data for summaryWithTypingWorksheet
+                    '''
+                    ('upload_filename', 'row#', 'submitter'
+                        , 'recipient_sample_id','recipient_hla', 'R_A', 'R_B', 'R_C', 'R_DRB1', 'R_DRB3', 'R_DRB4', 'R_DRB5', 'R_DQB1', 'R_DQA1', 'R_DPB1', 'R_DPA1'
+                        , 'donor_sample_id', 'donor_hla', 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1')
+                    '''
+                    summaryWithTypingDataTuple = (dataMatrixFileName, currentExcelRow, (submittingUser + ', ' + submittingLab)
+                        , recipientSampleId ,recipientHla, recipientTypings['A'], recipientTypings['B']
+                        , recipientTypings['C'], recipientTypings['DRB1'], recipientTypings['DRB3'], recipientTypings['DRB4'], recipientTypings['DRB5']
+                        , recipientTypings['DQB1'], recipientTypings['DQA1'], recipientTypings['DPB1'], recipientTypings['DPA1']
+                        , donorSampleId, donorHla, donorTypings['A'], donorTypings['B']
+                        , donorTypings['C'], donorTypings['DRB1'], donorTypings['DRB3'], donorTypings['DRB4'], donorTypings['DRB5']
+                        , donorTypings['DQB1'], donorTypings['DQA1'], donorTypings['DPB1'], donorTypings['DPA1']
+                    )
+                    summaryWithTypingWorksheet.append(summaryWithTypingDataTuple)
+
+
+
+
+                    '''
+                    for headerIndex, header in enumerate(dataMatrixHeaders):
+                        columnLetter = validatedWorkbook.columnNameLookup[header]
+                        # print('Checking header ' + str(header) + ' which is at column ' + columnLetter)
+    
+                        cellIndex = columnLetter + str(currentExcelRow)
+                        cellData = firstSheet[cellIndex].value
+                        # print('Cell Index: ' + str(cellIndex))
+                        # print('Data:' + str(cellData))
+    
+                        currentGlString = None
+    
+                        # Add supporting files.
+                        fileResults = []
+                        if (header.endswith('_hla')):
+                            fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
+                                                                                            token=token, url=url,
+                                                                                            fileName=str(cellData),
+                                                                                            projectIDs=projectIDs,
+                                                                                            allUploads=allUploads)
+    
+                            if (len(fileResults) == 1):
+                                # We found a single file mapped to this HLA result. Get a GlString.
+                                currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResults[0]['fileName'], s3=s3,
+                                                                              bucket=bucket)
+                            else:
+                                # We didn't find a single file to calculate a glString from. Use the existing data
+                                currentGlString = cellData
+                            if (currentGlString is None or len(currentGlString) < 1):
+                                currentGlString = ''
+    
+                            # print the glString in the appropriate column
+                            if (header == 'donor_hla'):
+                                donorGlString = currentGlString
+                                donorGlStringValidationResults = Validation.validateGlString(glString=donorGlString)
+                            elif (header == 'recipient_hla'):
+                                recipientGlString = currentGlString
+                                recipientGlStringValidationResults = Validation.validateGlString(glString=recipientGlString)
+                            else:
+                                raise Exception(
+                                    'I cannot understand to do with the data for column ' + str(header) + ':' + str(
+                                        cellData))
+    
+                        elif ('_haml_' in (header)):
+                            # TODO: Include Antibody_CSV?
+                            print('Fetching HAML Files')
+    
+                            # print('all uploads:' + str(allUploads))
+                            print('FileName:' + str(cellData))
+                            fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'],
+                                                                                            token=token, url=url,
+                                                                                            fileName=str(cellData),
+                                                                                            projectIDs=[immuEpsProjectID,
+                                                                                                        dqEpsProjectID],
+                                                                                            allUploads=allUploads)
+    
+                            print('I just found these haml results:' + str(fileResults))
+    
+                            # TODO: Assuming a single HAML file here. What if !=1 results are found?
+                            if (header == 'recipient_haml_pre_tx' and len(fileResults) == 1):
+                                recipHamlPreTxFileName = fileResults[0]['fileName']
+                            elif (header == 'recipient_haml_post_tx' and len(fileResults) == 1):
+                                recipHamlPostTxFileName = fileResults[0]['fileName']
+                            else:
+                                pass
+    
                         else:
                             pass
-
+    
+                        for uploadFile in fileResults:
+                            # print('Appending this file to the upload list:' + str(uploadFile))
+                            supportingUploadFilenames.append(uploadFile['fileName'])
+    
+                    # print('In that row I found these GLStrings ')
+                    # print('Donor:' +str(donorGlString))
+                    # print('recipientGlString:' + str(recipientGlString))
+    
+                    if (len(donorGlString) > 0 and len(recipientGlString) > 0):
+    
+                        transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(
+                            currentExcelRow) + '.xlsx'
+                        transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
+                            donorTyping=donorGlString, recipientTyping=recipientGlString,
+                            recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName,
+                            s3=s3, bucket=bucket)
+                        supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
+    
+                        if len(validationResults) == 0:
+                            validationText = 'Valid'
+                        else:
+                            validationText = str(len(validationResults)) + ' validation issues found'
+    
+                        preTxAntibodyText = ''
+                        postTxAntibodyText = ''
+                        for specificity in sorted(list(preTxAntibodies.keys())):
+                            preTxAntibodyText = preTxAntibodyText + specificity + ' : ' + str(
+                                preTxAntibodies[specificity]) + '\n'
+                        preTxAntibodyText = preTxAntibodyText[:-1]
+                        for specificity in sorted(list(postTxAntibodies.keys())):
+                            postTxAntibodyText = postTxAntibodyText + specificity + ' : ' + str(
+                                postTxAntibodies[specificity]) + '\n'
+                        postTxAntibodyText = postTxAntibodyText[:-1]
+    
+                        # Make a tuple matching this:     summaryHeaders = ('donor_glstring', 'recipient_glstring','antibodies_pretx','antibodies_posttx'
+                        #         ,'data_matrix_filename','valid','submitting_user','submitting_lab','submission_date', 'transplantation_report')
+                        currentTuple = (
+                        donorGlString, recipientGlString, preTxAntibodyText, postTxAntibodyText, dataMatrixFileName,
+                        validationText, submittingUser, submittingLab, submissionDate, transplantationReportFileName
+                        )
+                        summaryWorksheet.append(currentTuple)
+                        print('Added Row: ' + str(tuple(summaryWorksheet.rows)[reportLineIndex]))
+                        summaryWorksheet.row_dimensions[reportLineIndex + 1].height = 80
+    
                     else:
-                        pass
-
-                    for uploadFile in fileResults:
-                        # print('Appending this file to the upload list:' + str(uploadFile))
-                        supportingUploadFilenames.append(uploadFile['fileName'])
-
-                # print('In that row I found these GLStrings ')
-                # print('Donor:' +str(donorGlString))
-                # print('recipientGlString:' + str(recipientGlString))
-
-                if (len(donorGlString) > 0 and len(recipientGlString) > 0):
-
-                    transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(
-                        currentExcelRow) + '.xlsx'
-                    transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
-                        donorTyping=donorGlString, recipientTyping=recipientGlString,
-                        recipHamlPreTxFilename=recipHamlPreTxFileName, recipHamlPostTxFilename=recipHamlPostTxFileName,
-                        s3=s3, bucket=bucket)
-                    supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
-
-                    if len(validationResults) == 0:
-                        validationText = 'Valid'
-                    else:
-                        validationText = str(len(validationResults)) + ' validation issues found'
-
-                    preTxAntibodyText = ''
-                    postTxAntibodyText = ''
-                    for specificity in sorted(list(preTxAntibodies.keys())):
-                        preTxAntibodyText = preTxAntibodyText + specificity + ' : ' + str(
-                            preTxAntibodies[specificity]) + '\n'
-                    preTxAntibodyText = preTxAntibodyText[:-1]
-                    for specificity in sorted(list(postTxAntibodies.keys())):
-                        postTxAntibodyText = postTxAntibodyText + specificity + ' : ' + str(
-                            postTxAntibodies[specificity]) + '\n'
-                    postTxAntibodyText = postTxAntibodyText[:-1]
-
-                    # Make a tuple matching this:     summaryHeaders = ('donor_glstring', 'recipient_glstring','antibodies_pretx','antibodies_posttx'
-                    #         ,'data_matrix_filename','valid','submitting_user','submitting_lab','submission_date', 'transplantation_report')
-                    currentTuple = (
-                    donorGlString, recipientGlString, preTxAntibodyText, postTxAntibodyText, dataMatrixFileName,
-                    validationText, submittingUser, submittingLab, submissionDate, transplantationReportFileName
-                    )
-                    summaryWorksheet.append(currentTuple)
-                    print('Added Row: ' + str(tuple(summaryWorksheet.rows)[reportLineIndex]))
-                    summaryWorksheet.row_dimensions[reportLineIndex + 1].height = 80
-
+                        print('Warning: Could not find a GLString for row ' + str(currentExcelRow))
+                        
+                    '''
                 else:
-                    print('Warning: Could not find a GLString for row ' + str(currentExcelRow))
-                    
-                '''
+                    #print('Empty Data line.')
+                    pass
 
 
         else:
@@ -380,15 +522,15 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
             print('Upload ID of missing data matrix:' + str(dataMatrixUpload['id']))
 
     # Text wrapping. For every cell.
-    for row in summaryWorksheet.iter_rows():
-        for cell in row:
-            cell.alignment = cell.alignment.copy(wrapText=True)
+    #for row in summaryWithTypingWorksheet.iter_rows():
+    #    for cell in row:
+    #        cell.alignment = cell.alignment.copy(wrapText=True)
 
-    '''
-    createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
-    outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=outputWorkbook)
-    S3_Access.writeFileToS3(newFileName=summaryFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
-    '''
+
+    #createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
+    outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=summaryWithTypingWorkbook)
+    S3_Access.writeFileToS3(newFileName=summaryWithTypingFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
 
 
 '''
@@ -619,9 +761,10 @@ def createImmunogenicEpitopesReport(bucket=None, projectID=None):
           + '\nin bucket: ' + str(bucket))
     '''
 
-def getDataMatrixUploads(projectIDs=None, token=None, url=None):
+def getDataMatrixUploads(projectIDs=None, token=None, url=None, uploadList=None):
     # collect all data matrix files.
-    uploadList = IhiwRestAccess.getUploads(token=token, url=url)
+    if(uploadList is None):
+        uploadList = IhiwRestAccess.getUploads(token=token, url=url)
     #print('I found these uploads:' + str(uploadList))
     #print('This is my upload list:' + str(uploadList))
     print('Parsing ' + str(len(uploadList)) + ' uploads to find data matrices for project(s) ' + str(projectIDs) + '..')
@@ -636,10 +779,10 @@ def getDataMatrixUploads(projectIDs=None, token=None, url=None):
             if (upload['type'] == 'PROJECT_DATA_MATRIX'):
                 dataMatrixUploadList.append(upload)
             else:
-                print('Disregarding this upload because it is not a data matrix.')
+                #print('Disregarding this upload because it is not a data matrix.')
                 pass
         else:
-            print('Disregarding this upload because it is not in our project.')
+            #print('Disregarding this upload because it is not in our project.')
             pass
     print(
         'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectIDs) + '.\n')

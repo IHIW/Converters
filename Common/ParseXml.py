@@ -292,8 +292,6 @@ def getGlStringFromHml(hmlFileName=None, s3=None, bucket=None):
     # TODO: Use the pyhml package. currently it requires to pass a string as an HML file name.
     #  Can I do that using the S3 key?
     #  Might need to save the file directly in a temp directory for lambda to access it. Figure that out.
-    print('Getting GL String from HML for file:' + str(hmlFileName))
-
     glString = ''
 
     # Parse XML

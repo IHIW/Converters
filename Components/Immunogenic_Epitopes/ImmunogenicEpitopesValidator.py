@@ -181,7 +181,7 @@ def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlU
 
     return currentValidationFeedback
 
-def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=None, url=None, token=None):
+def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=None, url=None, token=None, uploadList=None):
     # This method returns a tuple, with (list of validation results, Report Excel Excel Data)
     validationErrors = []
     inputExcelData = None
@@ -227,7 +227,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
     if(token is None or url is None or len(url)<1 or len(token) < 1):
         return('Could not aquire a login token.', inputExcelData, validationErrors)
     try:
-        uploadList = IhiwRestAccess.getUploads(token=token, url=url)
+        if(uploadList is None):
+            uploadList = IhiwRestAccess.getUploads(token=token, url=url)
         hmlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='HML')
         hamlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='HAML')
         antibodyCsvUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='ANTIBODY_CSV')
