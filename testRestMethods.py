@@ -3,7 +3,7 @@ from sys import exc_info
 import time
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
-    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads
+    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 
@@ -13,6 +13,7 @@ def parseArgs():
     parser.add_argument("-t", "--task", required=True, help="task to perform", type=str)
     parser.add_argument("-u", "--upload", required=False, help="upload", type=str)
     parser.add_argument("-p", "--parent", required=False, help="parent upload name", type=str)
+    parser.add_argument('-P','--project', required=False, help="project ID", type=str)
     parser.add_argument("-c", "--child", required=False, help="child upload name", type=str)
     parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
     parser.add_argument("-d", "--default", required=False, help="default (Project ID) to use", type=str )
@@ -38,8 +39,6 @@ def testCreateChildUpload(args = None):
     # TODO: Fix the createNewUploadObject Method, use it here. That method is currently broken so I need to supply an existing upload filename.
     # print('Creating Parent Upload:' + str(parentUploadFileName))
 
-
-
     # Create Child Upload
     print('Creating Child Upload:' + str(childUploadFileName))
     response = createConvertedUploadObject(newUploadFileName=childUploadFileName, newUploadFileType='XLSX', previousUploadFileName=parentUploadFileName, token=token, url=url)
@@ -55,8 +54,6 @@ def testCreateChildUpload(args = None):
     childValidationStatus='This child file has some validation issues:\n1) It is the wrong format\n2) There were other problems found.'
     response = setValidationStatus(uploadFileName=childUploadFileName, isValid=isChildValid, validationFeedback=childValidationStatus, validatorType='TEST_VALIDATOR', token=token, url=url)
     print('Response from setValidationStatus:' + str(response))
-
-
 
 def testDeleteUpload(uploadFileName=None):
     print('Testing REST access to the website, testDeleteUpload')
@@ -74,7 +71,6 @@ def testDeleteUpload(uploadFileName=None):
     response = deleteUpload(uploadId=uploadId, token=token, url=url)
     print('Response from response:' + str(response))
 
-
 def testQueryOrphans(args=None):
     print('Testing the query to find orphaned uploads')
     print('Bucket:' + str(args.bucket))
@@ -85,7 +81,6 @@ def testRevalidateUpload(args=None):
     print('Bucket:' + str(args.bucket))
     print('Upload:' + str(args.upload))
     revalidateUpload(bucket=args.bucket, uploadFilename=args.upload)
-
 
 def testGetChildUpload(args=None):
     print('Testing REST access to the website, testGetChildUpload')
@@ -138,6 +133,22 @@ def testQueryUnvalidatedUploads(args=None):
         print(str(upload))
 
 
+def testGetProjectUploads(args=None):
+    print('Getting Project Uploads for immunogenic_epitopes project:')
+    projectId = getProjectID(projectName='immunogenic_epitopes')
+    (user, password) = getCredentials(configFileName='validation_config.yml')
+    url = getUrl(configFileName='validation_config.yml')
+    token = getToken(user=user, password=password, url=url)
+
+    projectUploads = getUploadsByProjectID(url=url,token=token,projectId=projectId)
+
+    if(projectUploads is not None):
+        print('I found ' + str(len(projectUploads)) + ' uploads for project ' + str(projectId))
+
+        for projectUpload in projectUploads:
+            print(projectUpload['fileName'] + ' is of type ' + projectUpload['type'])
+    else:
+        raise Exception ('projectUploads received no response!')
 
 
 if __name__ == '__main__':
@@ -151,6 +162,8 @@ if __name__ == '__main__':
             testCreateChildUpload(args=args)
         elif(task== 'GET_CHILD_UPLOADS'):
             testGetChildUpload(args=args)
+        elif(task == 'UPLOADS_BY_PROJECT'):
+            testGetProjectUploads(args=args)
         elif (task == 'QUERY_ORPHANS'):
             testQueryOrphans(args=args)
         elif(task== 'QUERY_UNVALIDATED_UPLOADS'):
@@ -160,15 +173,7 @@ if __name__ == '__main__':
         else:
             print('I do not understand which task to perform')
 
-
     except Exception:
         print ('Unexpected problem running tests:')
         print (str(exc_info()))
         raise
-
-
-
-
-
-
-

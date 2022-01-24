@@ -390,6 +390,41 @@ def getUploadsByParentId(token=None, url=None, parentId=None):
             print(str(e) + ' when searching for children of upload ' + str(parentId))
             return None
 
+def getUploadsByProjectID(token=None, url=None, projectId=None):
+    if (url is None):
+        url = getUrl()
+    if (token is None):
+        token = getToken(url=url)
+
+    if(projectId is None):
+        print('Warning! No projectId was provided, cannot find uploads.')
+        return None
+    else:
+        if token is None or len(token) < 1:
+            print('Error. No login token available when getting uploads.')
+            return None
+
+        try:
+            fullUrl = str(url) + '/api/uploads/getbyproject/' + urllib.parse.quote(str(projectId))
+            body = {}
+
+            encodedJsonData = str(json.dumps(body)).encode('utf-8')
+            updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
+            updateRequest.add_header('Content-Type', 'application/json')
+            updateRequest.add_header('Authorization', 'Bearer ' + token)
+            responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+            # print('Response:' + str(responseData))
+            if (responseData is None or len(responseData) < 1):
+                print('getUploadsByProjectId returned an empty response!')
+                return False
+            response = json.loads(responseData)
+
+            return response
+        except urllib.error.HTTPError as e:
+            print(str(e) + ' when searching for uploads by project ' + str(projectId))
+            return None
+
+
 def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None):
     if(projectIDs is not None and not isinstance(projectIDs, list)):
         projectIDs = [projectIDs]
