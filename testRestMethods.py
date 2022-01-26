@@ -130,7 +130,7 @@ def testQueryUnvalidatedUploads(args=None):
 
     for upload in unvalidatedUploads:
         print(str(upload['fileName']))
-        print(str(upload))
+        #print(str(upload))
 
 
 def testGetProjectUploads(args=None):

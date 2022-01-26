@@ -255,7 +255,7 @@ def getToken(url=None, user=None, password=None):
     print("Token couldn't be obtained")
     return None
 
-def getUploads(token=None, url=None):
+def getUploads(token=None, url=None, timeout=120):
     if(url is None):
         url = getUrl()
     if(token is None):
@@ -265,7 +265,7 @@ def getUploads(token=None, url=None):
         print('Error. No login token available when getting uploads.')
         return None
 
-    print('Fetching All Uploads...')
+    print('Fetching All Uploads, timeout = ' + str(timeout) + ' seconds')
 
     fullUrl = str(url) + '/api/uploads'
     body = {}
@@ -274,7 +274,7 @@ def getUploads(token=None, url=None):
     updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='GET')
     updateRequest.add_header('Content-Type', 'application/json')
     updateRequest.add_header('Authorization', 'Bearer ' + token)
-    responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+    responseData = request.urlopen(updateRequest, timeout=timeout).read().decode("UTF-8")
     #print('Response:' + str(responseData))
     if (responseData is None or len(responseData) < 1):
         print('updateValidationStatus returned an empty response!')
