@@ -4,8 +4,8 @@
 # You need to provide the config file validation_config.yml with entries url: {} username: {} password: {}
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/bmatern/github/Converters/Components/Immunogenic_Epitopes"
-ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
+PROJECT_PATH="/home/ben/github/Converters/Components/Immunogenic_Epitopes"
+ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
 LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
 #LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
 

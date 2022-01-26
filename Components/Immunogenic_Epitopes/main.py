@@ -24,8 +24,8 @@ def parseArgs():
 def testValidateImmunogenicEpitopes(args=None):
     print('Starting up the immuno epitopes methods.')
 
-    immunogenicEpitopeProjectNumber = getProjectID(projectName='immunogenic_epitopes')
-    dqImmunogenicityProjectNumber = getProjectID(projectName='dq_immunogenicity')
+    immunogenicEpitopeProjectNumber = IhiwRestAccess.getProjectID(projectName='immunogenic_epitopes')
+    dqImmunogenicityProjectNumber = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
     (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
     print('Validation Results:\n' + str(validationResults))

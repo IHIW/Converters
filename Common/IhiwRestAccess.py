@@ -288,6 +288,8 @@ def getUploads(token=None, url=None):
     return response
 
 def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
+    # TODO: Deprecate this method. Rewrite it so that we don't use the "getUploads" method anymore. It's just too slow with all the paging and such.
+
     # Lets make a list. Passing a None is fine, that means no filter.
     if(projectIDs is None):
         pass
@@ -423,6 +425,24 @@ def getUploadsByProjectID(token=None, url=None, projectId=None):
         except urllib.error.HTTPError as e:
             print(str(e) + ' when searching for uploads by project ' + str(projectId))
             return None
+
+def getUploadsByProjects(token=None, url=None, projectIDs=None):
+    if (url is None):
+        url = getUrl()
+    if (token is None):
+        token = getToken(url=url)
+    if(projectIDs is None):
+        print('Warning! No projectIds were provided, cannot find uploads.')
+        return None
+    else:
+        if (projectIDs is not None and not isinstance(projectIDs, list)):
+            projectIDs = [projectIDs]
+        uploads = []
+        for projectId in projectIDs:
+            projectUploads = getUploadsByProjectID(token=token, url=url, projectId=projectId)
+            uploads.extend(projectUploads)
+
+        return uploads
 
 
 def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None):
