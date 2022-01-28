@@ -9,52 +9,65 @@ from glstring import check
 # TODO: Many of these methods can be simplified/refactored. Make a method to check if something is an element in a list
 # TODO: Add the "required" flag to many of these methods.
 
-def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?'):
+def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?', delimiter=None):
     # Return an empty string if there is a single file found.
     # Or else return text describing the problem.
     query = str(query).strip()
+    validationText = ''
 
     if(len(query)<1):
         return 'No data provided for column ' + str(columnName)
 
-    matchList = []
-    for searchTerm in searchList:
-        #print('Checking (' + query + '),(' + searchTerm + ')')
-        if(query == searchTerm):
-            #print('Match (' + query + '),(' + searchTerm + ')')
-            matchList.append(searchTerm)
-        elif(allowPartialMatch and query in searchTerm):
-            # Partial match are usually good enough. This will catch files that have been changed by the management website.
-            #print('Partial Match (' + query + '),(' + searchTerm + ')')
-            matchList.append(searchTerm)
-        else:
-            # no match.
-            pass
-
-    if(len(matchList) == 1):
-        # Perfect. only a single file was found.
-        return ''
-    elif(len(matchList) == 0):
-        return 'In data column ' + str(columnName) + ' I could not find an uploaded file with the name (' + str(query) + ')'
+    # Sometimes the query is a list separated by commas or something.
+    if delimiter is None:
+        queryList = [query]
     else:
-        # We will sometimes find 2 entries for a single file. This is the case for converted HAML files.
-        # They are called "ABCD.csv" and "ABCD.csv.haml"
-        # We should allow this.
-        # TODO: These uploads have a parent/child relationship. I should be checking this instead of by the text filename.
-        # TODO: This no longer works with the new filename relationship, need to prioritize checking by parent/child.
-        # TODO: I'm not sure if necessary, since I'm only really looking at the HAML files in the validator.
-        if(len(matchList) == 2 and (matchList[0] in matchList[1] or matchList[1] in matchList[0])):
-            print('In data column ' + str(columnName) + ' For file entry (' + str(query) + '), '
-                + str(len(matchList)) + ' matching files were found, and they appear to be the same converted file:('
-                + str(matchList[0] + '),(' + matchList[1]) + ')')
-            return ''
+        queryList = query.split(delimiter)
 
+    # This loop is iterating for multiple query texts,  separated by a comma
+    for queryText in queryList:
+        matchList = []
+        queryText = str(queryText).strip()
+
+        # This loop iterates the existing files, to see if the query matches them.
+        for searchTerm in searchList:
+            #print('Checking (' + queryText + '),(' + searchTerm + ')')
+            if(queryText == searchTerm):
+                #print('Match (' + queryText + '),(' + searchTerm + ')')
+                matchList.append(searchTerm)
+            elif(allowPartialMatch and queryText in searchTerm):
+                # Partial match are usually good enough. This will catch files that have been changed by the management website.
+                #print('Partial Match (' + queryText + '),(' + searchTerm + ')')
+                matchList.append(searchTerm)
+            else:
+                # no match.
+                pass
+
+        if(len(matchList) == 1):
+            # Perfect. only a single file was found.
+            pass
+        elif(len(matchList) == 0):
+            validationText = validationText + 'In data column ' + str(columnName) + ' I could not find an uploaded file with the name (' + str(queryText) + ')\n'
         else:
-            resultsText = 'In data column ' + str(columnName) + ' For file entry (' + str(query) + '), ' + str(len(matchList)) + ' matching files were found:('
-            for match in matchList:
-                resultsText += match + ') , ('
-            resultsText = resultsText[0:len(resultsText) - 2] + ''
-            return resultsText
+            # We will sometimes find 2 entries for a single file. This is the case for converted HAML files.
+            # They are called "ABCD.csv" and "ABCD.csv.haml"
+            # We should allow this.
+            # TODO: These uploads have a parent/child relationship. I should be checking this instead of by the text filename.
+            # TODO: This no longer works with the new filename relationship, need to prioritize checking by parent/child.
+            # TODO: I'm not sure if necessary, since I'm only really looking at the HAML files in the validator.
+            if(len(matchList) == 2 and (matchList[0] in matchList[1] or matchList[1] in matchList[0])):
+                print('In data column ' + str(columnName) + ' For file entry (' + str(queryText) + '), '
+                    + str(len(matchList)) + ' matching files were found, and they appear to be the same converted file:('
+                    + str(matchList[0] + '),(' + matchList[1]) + ')')
+                pass
+
+            else:
+                resultsText = 'In data column ' + str(columnName) + ' For file entry (' + str(queryText) + '), ' + str(len(matchList)) + ' matching files were found:('
+                for match in matchList:
+                    resultsText += match + ') , ('
+                resultsText = resultsText[0:len(resultsText) - 2] + ''
+                validationText = validationText + resultsText + '\n'
+    return validationText
 
 def validateBoolean(query=None, columnName='?', required=True):
     queryText=str(query).lower().strip()
@@ -161,7 +174,7 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
     #print('Checking this HLA Genotype:' + str(query))
 
     # If we find a single file entry, we are done. Not filtering by file extension, because user may have submitted just the file ID without extension.
-    listValidationResult=validateUniqueEntryInList(query=query, searchList=searchList, allowPartialMatch=allowPartialMatch, columnName=columnName)
+    listValidationResult=validateUniqueEntryInList(query=query, searchList=searchList, allowPartialMatch=allowPartialMatch, columnName=columnName, delimiter=',')
     if(listValidationResult==''):
         # This entry maps to an individual file. Done.
         return listValidationResult

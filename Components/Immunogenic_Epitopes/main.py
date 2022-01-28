@@ -25,9 +25,9 @@ def testValidateImmunogenicEpitopes(args=None):
     print('Starting up the immuno epitopes methods.')
 
     immunogenicEpitopeProjectNumber = IhiwRestAccess.getProjectID(projectName='immunogenic_epitopes')
-    dqImmunogenicityProjectNumber = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
+    #dqImmunogenicityProjectNumber = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber, dqImmunogenicityProjectNumber])
+    (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=args.excel, isImmunogenic=True, projectIDs=[immunogenicEpitopeProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 
     head, tail = split(args.excel)

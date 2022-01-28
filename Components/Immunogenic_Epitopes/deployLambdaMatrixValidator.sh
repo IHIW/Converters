@@ -6,8 +6,8 @@
 # it may or may not be necessary depending on your local python environment.
 PROJECT_PATH="/home/ben/github/Converters/Components/Immunogenic_Epitopes"
 ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
-LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
-#LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
+#LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
+LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
 
 cd $PROJECT_PATH
 

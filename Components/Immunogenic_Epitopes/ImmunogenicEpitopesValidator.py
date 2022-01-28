@@ -134,8 +134,8 @@ def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlU
         if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName,  uploadList=uploadList)
         elif(headerName == 'recipient_sample_id'): currentValidationFeedback = ''
         elif(headerName == 'donor_sample_id'): currentValidationFeedback = ''
-        elif(headerName=='recipient_haml_pre_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName)
-        elif(headerName=='recipient_haml_post_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName)
+        elif(headerName=='recipient_haml_pre_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
+        elif(headerName=='recipient_haml_post_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
         elif(headerName=='recipient_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName)
         elif(headerName=='recipient_year_of_birth'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName)
         elif(headerName=='recipient_pregnancies'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
@@ -162,7 +162,7 @@ def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlU
     else:
         if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName, uploadList=uploadList)
         elif (headerName == 'recipient_sample_id'): currentValidationFeedback = ''
-        elif(headerName=='recipient_haml'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName)
+        elif(headerName=='recipient_haml'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
         elif(headerName=='prozone'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
         elif(headerName=='sample_availability'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
         elif(headerName=='age_recipient_years'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
