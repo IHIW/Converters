@@ -156,6 +156,7 @@ def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlU
         elif(headerName=='availability_post_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
         elif(headerName=='date_antibody_pre_tx'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName)
         elif(headerName=='date_antibody_post_tx'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName)
+        elif(headerName=='timing_antibody_post_tx'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
         elif(headerName=='immune_suppr_post_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
         elif(headerName=='organ_status_post_tx'): currentValidationFeedback = Validation.validateOrganStatus(query=cellValue, columnName=headerName, required=False)
         else: currentValidationFeedback = 'Unknown Column Name:' + str(headerName)
@@ -284,6 +285,7 @@ def getColumnNames(isImmunogenic=True):
             , 'availability_post_tx'
             , 'date_antibody_pre_tx'
             , 'date_antibody_post_tx'
+            , 'timing_antibody_post_tx'
             , 'immune_suppr_post_tx'
             , 'organ_status_post_tx'
         ]
