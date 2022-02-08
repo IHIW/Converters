@@ -242,6 +242,64 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
     return typings
 
 
+def reduceGenotypings(typings=None):
+    # Reduce the typings to two fields. Try to maintain a bit of the ambiguity if possible.
+    # Keep in mind the GLStrings
+    print('Reducing Genotypings:' + str(typings))
+    reducedTyping={}
+    for locus in typings.keys():
+        #print('Locus = ' + str(locus))
+        fullGenotypes = typings[locus]
+
+        if(fullGenotypes is None):
+            print('Warning, full genotypes is None for locus ' + str(locus))
+            reducedTyping[locus] = typings[locus]
+        elif(type(fullGenotypes)==str):
+            if(fullGenotypes=='?'):
+                # This is fine. Unknown typing.
+                reducedTyping[locus]=typings[locus]
+            else:
+                # Split by genotype ambiguities
+                genotypeOptions = set()
+                for genotypeString in (fullGenotypes.split('|')):
+                    #print('Found genotype option:' + str(genotypeString))
+                    # How many alleles does this genotype have? 1 or 2 is normal
+                    alleleStrings=genotypeString.split('+')
+
+                    if(len(alleleStrings) in [1,2]):
+                        bothAlleles = []
+                        for alleleString in alleleStrings:
+                            #print('Allele String:' + str(alleleString))
+                            alleleOptions = set()
+                            for allele in alleleString.split('/'):
+                                #print('Allele:' + str(allele))
+                                # Get the first 2 fields
+                                nomenclatureTokens = allele.split(':')
+                                if(len(nomenclatureTokens)==1):
+                                    alleleOptions.add(allele)
+                                else:
+                                    shortAlleleName = nomenclatureTokens[0] + ':' + nomenclatureTokens[1]
+                                    expressionCharacter = allele[-1]
+                                    if not str.isdigit(expressionCharacter):
+                                        print('This might be a nullallele!:' + allele)
+                                        shortAlleleName = shortAlleleName + expressionCharacter
+                                    alleleOptions.add(shortAlleleName)
+                                #print('alleleOptions:' + str(alleleOptions))
+                            bothAlleles.append('/'.join(sorted(list(alleleOptions))))
+                            #print('BothAlleles:' + str(bothAlleles))
+
+                        genotypeOptions.add('+'.join(sorted(list(bothAlleles))))
+
+                    else:
+                        print('Warning, Apparently there are too many alleles (' + str(len(alleleStrings)) +  ') in a single genotype ' + str(genotypeString))
+                reducedTyping[locus] = '|'.join(sorted(list(genotypeOptions)))
+        else:
+            print('Warning, full genotypes is not a string! for locus ' + str(locus))
+            reducedTyping[locus] = typings[locus]
+
+    print('Reduced Genotypes:' + str(reducedTyping))
+    return reducedTyping
+
 
 def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
     print('Creating an Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
@@ -266,7 +324,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     summaryWithTypingFileName = 'Project.' + projectString+ '.SampleSummary.xlsx'
 
     # preload an upload list to use repeatedly later
-    allUploads = IhiwRestAccess.getUploads(token=token, url=url)
+    #allUploads = IhiwRestAccess.getUploads(token=token, url=url)
+    allUploads = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
 
     dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
 
@@ -367,7 +426,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                     recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket)
                     donorTypings = constructTypings(allUploads=allUploads, hla=donorHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket)
 
-
+                    recipientTypingsSimplified = reduceGenotypings(typings=recipientTypings)
+                    donorTypingsSimplified = reduceGenotypings(typings=donorTypings)
 
                     # Put the typing in the spreadsheets.
 
@@ -383,12 +443,12 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                         , 'donor_sample_id', 'donor_hla', 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1')
                     '''
                     summaryWithTypingDataTuple = (dataMatrixFileName, currentExcelRow, (submittingUser + ', ' + submittingLab)
-                        , recipientSampleId ,recipientHla, recipientTypings['A'], recipientTypings['B']
-                        , recipientTypings['C'], recipientTypings['DRB1'], recipientTypings['DRB3'], recipientTypings['DRB4'], recipientTypings['DRB5']
-                        , recipientTypings['DQB1'], recipientTypings['DQA1'], recipientTypings['DPB1'], recipientTypings['DPA1']
-                        , donorSampleId, donorHla, donorTypings['A'], donorTypings['B']
-                        , donorTypings['C'], donorTypings['DRB1'], donorTypings['DRB3'], donorTypings['DRB4'], donorTypings['DRB5']
-                        , donorTypings['DQB1'], donorTypings['DQA1'], donorTypings['DPB1'], donorTypings['DPA1']
+                        , recipientSampleId ,recipientHla, recipientTypingsSimplified['A'], recipientTypingsSimplified['B']
+                        , recipientTypingsSimplified['C'], recipientTypingsSimplified['DRB1'], recipientTypingsSimplified['DRB3'], recipientTypingsSimplified['DRB4'], recipientTypingsSimplified['DRB5']
+                        , recipientTypingsSimplified['DQB1'], recipientTypingsSimplified['DQA1'], recipientTypingsSimplified['DPB1'], recipientTypingsSimplified['DPA1']
+                        , donorSampleId, donorHla, donorTypingsSimplified['A'], donorTypingsSimplified['B']
+                        , donorTypingsSimplified['C'], donorTypingsSimplified['DRB1'], donorTypingsSimplified['DRB3'], donorTypingsSimplified['DRB4'], donorTypingsSimplified['DRB5']
+                        , donorTypingsSimplified['DQB1'], donorTypingsSimplified['DQA1'], donorTypingsSimplified['DPB1'], donorTypingsSimplified['DPA1']
                     )
                     summaryWithTypingWorksheet.append(summaryWithTypingDataTuple)
 
