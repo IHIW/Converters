@@ -89,10 +89,10 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     else:
         raise Exception('Could not create login token when creating upload entries for report files.')
 
-def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilename=None, recipHamlPostTxFilename=None, s3=None, bucket=None):
-    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPreTxFilename, s3=s3, bucket=bucket)
-    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileName=recipHamlPostTxFilename, s3=s3, bucket=bucket)
-    transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileName=recipHamlPreTxFilename, postTxFileName=recipHamlPostTxFilename)
+def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilenames=None, recipHamlPostTxFilenames=None, s3=None, bucket=None):
+    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPreTxFilenames, s3=s3, bucket=bucket)
+    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket)
+    transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames)
     return transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies
 
 def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
@@ -245,7 +245,7 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
 def reduceGenotypings(typings=None):
     # Reduce the typings to two fields. Try to maintain a bit of the ambiguity if possible.
     # Keep in mind the GLStrings
-    print('Reducing Genotypings:' + str(typings))
+    #print('Reducing Genotypings:' + str(typings))
     reducedTyping={}
     for locus in typings.keys():
         #print('Locus = ' + str(locus))
@@ -297,8 +297,34 @@ def reduceGenotypings(typings=None):
             print('Warning, full genotypes is not a string! for locus ' + str(locus))
             reducedTyping[locus] = typings[locus]
 
-    print('Reduced Genotypes:' + str(reducedTyping))
+    #print('Reduced Genotypes:' + str(reducedTyping))
     return reducedTyping
+
+
+def getFullHamlFileNames(token=None, url=None, projectIDs=None, allUploads=None, cellData=None,uploadUser=None):
+    hamlFileNames = []
+
+    # Split by comma.
+    hamlRawFilenames = cellData.split(',')
+    hamlRawFilenames = [s.strip() for s in hamlRawFilenames]
+
+    for hamlRawFilename in hamlRawFilenames:
+        fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'],
+            token=token, url=url,
+            fileName=str(cellData),
+            projectIDs=projectIDs,
+            allUploads=allUploads,
+            uploadUser=uploadUser)
+
+
+        if len(fileResults) != 1:
+            print('Warning: I found ' + str(len(fileResults)) + ' for the keyword ' + str(hamlRawFilename))
+
+        # TODO: There should really be only one matching filename here. Should I check if there is only one?
+        for fileResult in fileResults:
+            hamlFileNames.append(fileResult['fileName'])
+
+    return hamlFileNames
 
 
 def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
@@ -317,14 +343,12 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     projectIDs = [str(projectID) for projectID in projectIDs]
     projectString = str('_'.join(projectIDs))
 
-
     antibodyPreTxFileName = 'Project.' + projectString + '.Antibody.PreTx.xlsx'
     antibodyPostTxFileName = 'Project.' + projectString+ '.Antibody.PostTx.xlsx'
     summaryFileName = 'Project.' + projectString+ '.SummaryReport.xlsx'
     summaryWithTypingFileName = 'Project.' + projectString+ '.SampleSummary.xlsx'
 
     # preload an upload list to use repeatedly later
-    #allUploads = IhiwRestAccess.getUploads(token=token, url=url)
     allUploads = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
 
     dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
@@ -403,6 +427,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                             dataMatrixUpload['createdBy']['lab']['institution']
             submissionDate = dataMatrixUpload['createdAt']
 
+            uploadUserId = dataMatrixUpload['createdBy']['id']
+
             # Loop input Workbook data
             # for dataLineIndex, dataLine in enumerate(inputExcelFileData):
             firstSheet = validatedWorkbook[validatedWorkbook.sheetnames[0]]
@@ -451,6 +477,24 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                         , donorTypingsSimplified['DQB1'], donorTypingsSimplified['DQA1'], donorTypingsSimplified['DPB1'], donorTypingsSimplified['DPA1']
                     )
                     summaryWithTypingWorksheet.append(summaryWithTypingDataTuple)
+
+                    # Get the antibody filenames
+                    hamlPreTxCellData = getDataMatrixValue(columnName='recipient_haml_pre_tx', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                    recipHamlPreTxFilenames = getFullHamlFileNames(token=token,url=url, projectIDs=projectIDs, allUploads=allUploads, cellData=hamlPreTxCellData, uploadUser=uploadUserId)
+
+                    hamlPostTxCellData = getDataMatrixValue(columnName='recipient_haml_post_tx', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                    recipHamlPostTxFilenames = getFullHamlFileNames(token=token,url=url, projectIDs=projectIDs, allUploads=allUploads, cellData=hamlPostTxCellData, uploadUser=uploadUserId)
+
+                    # Create the Antibody Typing Report.
+                    if(len(donorTypingsSimplified) > 0 and len(recipientTypingsSimplified) > 0):
+
+                        transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(
+                            currentExcelRow) + '.xlsx'
+                        transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
+                            donorTyping=donorTypingsSimplified, recipientTyping=recipientTypingsSimplified,
+                            recipHamlPreTxFilenames=recipHamlPreTxFilenames, recipHamlPostTxFilenames=recipHamlPostTxFilenames,
+                            s3=s3, bucket=bucket)
+                        supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
 
 
 
@@ -590,6 +634,18 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     #createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=summaryWithTypingWorkbook)
     S3_Access.writeFileToS3(newFileName=summaryWithTypingFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+    # create zip file
+    zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.TransplantationReports.zip'
+    zipFileStream = io.BytesIO()
+    supportingFileZip = zipfile.ZipFile(zipFileStream, 'a', zipfile.ZIP_DEFLATED, False)
+
+    for transplantationReportFileName in supportingSpreadsheets:
+        print('Adding file ' + str(transplantationReportFileName) + ' to ' + str(zipFileName))
+        supportingFileZip.writestr(transplantationReportFileName, supportingSpreadsheets[transplantationReportFileName])
+
+    supportingFileZip.close()
+    S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
 
 

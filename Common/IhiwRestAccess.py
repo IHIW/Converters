@@ -445,16 +445,23 @@ def getUploadsByProjects(token=None, url=None, projectIDs=None):
         return uploads
 
 
-def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None):
+def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None, uploadUser=None):
+    # Make lists of the filter options.
     if(projectIDs is not None and not isinstance(projectIDs, list)):
         projectIDs = [projectIDs]
-
     if(uploadTypeFilter is not None and not isinstance(uploadTypeFilter, list)):
         uploadTypeFilter = [uploadTypeFilter]
+    if(uploadUser is not None and not isinstance(uploadUser, list)):
+        uploadUser = [uploadUser]
 
     # Convert to String for consistency..
-    projectIDs = [str(projectID) for projectID in projectIDs]
-    uploadTypeFilter = [str(uploadType) for uploadType in uploadTypeFilter]
+    if(projectIDs is not None):
+        projectIDs = [str(projectID) for projectID in projectIDs]
+    if(uploadTypeFilter is not None):
+        uploadTypeFilter = [str(uploadType) for uploadType in uploadTypeFilter]
+    if(uploadUser is not None):
+        uploadUser = [str(userId) for userId in uploadUser]
+
 
     if token is None or len(token) < 1:
         print('Error. No login token available when getting uploads by partial keyword.')
@@ -468,19 +475,19 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
         if(allUploads is None):
             allUploads=getUploads(token=token,url=url)
 
-        print('Checking keyword ' + fileName )
-
         uploadList = []
 
         for upload in allUploads:
             #print('Checking upload:' + str(upload))
 
             projectID = str(upload['project']['id'])
+            #print('upload:' + str(upload))
 
             if(upload['fileName'] is not None
                 and fileName.lower() in str(upload['fileName']).lower()
                 and (projectIDs is None or projectID in projectIDs)
                 and (uploadTypeFilter is None or str(upload['type']) in uploadTypeFilter)
+                and (uploadUser is None or str(upload['createdBy']['id']) in uploadUser)
             ):
                 uploadList.append(upload)
 

@@ -142,10 +142,10 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     nonImmuEpsProjectID = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
+    #createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
 
-    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
-    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
 
 
 if __name__=='__main__':

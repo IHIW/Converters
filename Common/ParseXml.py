@@ -260,30 +260,32 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
 
 
-def parseHamlFileForBeadData(hamlFileName= None,s3=None, bucket=None):
+def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
     beadData={}
 
-    try:
-        xmlFileObject = s3.get_object(Bucket=bucket, Key=hamlFileName)
-    except Exception as err:
-        print('Failed loading HAML data for key ' + str(hamlFileName))
-        return beadData
+    for hamlFileName in hamlFileNames:
 
-    xmlText = xmlFileObject["Body"].read()
-    xmlParser = etree.XMLParser()
-    try:
-        xmlTree = etree.fromstring(xmlText, xmlParser)
+        try:
+            xmlFileObject = s3.get_object(Bucket=bucket, Key=hamlFileName)
+        except Exception as err:
+            print('Failed loading HAML data for key ' + str(hamlFileName))
+            return beadData
 
-        for element in xmlTree.iter("*"):
-            #print('Element Tag:' + str(element.tag))
-            if (str(element.tag) == str('{urn:HAML.Namespace}bead')):
-                #print('Found bead!:' + str(element))
-                specificity=element.get('HLA-allele-specificity')
-                mfi=element.get('raw-MFI')
-                beadData[specificity] = str(mfi)
+        xmlText = xmlFileObject["Body"].read()
+        xmlParser = etree.XMLParser()
+        try:
+            xmlTree = etree.fromstring(xmlText, xmlParser)
 
-    except etree.XMLSyntaxError as err:
-        print('!!!!Could not parse haml file!')
+            for element in xmlTree.iter("*"):
+                #print('Element Tag:' + str(element.tag))
+                if (str(element.tag) == str('{urn:HAML.Namespace}bead')):
+                    #print('Found bead!:' + str(element))
+                    specificity=element.get('HLA-allele-specificity')
+                    mfi=element.get('raw-MFI')
+                    beadData[specificity] = str(mfi)
+
+        except etree.XMLSyntaxError as err:
+            print('!!!!Could not parse haml file!')
 
     return beadData
 

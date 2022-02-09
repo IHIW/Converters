@@ -291,16 +291,40 @@ def writeExcelToFile(workbookObject=None, fullFilePath=None):
     #f.close()
 '''
 
-
+'''
 def splitGlString(glString=None):
     # A bit of a hack. Replace separators then split.
     modifiedString = glString.replace('^','|').replace('+','|').replace('/','|').replace('HLA-','')
     alleles = modifiedString.split('|')
     print('Returning allele list:' + str(alleles))
     return alleles
+'''
+def alleleListFromTypings(typings=None):
+    #print('typings=' + str(typings))
+    alleleList = []
+
+    for locus in typings.keys():
+        modifiedString = typings[locus].replace('^', '|').replace('+', '|').replace('/', '|').replace('HLA-', '')
+        alleles = modifiedString.split('|')
+        alleleList.extend(alleles)
+    alleleList = sorted(list(set(alleleList)))
+
+    # Sometimes '?' is used to represent an untyped locus.
+    try:
+        alleleList.remove('?')
+    except Exception as e:
+        pass
+
+    #print('returning list:' + str(alleleList))
+
+    return alleleList
 
 
-def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, preTxFileName='PreTXFileName', postTxFileName='PostTXFileName', recipPreTxAntibodyData=None, recipPostTxAntibodyData=None, transReport=None, reportName=None):
+
+
+def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, preTxFileNames=['PreTXFileName']
+        , postTxFileNames=['PostTXFileName'], recipPreTxAntibodyData=None, recipPostTxAntibodyData=None, transReport=None, reportName=None):
+
     if(reportName is None):
         reportName = 'Transplantation Report'
 
@@ -317,8 +341,8 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     # TODO: Make this an excel file.  I want to highlight the donor/recip typing with colors.
     # TODO: parse the GL Strings for this data. All alleles present in GL String, regardless of ambiguities.
     #  Remove HLA-
-    donorAlleles = splitGlString(glString=donorTyping)
-    recipAlleles = splitGlString(glString=recipientTyping)
+    donorAlleles = alleleListFromTypings(typings=donorTyping)
+    recipAlleles = alleleListFromTypings(typings=recipientTyping)
 
     donorColor='FFC2B3' # Red
     recipientColor='99FFFF' # Blue
@@ -333,9 +357,9 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     #reportWorksheet['B2'] = str(recipientTyping)
     reportWorksheet['A2'].fill = PatternFill("solid", fgColor=recipientColor)
     reportWorksheet['A4'] = 'PreTX Bead Data'
-    reportWorksheet['A5'] = preTxFileName
+    reportWorksheet['A5'] = str(preTxFileNames)
     reportWorksheet['D4'] = 'PostTX Bead Data'
-    reportWorksheet['D5'] = postTxFileName
+    reportWorksheet['D5'] = str(postTxFileNames)
 
     combinedSpecificities = sorted(list(set(recipPreTxAntibodyData.keys()).union(set(recipPostTxAntibodyData.keys()))))
 
