@@ -9,7 +9,7 @@ from Common.ParseExcel import createBytestreamExcelOutputFile
 from Common.S3_Access import writeFileToS3
 #from Common.ParseExcel import writeExcelToFile
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
-from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createProjectZipFile, createImmunogenicEpitopesReport
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createProjectZipFile, createImmunogenicEpitopesReport, createNonImmunogenicEpitopesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -145,7 +145,8 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     #createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
 
     createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
-    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
+    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
+    createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
 
 
 if __name__=='__main__':

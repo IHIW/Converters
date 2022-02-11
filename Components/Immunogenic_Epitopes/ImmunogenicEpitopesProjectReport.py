@@ -105,7 +105,7 @@ def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
 
     # Get a list of uploads
     print('Fetching Upload List...')
-    projectUploads = IhiwRestAccess.getFilteredUploads(projectIDs=projectIDs, token=token, url=url)
+    projectUploads = IhiwRestAccess.getUploadsByProjects(token=token,url=url,projectIDs=projectIDs)
     print('I found ' + str(len(projectUploads)) + ' uploads for project IDs ' + str(projectIDs))
 
     # TODO: Sort by FileType? Maybe I should "Start" with Data matrices. Or Put them in Separate .zip by file size.
@@ -405,6 +405,13 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     reportLineIndex = 0
 
 
+    # I want the first transplantation to be index 0,
+    transplantationIndex = -1
+    antibodiesPreTxLookup = {}
+    antibodiesPostTxLookup = {}
+    recipientGenotypingsLookup = {}
+    donorGenotypingsLookup = {}
+
 
     # Combine data matrices together for summary worksheet..
     for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
@@ -446,6 +453,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                 # TODO: Check other columns? Maybe good data without an hla typing somehow?
                 if(len(str(recipientHla).strip()) > 1 and len(str(donorHla).strip()) > 1):
                     reportLineIndex += 1
+                    transplantationIndex += 1
 
                     # Get the Donor GLString/HML File
                     # Get the Recipient GLString/HML File
@@ -458,6 +466,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                     # Put the typing in the spreadsheets.
 
 
+                    recipientGenotypingsLookup[transplantationIndex] = recipientTypingsSimplified
+                    donorGenotypingsLookup[transplantationIndex] = donorTypingsSimplified
                     # TODO: What about HAML?
 
 
@@ -496,8 +506,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                             s3=s3, bucket=bucket)
                         supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
 
-
-
+                        antibodiesPreTxLookup[transplantationIndex] = preTxAntibodies
+                        antibodiesPostTxLookup[transplantationIndex] = postTxAntibodies
 
                     '''
                     for headerIndex, header in enumerate(dataMatrixHeaders):
@@ -647,6 +657,24 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
+
+def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
+    print('Creating an non-Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
+
+    if url is None:
+        url = IhiwRestAccess.getUrl()
+        token = IhiwRestAccess.getToken(url=url)
+
+    if (projectIDs is None):
+        return
+    elif (not isinstance(projectIDs, list)):
+        projectIDs = [projectIDs]
+
+    # Convert to String for consistency..
+    projectIDs = [str(projectID) for projectID in projectIDs]
+    projectString = str('_'.join(projectIDs))
+
+    print('The Non-immunogenic report has not yet been implemented.')
 
 
 '''
