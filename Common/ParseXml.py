@@ -262,6 +262,7 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
 def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
     beadData={}
+    # TODO: Missing positive/Negative controls?
 
     for hamlFileName in hamlFileNames:
 
@@ -272,20 +273,25 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
             return beadData
 
         xmlText = xmlFileObject["Body"].read()
-        xmlParser = etree.XMLParser()
-        try:
-            xmlTree = etree.fromstring(xmlText, xmlParser)
+        documentRoot = ElementTree.fromstring(xmlText)
 
-            for element in xmlTree.iter("*"):
-                #print('Element Tag:' + str(element.tag))
-                if (str(element.tag) == str('{urn:HAML.Namespace}bead')):
-                    #print('Found bead!:' + str(element))
-                    specificity=element.get('HLA-allele-specificity')
-                    mfi=element.get('raw-MFI')
-                    beadData[specificity] = str(mfi)
 
-        except etree.XMLSyntaxError as err:
-            print('!!!!Could not parse haml file!')
+        for patientAbAssessmentNode in documentRoot.findall('{urn:HAML.Namespace}patient-antibody-assessment'):
+            patientID=patientAbAssessmentNode.get('patientID')
+            sampleID=patientAbAssessmentNode.get('sampleID')
+            negativeControlMfi=patientAbAssessmentNode.get('negative-control-MFI')
+            positiveControlMfi = patientAbAssessmentNode.get('positive-control-MFI')
+            for solidPhasePanelNode in patientAbAssessmentNode.findall('{urn:HAML.Namespace}solid-phase-panel'):
+                lotNumber=solidPhasePanelNode.get('kit-manufacturer') + ' : ' + solidPhasePanelNode.get('lot')
+                if lotNumber not in beadData.keys():
+                    beadData[lotNumber]={}
+                    beadData[lotNumber]['NC']=negativeControlMfi
+                    beadData[lotNumber]['PC']=positiveControlMfi
+                for beadNode in solidPhasePanelNode.findall('{urn:HAML.Namespace}bead'):
+                    specificity = beadNode.get('HLA-allele-specificity')
+                    rawMfi = beadNode.get('raw-MFI')
+                    ranking = beadNode.get('Ranking')
+                    beadData[lotNumber][specificity] = str(rawMfi)
 
     return beadData
 

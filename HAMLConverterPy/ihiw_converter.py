@@ -166,14 +166,6 @@ class Converter(object):
         validationFeedback = ''
 
         try:
-            #columnsOneLambda = {'PatientID':-1, 'SampleIDName':-1, 'RunDate':-1, 'CatalogID':-1,'BeadID':-1, 'Specificity':-1, 'RawData':-1, 'NC2BeadID':-1,'PC2BeadID':-1, 'Rxn':-1}
-
-            # Determine where the columns are, position
-            #colnames = [c.strip('"') for c in pandasCsvReader.columns.tolist()] #list colnames file
-            #for c in range(0,len(colnames)):
-            #    name = colnames[c]
-            #    columnsOneLambda[name] =  c
-
             # Data is the root element.
             data = ET.Element("haml",xmlns='urn:HAML.Namespace')
             # OLReader is a pandas DataFrame.
@@ -231,33 +223,37 @@ class Converter(object):
                     readerState = 'bead_values'
 
                     # For each new patient or sample, we need to add the patient-antibody-assessment and solid-phase-panel nodes
-                    if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID):
-                        # Store some data for the current patient/sample/panel
-                        sampleID = currentRowSampleIDName
-                        patientID = currentRowPatientID
+                    # TODO: Note to self, i removed this If statement. I need to make these nodes whenever we leave the positive control state.
+                    # Probably these comments can be removed if this works.....
+                    #if (currentRowSampleIDName != sampleID or currentRowPatientID != patientID):
 
-                        try:
-                            negativeControlMFI = str(int(round(float(str(negativeControlRow.RawData).replace(',', '.')))))
-                            positiveControlMFI = str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
-                        except Exception as e:
-                            negativeControlMFI = '-1'
-                            positiveControlMFI = '-1'
-                            print('Could not identify values for negative control(' + str(negativeControlRow.RawData)
-                                  + ') or positive control(' + str(positiveControlRow.RawData)
-                                  + '). SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(
-                                currentRowPatientID) + '. Data was in an unexpected format.')
-                            print('Exception:' + str(e))
 
-                        patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                            {'sampleID': str(sampleID),
-                             'patientID': str(patientID),
-                             'reporting-centerID': 'ReportingCenterID',
-                             # TODO No reporting center in the input file. Should we pass that in somehow?
-                             'sample-test-date': self.formatRunDate(row.RunDate),
-                             'negative-control-MFI': negativeControlMFI,
-                             'positive-control-MFI': positiveControlMFI
-                             # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
-                             })
+                    # Store some data for the current patient/sample/panel
+                    sampleID = currentRowSampleIDName
+                    patientID = currentRowPatientID
+
+                    try:
+                        negativeControlMFI = str(int(round(float(str(negativeControlRow.RawData).replace(',', '.')))))
+                        positiveControlMFI = str(int(round(float(str(positiveControlRow.RawData).replace(',', '.')))))
+                    except Exception as e:
+                        negativeControlMFI = '-1'
+                        positiveControlMFI = '-1'
+                        print('Could not identify values for negative control(' + str(negativeControlRow.RawData)
+                              + ') or positive control(' + str(positiveControlRow.RawData)
+                              + '). SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(
+                            currentRowPatientID) + '. Data was in an unexpected format.')
+                        print('Exception:' + str(e))
+
+                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                        {'sampleID': str(sampleID),
+                         'patientID': str(patientID),
+                         'reporting-centerID': 'ReportingCenterID',
+                         # TODO No reporting center in the input file. Should we pass that in somehow?
+                         'sample-test-date': self.formatRunDate(row.RunDate),
+                         'negative-control-MFI': negativeControlMFI,
+                         'positive-control-MFI': positiveControlMFI
+                         # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
+                         })
 
                     # For any new sampleID or patientID,  this is a new solid-phase-panel.
                     # TODO: We also need this If the catalogID has changed. If there are multiple catalogs in the input csv there should be new solid-phase panel for each.

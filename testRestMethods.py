@@ -111,7 +111,8 @@ def testQueryUnvalidatedUploads(args=None):
     token = getToken(user=user, password=password, url=url)
     print('Quering URL ' + str(url))
 
-    uploadList = getUploads(token=token, url=url)
+    #uploadList = getUploads(token=token, url=url)
+    uploadList = getUploadsByProjectID(url=url, token=token, projectId=382)
     print('I found ' + str(len(uploadList)) + ' total uploads.')
 
     validatedUploads=[]

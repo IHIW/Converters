@@ -328,6 +328,7 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     if(reportName is None):
         reportName = 'Transplantation Report'
 
+    # These are apparently storing the antibodies that match specifiities of the recipient. Not sure what I planned to do with these but unused now.
     preTxAntibodies={}
     postTxAntibodies={}
 
@@ -361,7 +362,18 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     reportWorksheet['D4'] = 'PostTX Bead Data'
     reportWorksheet['D5'] = str(postTxFileNames)
 
-    combinedSpecificities = sorted(list(set(recipPreTxAntibodyData.keys()).union(set(recipPostTxAntibodyData.keys()))))
+    # TODO: The Negative and positive controls should be in this data now, should I include them in the report somehow?
+    #   In this state they're reported only once, it's dishonest because multiple NC and PC for each experiement.
+    #   Think about how to put the NC and PC in here.
+    combinedSpecificities = set()
+
+    for panel in recipPreTxAntibodyData.keys():
+        for specificity in recipPreTxAntibodyData[panel].keys():
+            combinedSpecificities.add(specificity)
+    for panel in recipPostTxAntibodyData.keys():
+        for specificity in recipPostTxAntibodyData[panel].keys():
+            combinedSpecificities.add(specificity)
+    combinedSpecificities = sorted(list(set(combinedSpecificities)))
 
     currentRow = 5 # Start at 6
     for specificity in combinedSpecificities:
@@ -371,21 +383,31 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
         specificityDonorMatch = typingMatch(alleleList=donorAlleles, queryAllele=specificity)
         specificityRecipientMatch = typingMatch(alleleList=recipAlleles, queryAllele=specificity)
 
-        if specificity in recipPreTxAntibodyData.keys():
-            reportWorksheet['A' + str(currentRow)] = specificity
-            reportWorksheet['B' + str(currentRow)] = str(recipPreTxAntibodyData[specificity])
-            if specificityRecipientMatch:
-                preTxAntibodies[specificity] = str(recipPreTxAntibodyData[specificity])
-        else:
+        beadFound = False
+        for panel in recipPreTxAntibodyData.keys():
+            if specificity in recipPreTxAntibodyData[panel].keys():
+                beadFound = True
+                reportWorksheet['A' + str(currentRow)] = specificity
+                reportWorksheet['B' + str(currentRow)] = str(recipPreTxAntibodyData[panel][specificity])
+                if specificityRecipientMatch:
+                    preTxAntibodies[specificity] = str(recipPreTxAntibodyData[panel][specificity])
+            else:
+                pass
+        if not beadFound:
             reportWorksheet['A' + str(currentRow)] = specificity
             reportWorksheet['B' + str(currentRow)] = '?'
 
-        if specificity in recipPostTxAntibodyData.keys():
-            reportWorksheet['D' + str(currentRow)] = specificity
-            reportWorksheet['E' + str(currentRow)] = str(recipPostTxAntibodyData[specificity])
-            if specificityRecipientMatch:
-                postTxAntibodies[specificity] = str(recipPostTxAntibodyData[specificity])
-        else:
+        beadFound = False
+        for panel in recipPostTxAntibodyData.keys():
+            if specificity in recipPostTxAntibodyData[panel].keys():
+                beadFound = True
+                reportWorksheet['D' + str(currentRow)] = specificity
+                reportWorksheet['E' + str(currentRow)] = str(recipPostTxAntibodyData[panel][specificity])
+                if specificityRecipientMatch:
+                    postTxAntibodies[specificity] = str(recipPostTxAntibodyData[panel][specificity])
+            else:
+                pass
+        if not beadFound:
             reportWorksheet['D' + str(currentRow)] = specificity
             reportWorksheet['E' + str(currentRow)] = '?'
 
@@ -421,12 +443,7 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     reportWorksheet.freeze_panes = 'A6'
 
     # Return it as a stream, so we can consume it or save it later.
-    return createBytestreamExcelOutputFile(workbookObject=transReport), preTxAntibodies, postTxAntibodies
-    #with NamedTemporaryFile() as tmp:
-    #    transReport.save(tmp.name)
-    #    tmp.seek(0)
-    #    stream = tmp.read()
-    #    return stream
+    return createBytestreamExcelOutputFile(workbookObject=transReport)
 
 
 def typingMatch(alleleList=None, queryAllele=None):

@@ -92,8 +92,8 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
 def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilenames=None, recipHamlPostTxFilenames=None, s3=None, bucket=None):
     recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPreTxFilenames, s3=s3, bucket=bucket)
     recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket)
-    transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames)
-    return transplantationReportSpreadsheet, preTxAntibodies, postTxAntibodies
+    transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames)
+    return transplantationReportSpreadsheet, recipPreTxAntibodyData, recipPostTxAntibodyData
 
 def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
     print('Creating Project Zip Files for project(s) ' + str(projectIDs))
@@ -111,7 +111,7 @@ def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
     # TODO: Sort by FileType? Maybe I should "Start" with Data matrices. Or Put them in Separate .zip by file size.
     # zipFileCounter=1
     # fileSizeLimit=10000
-    zipFileName = zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.Data.zip'
+    zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.Data.zip'
 
     # create zip file
     zipFileStream = io.BytesIO()
@@ -165,12 +165,12 @@ def getDataMatrixValue(validatedWorkbook=None, columnName=None, currentExcelRow=
 
 def parseGlString(glstring=None):
     # Parse GL String, locus delimiters. Keep copies of genes together, I guess.
-    print('parsing GL String:' + str(glstring))
+    #print('parsing GL String:' + str(glstring))
     glStringTyping={}
 
     # Split by locus
     for locusToken in glstring.split('^'):
-        print('Found locus:' + str(locusToken))
+        #print('Found locus:' + str(locusToken))
         if('A*' in locusToken):
             glStringTyping['A']=locusToken
         elif ('B*' in locusToken):
@@ -318,13 +318,143 @@ def getFullHamlFileNames(token=None, url=None, projectIDs=None, allUploads=None,
 
 
         if len(fileResults) != 1:
-            print('Warning: I found ' + str(len(fileResults)) + ' for the keyword ' + str(hamlRawFilename))
+            print('Warning: I found ' + str(len(fileResults)) + ' file for the keyword ' + str(hamlRawFilename))
 
         # TODO: There should really be only one matching filename here. Should I check if there is only one?
         for fileResult in fileResults:
             hamlFileNames.append(fileResult['fileName'])
 
     return hamlFileNames
+
+
+def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup=None, donorGenotypingsLookup=None, bucket=None, reportName=None):
+    print('Creating Allele-Specific antibody report ' + str(reportName))
+    print('recipientGenotypingsLookup:' + str(recipientGenotypingsLookup))
+
+
+    # A list of alleles
+    classISpecificities=set()
+    classIISpecificities=set()
+    # Positive and negative controls for each patient.
+    controlLookup = {}
+
+    # First sort through the antibody data and pull out the stuff we need.
+    for patientIndex in antibodiesLookup.keys():
+        controlLookup[patientIndex] = {}
+        controlLookup[patientIndex]['I'] = {}
+        controlLookup[patientIndex]['I']['PC'] = '?'
+        controlLookup[patientIndex]['I']['NC'] = '?'
+        controlLookup[patientIndex]['I']['panel'] = '?'
+        controlLookup[patientIndex]['II'] = {}
+        controlLookup[patientIndex]['II']['PC'] = '?'
+        controlLookup[patientIndex]['II']['NC'] = '?'
+        controlLookup[patientIndex]['II']['panel'] = '?'
+
+        for panel in antibodiesLookup[patientIndex]:
+            hlaClass=None
+            for specificity in sorted(antibodiesLookup[patientIndex][panel]):
+                # Is this panel ClassI or ClassII?
+                if(hlaClass is None):
+                    if(str(specificity).startswith('A*')
+                        or str(specificity).startswith('B*')
+                        or str(specificity).startswith('C*')):
+                        hlaClass = 'I'
+                        controlLookup[patientIndex]['I']['panel']=panel
+                    elif(str(specificity).startswith('D')):
+                        hlaClass = 'II'
+                        controlLookup[patientIndex]['II']['panel'] = panel
+                    else:
+                        raise Exception('Is this class I or II?:' + str(specificity))
+
+                # Store the bead data
+                if(hlaClass =='I'):
+                    if(specificity=='NC'):
+                        controlLookup[patientIndex]['I']['NC']=antibodiesLookup[patientIndex][panel][specificity]
+                    elif(specificity=='PC'):
+                        controlLookup[patientIndex]['I']['PC']=antibodiesLookup[patientIndex][panel][specificity]
+                    else:
+                        classISpecificities.add(specificity)
+                elif(hlaClass == 'II'):
+                    if(specificity=='NC'):
+                        controlLookup[patientIndex]['II']['NC']=antibodiesLookup[patientIndex][panel][specificity]
+                    elif(specificity=='PC'):
+                        controlLookup[patientIndex]['II']['PC']=antibodiesLookup[patientIndex][panel][specificity]
+                    else:
+                        classIISpecificities.add(specificity)
+                else:
+                    raise Exception ('Something went wrong in allele-specific report, HLA class is not defined yet.')
+
+    classISpecificities = sorted(list(set(classISpecificities)))
+    classIISpecificities = sorted(list(set(classIISpecificities)))
+
+
+    alleleSpecificReportWorkbook = Workbook()
+    alleleSpecificReportWorksheet = alleleSpecificReportWorkbook.active
+    alleleSpecificReportWorksheet.freeze_panes = 'B2'
+
+    headers = ['patient_id', 'R_A', 'R_B', 'R_C', 'R_DRB1', 'R_DRB3', 'R_DRB4', 'R_DRB5', 'R_DQB1', 'R_DQA1', 'R_DPB1', 'R_DPA1'
+        , 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1', 'classI-PanelID','classI-PC', 'classI-NC']
+    headers.extend(classISpecificities)
+    headers.extend(['classII-PanelID','classII-PC', 'classII-NC'])
+    headers.extend(classIISpecificities)
+
+    #print('Headers:' + str(headers))
+    for headerIndex, header in enumerate(headers):
+        columnLetter = get_column_letter(headerIndex+1)
+        cellIndex = columnLetter + '1'
+        alleleSpecificReportWorksheet[cellIndex] = header
+        alleleSpecificReportWorksheet.column_dimensions[columnLetter].width = 35
+
+    for patientIndex in antibodiesLookup.keys():
+        patientData = [str(patientIndex)
+            , recipientGenotypingsLookup[patientIndex]['A']
+            , recipientGenotypingsLookup[patientIndex]['B']
+            , recipientGenotypingsLookup[patientIndex]['C']
+            , recipientGenotypingsLookup[patientIndex]['DRB1']
+            , recipientGenotypingsLookup[patientIndex]['DRB3']
+            , recipientGenotypingsLookup[patientIndex]['DRB4']
+            , recipientGenotypingsLookup[patientIndex]['DRB5']
+            , recipientGenotypingsLookup[patientIndex]['DQB1']
+            , recipientGenotypingsLookup[patientIndex]['DQA1']
+            , recipientGenotypingsLookup[patientIndex]['DPB1']
+            , recipientGenotypingsLookup[patientIndex]['DPA1']
+            , donorGenotypingsLookup[patientIndex]['A']
+            , donorGenotypingsLookup[patientIndex]['B']
+            , donorGenotypingsLookup[patientIndex]['C']
+            , donorGenotypingsLookup[patientIndex]['DRB1']
+            , donorGenotypingsLookup[patientIndex]['DRB3']
+            , donorGenotypingsLookup[patientIndex]['DRB4']
+            , donorGenotypingsLookup[patientIndex]['DRB5']
+            , donorGenotypingsLookup[patientIndex]['DQB1']
+            , donorGenotypingsLookup[patientIndex]['DQA1']
+            , donorGenotypingsLookup[patientIndex]['DPB1']
+            , donorGenotypingsLookup[patientIndex]['DPA1']
+            , controlLookup[patientIndex]['I']['panel']
+            , controlLookup[patientIndex]['I']['PC']
+            , controlLookup[patientIndex]['I']['NC']
+                ]
+
+        for classISpecificity in classISpecificities:
+            try:
+                patientData.append(antibodiesLookup[patientIndex][ controlLookup[patientIndex]['I']['panel'] ][classISpecificity])
+            except KeyError:
+                patientData.append('?')
+
+        patientData.extend([controlLookup[patientIndex]['II']['panel']
+            , controlLookup[patientIndex]['II']['PC']
+            , controlLookup[patientIndex]['II']['NC']])
+
+        for classIISpecificity in classIISpecificities:
+            try:
+                patientData.append(antibodiesLookup[patientIndex][ controlLookup[patientIndex]['II']['panel'] ][classIISpecificity])
+            except KeyError:
+                patientData.append('?')
+
+
+        alleleSpecificReportWorksheet.append(patientData)
+
+    outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=alleleSpecificReportWorkbook)
+    S3_Access.writeFileToS3(newFileName=reportName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
 
 def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
@@ -361,6 +491,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     summaryWithTypingHeaders = ('upload_filename', 'row#', 'submitter'
         , 'recipient_sample_id','recipient_hla', 'R_A', 'R_B', 'R_C', 'R_DRB1', 'R_DRB3', 'R_DRB4', 'R_DRB5', 'R_DQB1', 'R_DQA1', 'R_DPB1', 'R_DPA1'
         , 'donor_sample_id', 'donor_hla', 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1')
+
+    reportLineIndex = 0
 
     for headerIndex, header in enumerate(summaryWithTypingHeaders):
         columnLetter = get_column_letter(headerIndex+1)
@@ -506,6 +638,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                             s3=s3, bucket=bucket)
                         supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
 
+                        print('The antibody report returned these values:' + str(preTxAntibodies) + str(postTxAntibodies))
+
                         antibodiesPreTxLookup[transplantationIndex] = preTxAntibodies
                         antibodiesPostTxLookup[transplantationIndex] = postTxAntibodies
 
@@ -644,6 +778,16 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     #createUploadEntriesForReport(summaryFileName=summaryFileName, zipFileName=zipFileName)
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=summaryWithTypingWorkbook)
     S3_Access.writeFileToS3(newFileName=summaryWithTypingFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+
+    preTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPreTx.xlsx'
+    createAlleleSpecificReport(antibodiesLookup=antibodiesPreTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
+        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=preTxAlleleSpecificReportName)
+
+    postTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPostTx.xlsx'
+    createAlleleSpecificReport(antibodiesLookup=antibodiesPostTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
+        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=postTxAlleleSpecificReportName)
+
 
     # create zip file
     zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.TransplantationReports.zip'
