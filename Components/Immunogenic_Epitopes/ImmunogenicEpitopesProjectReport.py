@@ -95,7 +95,17 @@ def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, 
     transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames)
     return transplantationReportSpreadsheet, recipPreTxAntibodyData, recipPostTxAntibodyData
 
-def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
+
+def FilterUploads(unfilteredUploads, fileType):
+    filteredUploads = []
+    for unfilteredUpload in unfilteredUploads:
+        print('upload:' + str(unfilteredUpload))
+        if(unfilteredUpload['type'] == fileType):
+            filteredUploads.append(unfilteredUpload)
+    return filteredUploads
+
+
+def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fileTypeFilter=None):
     print('Creating Project Zip Files for project(s) ' + str(projectIDs))
     #print('URL=' + str(url))
 
@@ -103,15 +113,22 @@ def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None):
         url = IhiwRestAccess.getUrl()
         token = IhiwRestAccess.getToken(url=url)
 
+    projectIDs = [str(projectID) for projectID in projectIDs]
+
+
     # Get a list of uploads
     print('Fetching Upload List...')
     projectUploads = IhiwRestAccess.getUploadsByProjects(token=token,url=url,projectIDs=projectIDs)
+    if(fileTypeFilter is not None):
+        projectUploads=FilterUploads(projectUploads, fileTypeFilter)
     print('I found ' + str(len(projectUploads)) + ' uploads for project IDs ' + str(projectIDs))
 
     # TODO: Sort by FileType? Maybe I should "Start" with Data matrices. Or Put them in Separate .zip by file size.
     # zipFileCounter=1
     # fileSizeLimit=10000
+
     zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.Data.zip'
+
 
     # create zip file
     zipFileStream = io.BytesIO()
