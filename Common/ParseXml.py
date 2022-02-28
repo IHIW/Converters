@@ -68,7 +68,6 @@ def parseXmlFromText(xmlText=None, tempDirectory=None, awsLambda=False):
     remove(tempFileName)
     return hml
 
-
 def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xmlDirectory=None):
     if(databaseVersion in rawReferenceSequences.keys()):
         # Nothing to do. These were already loaded.
@@ -93,7 +92,6 @@ def loadReferencesFromFile(rawReferenceSequences=None, databaseVersion=None, xml
         rawReferenceSequences[databaseVersion]={}
         for record in SeqIO.parse(referenceInputFile, 'fasta'):
             rawReferenceSequences[databaseVersion][record.id]=record.seq
-
 
 def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirectory=None, newline='\n', alignSequences=False):
     print('Extrapolating consensus from Variants')
@@ -257,9 +255,6 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
     return isValid, validationFeedback
 
-
-
-
 def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
     beadData={}
     # TODO: Missing positive/Negative controls?
@@ -295,12 +290,11 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
 
     return beadData
 
-
-def getGlStringFromHml(hmlFileName=None, s3=None, bucket=None):
+def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
     # TODO: Use the pyhml package. currently it requires to pass a string as an HML file name.
     #  Can I do that using the S3 key?
     #  Might need to save the file directly in a temp directory for lambda to access it. Figure that out.
-    glString = ''
+    glStrings = {}
 
     # Parse XML
     xmlFileObject = s3.get_object(Bucket=bucket, Key=hmlFileName)
@@ -308,25 +302,29 @@ def getGlStringFromHml(hmlFileName=None, s3=None, bucket=None):
     xmlParser = etree.XMLParser()
     try:
         xmlTree = etree.fromstring(xmlText, xmlParser)
+        for sampleNode in xmlTree.iter("*"):
+            if(str(sampleNode.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}sample')):
+                glString = ''
+                sampleID = sampleNode.get('id')
+                print('SAMPLEID FOUND:' + str(sampleID))
+                for glStringElement in sampleNode.iter("*"):
+                    if(str(glStringElement.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
+                        #print('*****glstring text is this:' + str(element.text))
+                        if(glStringElement.text is not None):
+                            # TODO: Sometimes glStrings for the same locus are reported in different blocks.
+                            #  So this is not perfect for re-assembling GLStrings.
+                            glString += str(glStringElement.text).strip() + '^'
 
-        for element in xmlTree.iter("*"):
-            if(str(element.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
-                #print('*****glstring text is this:' + str(element.text))
-                if(element.text is not None):
-                    glString += str(element.text).strip() + '^'
+                        if (len(glString) > 0):
+                            glStrings[sampleID] = glString[0:len(glString) - 1]  # Trim off the trailing locus delimiter
+                        else:
+                            glStrings[sampleID] = None
 
 
         # TODO: HLA typing can also be reported as A series of diploid locus blocks in HML
         # schemas.nmdp.org
-
-
-        # Combine them in
+        return glStrings
 
     except etree.XMLSyntaxError as err:
-        print('!!!!Could not parse xml file!')
-
-    if(len(glString) > 0):
-
-        return glString[0:len(glString)-1] # Trim off the trailing locus delimiter
-    else:
-        return None
+        print('Could not parse xml file!' + str(err))
+        print('Filename:' + str(hmlFileName))

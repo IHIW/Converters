@@ -36,7 +36,6 @@ from time import sleep
 #  Validate them individually and collect the validation issues on the single tab. That would have the submitter data.
 #  Then make a first tab as a summary of all the submitted data matrices.
 
-
 def immunogenic_epitope_project_report_handler(event, context):
     print('Lambda handler: Creating a project report for immunogenic epitopes.')
     # This is the AWS Lambda handler function.
@@ -96,7 +95,7 @@ def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, 
     return transplantationReportSpreadsheet, recipPreTxAntibodyData, recipPostTxAntibodyData
 
 
-def FilterUploads(unfilteredUploads, fileType):
+def FilterUploads(unfilteredUploads=None, fileType=None):
     filteredUploads = []
     for unfilteredUpload in unfilteredUploads:
         print('upload:' + str(unfilteredUpload))
@@ -216,8 +215,17 @@ def parseGlString(glstring=None):
     return glStringTyping
 
 
+def updateTypings(typings=None, newTypings=None):
+    for locus in newTypings.keys():
+        if(typings[locus] == '?'):
+            typings[locus] = newTypings[locus]
+        else:
+            # Using a genotype ambiguity separator here.
+            typings[locus] = typings[locus] + '|' + newTypings[locus]
+    return typings
 
-def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs=None, bucket=None):
+
+def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs=None, bucket=None, sampleID=None):
     print('getting typingData for (' + str(hla) + ')')
 
     fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
@@ -246,10 +254,25 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
         #print('I found ' + str(len(fileResults)) + ' files, parsing for GLStrings...')
         for fileResult in fileResults:
             #print('Checking file for glstrings:' + str(fileResult['fileName']))
-            currentGlString = ParseXml.getGlStringFromHml(hmlFileName=fileResult['fileName'], s3=s3, bucket=bucket)
+            currentGlStrings = ParseXml.getGlStringsFromHml(hmlFileName=fileResult['fileName'], s3=s3, bucket=bucket)
+
             #print('Found this GLString:' + str(currentGlString))
-            if currentGlString is not None:
-                typings.update(parseGlString(glstring=currentGlString))
+            if currentGlStrings is not None:
+                for hmlSampleId in currentGlStrings.keys():
+                    if (sampleID is None or len(str(sampleID).strip()) < 1):
+                        # If there is no SampleID Given in DataMatrix, use all the GLStrings.
+                        # TODO: This probably isn't completely correct. But we want to see the problem (multiple sample IDs) in the reports.
+                        # This will probably result in multiple samples from one HML assigned to this person.
+                        typings = updateTypings(typings=typings, newTypings=parseGlString(currentGlStrings[hmlSampleId]))
+                    else:
+                        # Check if the data matrix sample id is in the data matrix
+                        if(str(sampleID).strip().upper() in str(hmlSampleId).strip().upper()):
+                            typings = updateTypings(typings=typings, newTypings=parseGlString(currentGlStrings[hmlSampleId]))
+                        else:
+                            # TODO: What do we do if there is no matching sample? We found an HML file but no Sample?
+                            # This is another sample in the same HML file.
+                            pass
+
             else:
                 print('Warning, No GL Strings found for HML file ' + fileResult['fileName'])
 
@@ -299,9 +322,9 @@ def reduceGenotypings(typings=None):
                                     expressionCharacter = allele[-1]
                                     if not str.isdigit(expressionCharacter):
                                         print('This might be a nullallele!:' + allele)
-                                        # TODO: This adds the character TWICE if there is only 2 fields with a Null Character.
-                                        #   Check if there are > 2 fields before adding charcter.
-                                        shortAlleleName = shortAlleleName + expressionCharacter
+                                        # Check if there are > 2 fields before adding charcter, otherwise we get doubled-up expression characters.
+                                        if(len(nomenclatureTokens)>2):
+                                            shortAlleleName = shortAlleleName + expressionCharacter
                                     alleleOptions.add(shortAlleleName)
                                 #print('alleleOptions:' + str(alleleOptions))
                             bothAlleles.append('/'.join(sorted(list(alleleOptions))))
@@ -608,8 +631,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
                     # Get the Donor GLString/HML File
                     # Get the Recipient GLString/HML File
-                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket)
-                    donorTypings = constructTypings(allUploads=allUploads, hla=donorHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket)
+                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=recipientSampleId)
+                    donorTypings = constructTypings(allUploads=allUploads, hla=donorHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=donorSampleId)
 
                     recipientTypingsSimplified = reduceGenotypings(typings=recipientTypings)
                     donorTypingsSimplified = reduceGenotypings(typings=donorTypings)

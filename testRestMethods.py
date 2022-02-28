@@ -112,9 +112,17 @@ def testQueryUnvalidatedUploads(args=None):
     token = getToken(user=user, password=password, url=url)
     print('Quering URL ' + str(url))
 
-    #uploadList = getUploads(token=token, url=url)
-    uploadList = getUploadsByProjectID(url=url, token=token, projectId=args.project)
-    print('I found ' + str(len(uploadList)) + ' total uploads.')
+
+    uploadList=[]
+    projectIds = str(args.project).split(',')
+    for projectID in projectIds :
+        projectUploads = getUploadsByProjectID(url=url, token=token, projectId=projectID)
+        if(projectUploads is not None):
+            print('For Project ' + str(projectID) + ' I found ' + str(len(projectUploads)) + ' total uploads.')
+            uploadList.extend(projectUploads)
+        else:
+            print('For Project ' + str(projectID) + ' there were zero uploads.')
+
 
     validatedUploads=[]
     unvalidatedUploads=[]
