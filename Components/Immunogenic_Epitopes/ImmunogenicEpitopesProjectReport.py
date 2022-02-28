@@ -299,6 +299,8 @@ def reduceGenotypings(typings=None):
                                     expressionCharacter = allele[-1]
                                     if not str.isdigit(expressionCharacter):
                                         print('This might be a nullallele!:' + allele)
+                                        # TODO: This adds the character TWICE if there is only 2 fields with a Null Character.
+                                        #   Check if there are > 2 fields before adding charcter.
                                         shortAlleleName = shortAlleleName + expressionCharacter
                                     alleleOptions.add(shortAlleleName)
                                 #print('alleleOptions:' + str(alleleOptions))
