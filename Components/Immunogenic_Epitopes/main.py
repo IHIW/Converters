@@ -149,6 +149,7 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     #createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
 
 
+
 def testReferenceCellLinesData(args):
     url = IhiwRestAccess.getUrl()
     token = IhiwRestAccess.getToken(url=url)
@@ -174,6 +175,8 @@ if __name__=='__main__':
             testWriteFileS3(args=args)
         elif(validatorType=='CREATE_SCHEMA_FILES'):
             testCreateSchemaFilesS3(args=args)
+        # TODO: This belongs in the Reference CellLines project report section. I should move it there.
+        #  Separate it out, Maybe need to move the project Zip File code and other generic stuff into "Common"
         elif(validatorType=='REFERENCE_CELL_LINES'):
             testReferenceCellLinesData(args=args)
         else:

@@ -1,10 +1,21 @@
 import yaml
 import ast
-import urllib
+
 import json
 
 from sys import exc_info
-from urllib import request
+
+try:
+    import urllib
+    from urllib import request
+except Exception as e:
+    print('Warning, packages urllib and request are not available.')
+
+try:
+    from requests_toolbelt import MultipartEncoder
+    import requests
+except Exception as e:
+    print('Warning, packages requests and requests_toolbelt are not available.')
 
 def setValidationStatus(uploadFileName=None, isValid=None, validationFeedback=None, validatorType=None, token=None, url=None):
     print('Setting upload validation status,\t' + 'uploadFileName=' + str(uploadFileName) + '\tvalidatorType=' + str(validatorType) + '\tisValid=' + str(isValid) + '\tvalidationFeedback=(' + str(validationFeedback) + ')\turl=' + str(url))
@@ -599,4 +610,87 @@ def getProjectID(configFileName='validation_config.yml', projectName=None):
         print('Exception when loading project ID from config, does the config contain an entry for project_id:' + str(projectName) + '?:\n' + str(e) + '\n' + str(exc_info()))
         return str(e)
 
+def fixUpload(uploadName=None, uploadType=None, projectID=None, url=None, token=None):
+    if (url is None):
+        url = getUrl()
+    if (token is None):
+        token = getToken(url=url)
 
+    oldUpload = getUploadByFilename(url=url, token=token, fileName=uploadName)
+    print('Found this upload:' + str(oldUpload))
+    newUpload = {}
+    newUpload['id'] = oldUpload['id']
+    newUpload['fileName'] = oldUpload['fileName']
+
+    if(uploadType is not None):
+        print('Changing upload type from ' + str(oldUpload['type']) + ' to ' + str(uploadType))
+        newUpload['type'] = str(uploadType)
+    else:
+        newUpload['type'] = oldUpload['type']
+
+    newUpload['project']={}
+    if(projectID is not None):
+        print('Changing upload project id from ' + str(oldUpload['project']['id']) + ' to ' + str(projectID))
+        newUpload['project']['id'] = int(str(projectID))
+    else:
+        newUpload['project']['id'] = oldUpload['project']['id']
+
+    # Save Upload.
+    try:
+        print('Saving Upload:' + str(oldUpload))
+
+
+
+
+        fullUrl = str(url) + '/api/uploads'
+
+        body = {
+            'upload': newUpload
+
+        }
+
+
+
+        print('body:' + str(body))
+        encodedJsonData = str(json.dumps(body)).encode('utf-8')
+
+        #pretendFile=StringIO('Hello World')
+
+        '''m = MultipartEncoder(
+            fields={'upload': '1499', 'file': pretendFile}
+        )'''
+
+        #print ('m:' + str(m))
+        #response = requests.put(fullUrl, data=m,  headers={'Content-Type': 'multipart/form-data','Authorization': 'Bearer ' + token})
+
+        # TODO: This is not working. It needs to be a multipart request, but excluding the optional file attribute. Haven't quite figured that out yet.
+        #response = requests.put(fullUrl, data=body, files={'file':None}, headers={'Content-Type': 'multipart/form-data','Authorization': 'Bearer ' + token})
+        raise Exception('FixReport is not working yet. Needs a multipart request.')
+
+
+        '''
+        updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='PUT')
+        #updateRequest.add_header('Content-Type', 'application/json')
+        updateRequest.add_header('Content-Type', 'multipart/form-data')
+        #updateRequest.add_header('Content-Type', 'application/octet-stream')
+        updateRequest.add_header('Authorization', 'Bearer ' + token)
+
+        responseData = request.urlopen(updateRequest).read().decode("UTF-8")
+        if (responseData is None or len(responseData) < 1):
+            print('updateValidationStatus returned an empty response!')
+            return False
+        response = json.loads(responseData)
+        '''
+
+        print('Received response from updateUpload:' + str(response))
+
+
+    except SyntaxError as e:
+        print('Syntax error when Saving Upload from request:\n' + str(e) + '\n' + str(exc_info()))
+        return False
+    except urllib.error.HTTPError as e:
+        print('HTTP error when Saving Upload for upload file ' + str(uploadName) + ' : ' + str(e))
+        return False
+    except Exception as e:
+        print('Error when Saving Upload :\n' + str(e) + '\n' + str(exc_info()))
+        return False

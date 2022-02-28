@@ -3,7 +3,7 @@ from sys import exc_info
 import time
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
-    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID
+    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID, fixUpload
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 
@@ -11,6 +11,7 @@ from Common.S3_Access import revalidateUpload
 def parseArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--task", required=True, help="task to perform", type=str)
+    parser.add_argument("-T", "--type", required=False, help="upload type", type=str)
     parser.add_argument("-u", "--upload", required=False, help="upload", type=str)
     parser.add_argument("-p", "--parent", required=False, help="parent upload name", type=str)
     parser.add_argument('-P','--project', required=False, help="project ID", type=str)
@@ -112,7 +113,7 @@ def testQueryUnvalidatedUploads(args=None):
     print('Quering URL ' + str(url))
 
     #uploadList = getUploads(token=token, url=url)
-    uploadList = getUploadsByProjectID(url=url, token=token, projectId=382)
+    uploadList = getUploadsByProjectID(url=url, token=token, projectId=args.project)
     print('I found ' + str(len(uploadList)) + ' total uploads.')
 
     validatedUploads=[]
@@ -152,6 +153,15 @@ def testGetProjectUploads(args=None):
         raise Exception ('projectUploads received no response!')
 
 
+def testFixUpload(args=None):
+    uploadName = args.upload
+    projectID = args.project
+    uploadType = args.type
+
+    print('I will fix this upload (' + str(uploadName) + ' by changing it to project ' + str(projectID) + ' and upload type ' + str(uploadType))
+    fixUpload(uploadName=uploadName, projectID=projectID, uploadType=uploadType)
+
+
 if __name__ == '__main__':
     print('Testing Rest Methods')
 
@@ -169,8 +179,10 @@ if __name__ == '__main__':
             testQueryOrphans(args=args)
         elif(task== 'QUERY_UNVALIDATED_UPLOADS'):
             testQueryUnvalidatedUploads(args=args)
-        elif task== 'REVALIDATE_UPLOAD':
+        elif(task == 'REVALIDATE_UPLOAD'):
             testRevalidateUpload(args=args)
+        elif (task == 'FIX_UPLOAD'):
+            testFixUpload(args=args)
         else:
             print('I do not understand which task to perform')
 
