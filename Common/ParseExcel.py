@@ -323,7 +323,7 @@ def alleleListFromTypings(typings=None):
 
 
 def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, preTxFileNames=['PreTXFileName']
-        , postTxFileNames=['PostTXFileName'], recipPreTxAntibodyData=None, recipPostTxAntibodyData=None, transReport=None, reportName=None):
+        , postTxFileNames=['PostTXFileName'], recipPreTxAntibodyData=None, recipPostTxAntibodyData=None, transReport=None, reportName=None, transplantationIndex=None):
 
     if(reportName is None):
         reportName = 'Transplantation Report'
@@ -339,9 +339,7 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
         reportWorksheet.title = reportName
     else:
         reportWorksheet = transReport.create_sheet(reportName)
-    # TODO: Make this an excel file.  I want to highlight the donor/recip typing with colors.
-    # TODO: parse the GL Strings for this data. All alleles present in GL String, regardless of ambiguities.
-    #  Remove HLA-
+
     donorAlleles = alleleListFromTypings(typings=donorTyping)
     recipAlleles = alleleListFromTypings(typings=recipientTyping)
 
@@ -350,21 +348,18 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     bothColor='E6CCFF' # Purple
     blankColor=None#'FFFFFF' # White
 
-
-    reportWorksheet['A1'] = 'Donor Typing: ' + str(donorTyping)
+    reportWorksheet['A1'] = 'Transplantation ID:' + str(transplantationIndex)
+    reportWorksheet['A2'] = 'Donor Typing: ' + str(donorTyping)
     #reportWorksheet['B1'] = str(donorTyping)
-    reportWorksheet['A1'].fill = PatternFill("solid", fgColor=donorColor)
-    reportWorksheet['A2'] = 'Recipient Typing: ' + str(recipientTyping)
+    reportWorksheet['A2'].fill = PatternFill("solid", fgColor=donorColor)
+    reportWorksheet['A3'] = 'Recipient Typing: ' + str(recipientTyping)
     #reportWorksheet['B2'] = str(recipientTyping)
-    reportWorksheet['A2'].fill = PatternFill("solid", fgColor=recipientColor)
-    reportWorksheet['A4'] = 'PreTX Bead Data'
-    reportWorksheet['A5'] = str(preTxFileNames)
-    reportWorksheet['D4'] = 'PostTX Bead Data'
-    reportWorksheet['D5'] = str(postTxFileNames)
+    reportWorksheet['A3'].fill = PatternFill("solid", fgColor=recipientColor)
+    reportWorksheet['A5'] = 'PreTX Bead Data'
+    reportWorksheet['A6'] = str(preTxFileNames)
+    reportWorksheet['D5'] = 'PostTX Bead Data'
+    reportWorksheet['D6'] = str(postTxFileNames)
 
-    # TODO: The Negative and positive controls should be in this data now, should I include them in the report somehow?
-    #   In this state they're reported only once, it's dishonest because multiple NC and PC for each experiement.
-    #   Think about how to put the NC and PC in here.
     combinedSpecificities = set()
 
     for panel in recipPreTxAntibodyData.keys():
@@ -375,8 +370,10 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
             combinedSpecificities.add(specificity)
     combinedSpecificities = sorted(list(set(combinedSpecificities)))
 
-    currentRow = 5 # Start at 6
+    currentRow = 6 # Start at 6
+
     for specificity in combinedSpecificities:
+
         currentRow += 1
 
         # Color Cells?
@@ -434,13 +431,13 @@ def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, pre
     reportWorksheet.column_dimensions['C'].width = 2
     reportWorksheet.column_dimensions['D'].width = 35
     reportWorksheet.column_dimensions['E'].width = 15
-    reportWorksheet.merge_cells('A1:Z1')
     reportWorksheet.merge_cells('A2:Z2')
-    reportWorksheet.merge_cells('A4:B4')
+    reportWorksheet.merge_cells('A3:Z3')
     reportWorksheet.merge_cells('A5:B5')
-    reportWorksheet.merge_cells('D4:E4')
+    reportWorksheet.merge_cells('A6:B6')
     reportWorksheet.merge_cells('D5:E5')
-    reportWorksheet.freeze_panes = 'A6'
+    reportWorksheet.merge_cells('D6:E6')
+    reportWorksheet.freeze_panes = 'A7'
 
     # Return it as a stream, so we can consume it or save it later.
     return createBytestreamExcelOutputFile(workbookObject=transReport)

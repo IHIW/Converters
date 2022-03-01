@@ -257,7 +257,6 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
 def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
     beadData={}
-    # TODO: Missing positive/Negative controls?
 
     for hamlFileName in hamlFileNames:
 
@@ -280,8 +279,8 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
                 lotNumber=solidPhasePanelNode.get('kit-manufacturer') + ' : ' + solidPhasePanelNode.get('lot')
                 if lotNumber not in beadData.keys():
                     beadData[lotNumber]={}
-                    beadData[lotNumber]['NC']=negativeControlMfi
-                    beadData[lotNumber]['PC']=positiveControlMfi
+                    beadData[lotNumber]['NC : '+ str(lotNumber)]=negativeControlMfi
+                    beadData[lotNumber]['PC : ' + str(lotNumber)]=positiveControlMfi
                 for beadNode in solidPhasePanelNode.findall('{urn:HAML.Namespace}bead'):
                     specificity = beadNode.get('HLA-allele-specificity')
                     rawMfi = beadNode.get('raw-MFI')
@@ -306,7 +305,7 @@ def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
             if(str(sampleNode.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}sample')):
                 glString = ''
                 sampleID = sampleNode.get('id')
-                print('SAMPLEID FOUND:' + str(sampleID))
+                #print('SAMPLEID FOUND:' + str(sampleID))
                 for glStringElement in sampleNode.iter("*"):
                     if(str(glStringElement.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
                         #print('*****glstring text is this:' + str(element.text))

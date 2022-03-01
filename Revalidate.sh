@@ -1,6 +1,6 @@
 source venv/bin/activate
 
-declare -a FileList=("filename.hml")
+declare -a FileList=("")
  
 for val in "${FileList[@]}"; do
    echo $val

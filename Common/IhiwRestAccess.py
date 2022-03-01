@@ -456,7 +456,7 @@ def getUploadsByProjects(token=None, url=None, projectIDs=None):
         return uploads
 
 
-def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, projectIDs=None, allUploads=None, uploadTypeFilter=None, uploadUser=None):
+def getUploadFileNamesByPartialKeyword(token=None, url=None, fileNameQueries=None, projectIDs=None, allUploads=None, uploadTypeFilter=None, uploadUser=None):
     # Make lists of the filter options.
     if(projectIDs is not None and not isinstance(projectIDs, list)):
         projectIDs = [projectIDs]
@@ -473,18 +473,19 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
     if(uploadUser is not None):
         uploadUser = [str(userId) for userId in uploadUser]
 
-
     if token is None or len(token) < 1:
         print('Error. No login token available when getting uploads by partial keyword.')
         return None
 
     #print('Checking IDS:' + str(projectIDs))
-    if fileName is None:
-        print('fileName is none, cannot find any uploads with this parent')
+    if fileNameQueries is None:
+        print('fileNameQueries is none, cannot find any uploads without any filename queries')
         return None
     else:
         if(allUploads is None):
-            allUploads=getUploads(token=token,url=url)
+            # TODO: This should not be getting all uploads, get uploads by projects instead.
+            #allUploads=getUploads(token=token,url=url)
+            raise Exception('In getUploadFileNamesByPartialKeyword, Switch from getUploads to getUploadsByProject')
 
         uploadList = []
 
@@ -494,21 +495,26 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileName=None, proj
             projectID = str(upload['project']['id'])
             #print('upload:' + str(upload))
 
-            if(upload['fileName'] is not None
-                and fileName.lower() in str(upload['fileName']).lower()
-                and (projectIDs is None or projectID in projectIDs)
+            if((projectIDs is None or projectID in projectIDs)
                 and (uploadTypeFilter is None or str(upload['type']) in uploadTypeFilter)
                 and (uploadUser is None or str(upload['createdBy']['id']) in uploadUser)
             ):
-                uploadList.append(upload)
+                # Check the filename as a secondary step.
+                for fileNameQuery in fileNameQueries:
+                    if(upload['fileName'] is not None
+                        and fileNameQuery.lower() in str(upload['fileName']).lower()):
 
-                # Also append the children of this upload
-                childUploads = getUploadsByParentId(token=token, url=url, parentId=upload['id'])
-                for childUpload in childUploads:
-                    uploadList.append(childUpload)
+                        uploadList.append(upload)
+
+                        # Also append the children of this upload
+                        childUploads = getUploadsByParentId(token=token, url=url, parentId=upload['id'])
+                        for childUpload in childUploads:
+                            uploadList.append(childUpload)
+                        break
             else:
                 pass
 
+        #print('for fileNameQuery ' + str(fileNameQueries) + ' I found these uploads(n=' +str(len(uploadList)) + '):\n' + str(uploadList))
 
         # TODO: What if there are duplicate files? will list(set(list)) work? This could cause a bug when adding files to the zip. Not sure.
         #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))

@@ -228,7 +228,7 @@ def createFileListFromUploads(uploads=None, fileTypeFilter=None,  projectFilter=
             and (projectFilter is None or fileProject in projectFilter)):
             fileNameList.append(fileName)
 
-    print('Uploads of file type ' + str(fileTypeFilter) + ':' + str(fileNameList))
+    #print('Uploads of file type ' + str(fileTypeFilter) + ':' + str(fileNameList))
 
     return fileNameList
 

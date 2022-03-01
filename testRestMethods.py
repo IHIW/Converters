@@ -3,7 +3,8 @@ from sys import exc_info
 import time
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
-    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID, fixUpload
+    getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID, fixUpload, \
+    getFilteredUploads, getUploadsByProjects
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 
@@ -170,6 +171,20 @@ def testFixUpload(args=None):
     fixUpload(uploadName=uploadName, projectID=projectID, uploadType=uploadType)
 
 
+def testListUploads(args=None):
+    projectIDs = str(args.project).split(',')
+    uploadTypes = str(args.type).split(',')
+    print('finding uploads for projects ' + str(projectIDs) + ' and upload types ' + str(uploadTypes))
+    projectUploads = getUploadsByProjects(projectIDs=projectIDs)
+    targetUploads=[]
+    for projectUpload in projectUploads:
+        if(projectUpload['type'] in uploadTypes):
+            targetUploads.append(projectUpload)
+
+    print('I found ' + str(len(targetUploads)) + ' uploads.')
+    for targetUpload in targetUploads:
+        print(targetUpload['fileName'] + ' : ' + targetUpload['type'] + ' : ' + str(targetUpload['project']['id']) )
+
 if __name__ == '__main__':
     print('Testing Rest Methods')
 
@@ -191,6 +206,8 @@ if __name__ == '__main__':
             testRevalidateUpload(args=args)
         elif (task == 'FIX_UPLOAD'):
             testFixUpload(args=args)
+        elif (task == 'LIST_UPLOADS'):
+            testListUploads(args=args)
         else:
             print('I do not understand which task to perform')
 
