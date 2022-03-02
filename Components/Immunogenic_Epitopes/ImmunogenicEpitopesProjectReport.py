@@ -1,11 +1,6 @@
 from boto3 import client
-#import json
-#import urllib
-from Common.ParseExcel import createExcelTransplantationReport
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-from os.path import join
-
 
 try:
     import IhiwRestAccess
@@ -93,80 +88,6 @@ def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, 
     recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket)
     transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames, transplantationIndex=transplantationIndex)
     return transplantationReportSpreadsheet, recipPreTxAntibodyData, recipPostTxAntibodyData
-
-
-def FilterUploads(unfilteredUploads=None, fileType=None):
-    filteredUploads = []
-    for unfilteredUpload in unfilteredUploads:
-        print('upload:' + str(unfilteredUpload))
-        if(unfilteredUpload['type'] == fileType):
-            filteredUploads.append(unfilteredUpload)
-    return filteredUploads
-
-
-def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fileTypeFilter=None):
-    print('Creating Project Zip Files for project(s) ' + str(projectIDs))
-    #print('URL=' + str(url))
-
-    if url is None:
-        url = IhiwRestAccess.getUrl()
-        token = IhiwRestAccess.getToken(url=url)
-
-    projectIDs = [str(projectID) for projectID in projectIDs]
-
-
-    # Get a list of uploads
-    print('Fetching Upload List...')
-    projectUploads = IhiwRestAccess.getUploadsByProjects(token=token,url=url,projectIDs=projectIDs)
-    if(fileTypeFilter is not None):
-        projectUploads=FilterUploads(projectUploads, fileTypeFilter)
-    print('I found ' + str(len(projectUploads)) + ' uploads for project IDs ' + str(projectIDs))
-
-    # TODO: Sort by FileType? Maybe I should "Start" with Data matrices. Or Put them in Separate .zip by file size.
-    # zipFileCounter=1
-    # fileSizeLimit=10000
-
-    zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.Data.zip'
-
-
-    # create zip file
-    zipFileStream = io.BytesIO()
-    supportingFileZip = zipfile.ZipFile(zipFileStream, 'a', zipfile.ZIP_DEFLATED, False)
-
-    for uploadIndex, projectUpload in enumerate(projectUploads):
-    #for supportingFile in list(set(supportingUploadFilenames)):
-        try:
-            # TODO: Should I filter some files? Yeah probably, don't add .zip files, to avoid redundancy.
-            # Sort into "subfolders" in .zip file
-            supportingFileName = projectUpload['fileName']
-            uploadType = str(projectUpload['type'])
-            uploadProjectId = str(projectUpload['project']['id'])
-            uploadProjectName = str(projectUpload['project']['name']).replace('.','').replace(' ','_').replace('-','_')
-            #print('ProjectName=' + str(uploadProjectName))
-
-            if (uploadIndex%100==0):
-                #print('Adding file ' + str(supportingFile) + ' to ' + str(zipFileName))
-                print('Progress = ' + str(uploadIndex) + '/' + str(len(projectUploads)) + ' = ' + str (100 * (uploadIndex/len(projectUploads))) + '%')
-
-            supportingFileObject = s3.get_object(Bucket=bucket, Key=supportingFileName)
-            fileNameWithRelativePath=join('project_' + str(uploadProjectName),join(uploadType,supportingFileName))
-            supportingFileZip.writestr(fileNameWithRelativePath, supportingFileObject["Body"].read())
-
-        except Exception as e:
-            print('Exception when writing file to zip:\n' + str(e) + '\n' + str(exc_info()))
-
-
-        # TODO: Add logic for maximum .zip file size.
-        #  Note: make sure these newly created .zip files won't be included in the actual project .zip.
-
-
-    print('Closing Zip File....')
-    supportingFileZip.close()
-    print('Writing file to bucket ' + str(bucket) + ' : ' + zipFileName)
-    S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
-
-    # TODO: Make Upload Object for (each) project leader
-    print('Done')
 
 def getDataMatrixValue(validatedWorkbook=None, columnName=None, currentExcelRow=None, firstSheet=None):
     try:
@@ -846,7 +767,6 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
-
 def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
     print('Creating an non-Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
 
@@ -864,7 +784,6 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     projectString = str('_'.join(projectIDs))
 
     print('The Non-immunogenic report has not yet been implemented.')
-
 
 '''
 def createImmunogenicEpitopesReport(bucket=None, projectID=None):

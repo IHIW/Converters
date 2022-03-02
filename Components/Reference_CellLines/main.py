@@ -1,14 +1,8 @@
 from sys import exc_info
 import argparse
-from os.path import split, join
-from io import BytesIO
 
-#from Common.IhiwRestAccess import setValidationStatus, getProjectID
-#from Common.ParseExcel import createBytestreamExcelOutputFile
-#from Common.S3_Access import writeFileToS3
-#from Common.ParseExcel import writeExcelToFile
-#from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
-#from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
+from Common import IhiwRestAccess
+from Common.S3_Access import createProjectZipFile
 from Components.Reference_CellLines.NgsReferenceCellLinesProjectReport import createReferenceCellLinesReport
 
 
@@ -20,8 +14,26 @@ def parseArgs():
     return parser.parse_args()
 
 
+'''
+def testReferenceCellLinesData(args):
+    url = IhiwRestAccess.getUrl()
+    token = IhiwRestAccess.getToken(url=url)
+
+    immuEpsProjectID = 394
+
+    
+    '''
+
+
 def testCreateReferenceCellLineProjectReport(args=None):
     print('Testing the Reference Cell Lines Project Report')
+    projectID = 394
+
+    url=IhiwRestAccess.getUrl()
+    token=IhiwRestAccess.getToken(url=url)
+
+    createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER'])
+
     createReferenceCellLinesReport(bucket=args.bucket)
 
 if __name__=='__main__':

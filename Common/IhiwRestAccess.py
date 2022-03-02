@@ -1,8 +1,6 @@
 import yaml
 import ast
-
 import json
-
 from sys import exc_info
 
 try:
@@ -299,11 +297,8 @@ def getUploads(token=None, url=None, timeout=120):
     return response
 
 def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
-    # TODO: Deprecate this method. Rewrite it so that we don't use the "getUploads" method anymore. It's just too slow with all the paging and such.
-
-    # Lets make a list. Passing a None is fine, that means no filter.
     if(projectIDs is None):
-        pass
+        raise Exception('I need a project ID to filter on.')
     elif(not isinstance(projectIDs, list)):
         projectIDs = [projectIDs]
 
@@ -312,28 +307,26 @@ def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
     elif(not isinstance(uploadTypes, list)):
         uploadTypes = [uploadTypes]
 
-    #print('Getting Filtered uploads from url ' + str(url) + ' for projects ' + str(projectIDs) + ' and uploadTypes ' + str(uploadTypes))
-
     # Convert to String for consistency..
     projectIDs = [str(projectID) for projectID in projectIDs]
     uploadTypes = [str(uploadType) for uploadType in uploadTypes]
 
     # Get Uploads
-    uploadList = getUploads(token=token, url=url)
-    #print('Found ' + str(len(uploadList)) + ' total uploads.')
+    for projectID in projectIDs:
 
-    filteredUploadList = []
-    for upload in uploadList:
-        uploadProjectId = str(upload['project']['id'])
-        uploadType = str(upload['type'])
-        #print('uploadProjectId:' + uploadProjectId)
-        #print('uploadType:' + uploadType)
+        uploadList = getUploadsByProjectID(token=token, url=url, projectId=projectID)
 
-        if ((len(projectIDs)==0 or uploadProjectId in projectIDs)
-            and (len(uploadTypes)==0 or uploadType in uploadTypes)):
-            filteredUploadList.append(upload)
-        else:
-            pass
+        filteredUploadList = []
+        for upload in uploadList:
+            uploadProjectId = str(upload['project']['id'])
+            uploadType = str(upload['type'])
+            #print('uploadProjectId:' + uploadProjectId)
+            #print('uploadType:' + uploadType)
+
+            if ((len(uploadTypes)==0 or uploadType in uploadTypes)):
+                filteredUploadList.append(upload)
+            else:
+                pass
 
     print('I found a total of ' + str(len(filteredUploadList)) + ' filtered uploads for projects ' + str(projectIDs) + ' and upload types ' + str(uploadTypes) +'.\n')
     return filteredUploadList
@@ -454,7 +447,6 @@ def getUploadsByProjects(token=None, url=None, projectIDs=None):
             uploads.extend(projectUploads)
 
         return uploads
-
 
 def getUploadFileNamesByPartialKeyword(token=None, url=None, fileNameQueries=None, projectIDs=None, allUploads=None, uploadTypeFilter=None, uploadUser=None):
     # Make lists of the filter options.

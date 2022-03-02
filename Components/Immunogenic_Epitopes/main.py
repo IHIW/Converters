@@ -2,14 +2,12 @@ from sys import exc_info
 import argparse
 from os.path import split, join
 from io import BytesIO
-
-#from Common.IhiwRestAccess import setValidationStatus, getProjectID
 from Common import IhiwRestAccess
 from Common.ParseExcel import createBytestreamExcelOutputFile
-from Common.S3_Access import writeFileToS3
-#from Common.ParseExcel import writeExcelToFile
+from Common.S3_Access import writeFileToS3, createProjectZipFile
+
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
-from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createProjectZipFile, createImmunogenicEpitopesReport, createNonImmunogenicEpitopesReport
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -37,7 +35,6 @@ def testValidateImmunogenicEpitopes(args=None):
     print('Saving to ' + str(reportLocalFilePath))
     outputReportWorkbook.save(reportLocalFilePath)
 
-
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
@@ -64,7 +61,6 @@ def testValidateNonImmunogenicEpitopes(excelFile=None):
     reportLocalFilePath = join(head, reportFileName)
     print('Saving to ' + str(reportLocalFilePath))
     outputReportWorkbook.save(reportLocalFilePath)
-
 
 def testSetValidationResults(args=None):
     uploadFileName = args.upload
@@ -151,13 +147,7 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
 
 
 
-def testReferenceCellLinesData(args):
-    url = IhiwRestAccess.getUrl()
-    token = IhiwRestAccess.getToken(url=url)
 
-    immuEpsProjectID = 394
-
-    createProjectZipFile(bucket=args.bucket, url=url, token=token,    projectIDs=[immuEpsProjectID], fileTypeFilter='HML')
 
 
 if __name__=='__main__':
@@ -176,10 +166,6 @@ if __name__=='__main__':
             testWriteFileS3(args=args)
         elif(validatorType=='CREATE_SCHEMA_FILES'):
             testCreateSchemaFilesS3(args=args)
-        # TODO: This belongs in the Reference CellLines project report section. I should move it there.
-        #  Separate it out, Maybe need to move the project Zip File code and other generic stuff into "Common"
-        elif(validatorType=='REFERENCE_CELL_LINES'):
-            testReferenceCellLinesData(args=args)
         else:
             print('I do not understand the validator type.')
 
