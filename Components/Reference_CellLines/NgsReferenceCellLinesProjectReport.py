@@ -102,7 +102,7 @@ def createReferenceCellLinesReport(bucket=None, newline='\r\n'):
     # Store Report S3
 
     hmlFileZip.close()
-    S3_Access.writeFileToS3(newFileName='NGS.RefCellLines.HMLs.zip', bucket=bucket, s3ObjectBytestream=zipFileHmlStream)
+    S3_Access.writeFileToS3(newFileName='Project.NGS.RefCellLines.HMLs.zip', bucket=bucket, s3ObjectBytestream=zipFileHmlStream)
 
 
     # TODO: Find Project Leader

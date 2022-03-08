@@ -5,6 +5,7 @@ import time
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
     getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID, fixUpload, \
     getFilteredUploads, getUploadsByProjects
+from Common.Validation import validateGlStrings
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
 
@@ -19,6 +20,7 @@ def parseArgs():
     parser.add_argument("-c", "--child", required=False, help="child upload name", type=str)
     parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
     parser.add_argument("-d", "--default", required=False, help="default (Project ID) to use", type=str )
+    parser.add_argument("-g", "--glstring", required=False, help="GLString", type=str )
     parser.add_argument("-v", "--verbose", help="verbose operation", action="store_true")
 
     return parser.parse_args()
@@ -185,6 +187,16 @@ def testListUploads(args=None):
     for targetUpload in targetUploads:
         print(targetUpload['fileName'] + ' : ' + targetUpload['type'] + ' : ' + str(targetUpload['project']['id']) )
 
+
+def testCheckGLString(args=None):
+    glString = args.glstring
+    print('Validating this glstring:\n' + str(glString))
+    isValid, validationFeedback = validateGlStrings(glStrings=[glString])
+
+    print('isValid:' + str(isValid))
+    print('validationFeedback:' + str(validationFeedback))
+
+
 if __name__ == '__main__':
     print('Testing Rest Methods')
 
@@ -208,6 +220,8 @@ if __name__ == '__main__':
             testFixUpload(args=args)
         elif (task == 'LIST_UPLOADS'):
             testListUploads(args=args)
+        elif (task == 'CHECK_GLSTRING'):
+            testCheckGLString(args=args)
         else:
             print('I do not understand which task to perform')
 
