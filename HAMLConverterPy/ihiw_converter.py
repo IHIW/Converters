@@ -434,30 +434,55 @@ class Converter(object):
             if(allele.startswith('DPA1') or allele.startswith('DPB1') or allele.startswith('DQA1') or allele.startswith('DQB1')):
                 #print ('Heterodimer allele:' + str(allele))
 
-                unpairedAlleles = [alleleName for alleleName in csvData[sampleID][patientID][sampleTestDate][lotID] if '_UNPAIRED' in alleleName]
-                #print('UNPAIRED alleles:' + str(unpairedAlleles))
+                # Assign the unpaired allele.
+                csvData[sampleID][patientID][sampleTestDate][lotID][allele + '_UNPAIRED_' + str(beadID)] = (beadID, assignment, rawMfi)
+                #print('assigned unpaired allele:' + str(allele + '_UNPAIRED_' + str(beadID)))
 
-                # TODO: Could modify this to check all unpaired alleles instead of just the first...
-                if(len(unpairedAlleles)==0):
-                    # This is the first of a pair. Hopefully.
-                    csvData[sampleID][patientID][sampleTestDate][lotID][allele+'_UNPAIRED'] = (beadID, assignment, rawMfi)
-                elif(len(unpairedAlleles)==1):
-                    # This entry should pair with previous unpaired allele. Double check beadId, MFI and assignment to be sure.
-                    if(csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0]] ==  (beadID, assignment, rawMfi) ):
-                        # print('MATCH!' + str(unpairedAlleles[0]) + ' : ' + str(allele))
-                        # Remove the unpaired allele and store the paired one.
-                        csvData[sampleID][patientID][sampleTestDate][lotID].pop(unpairedAlleles[0])
-                        csvData[sampleID][patientID][sampleTestDate][lotID][unpairedAlleles[0].replace('_UNPAIRED','~') + allele] = (beadID, assignment, rawMfi)
-
-                    else:
-                        validationFeedback += ('Trouble when matching heterodimer alleles, these do not match!:'+ str(unpairedAlleles[0]) + ' : ' + str(allele)  + ';\n')
-                        #raise Exception('These alleles are unmatched!:'+ str(unpairedAlleles[0]) + ' : ' + str(allele) )
-                else:
-                    pass
-                    validationFeedback += ('Trouble when matching heterodimer alleles, multiple unmatched alleles found!:'+ str(unpairedAlleles) + ';\n')
             else:
                 # These beads do not represent heterodimers. Store normally.
                 csvData[sampleID][patientID][sampleTestDate][lotID][allele] = (beadID, assignment, rawMfi)
+
+        # Pair the Un-paired .CSV Files
+        print('Attempting to pair unpaired alleles.')
+        for sampleID in csvData:
+            for patientID in csvData[sampleID]:
+                for runDate in csvData[sampleID][patientID]:
+                    for lotID in csvData[sampleID][patientID][runDate]:
+
+                        unpairedAlleles = sorted([alleleName for alleleName in csvData[sampleID][patientID][runDate][lotID] if '_UNPAIRED' in alleleName])
+
+                        for leftUnpairedAllele in unpairedAlleles:
+                            for rightUnpairedAllele in unpairedAlleles:
+                                if (leftUnpairedAllele in csvData[sampleID][patientID][sampleTestDate][lotID].keys()
+                                    and rightUnpairedAllele in csvData[sampleID][patientID][sampleTestDate][lotID].keys()):
+
+                                    if (leftUnpairedAllele != rightUnpairedAllele
+                                        and csvData[sampleID][patientID][sampleTestDate][lotID][leftUnpairedAllele]
+                                        == csvData[sampleID][patientID][sampleTestDate][lotID][rightUnpairedAllele]):
+                                        #print('These are a pair:' + str(leftUnpairedAllele) + ' and ' + str(rightUnpairedAllele))
+
+
+                                        # Assign the heterodimer info
+                                        leftAlleleName = leftUnpairedAllele.split('_')[0]
+                                        rightAlleleName = rightUnpairedAllele.split('_')[0]
+                                        heterodimerName = leftAlleleName + '~' + rightAlleleName
+                                        csvData[sampleID][patientID][sampleTestDate][lotID][heterodimerName] = csvData[sampleID][patientID][sampleTestDate][lotID][leftUnpairedAllele]
+                                        #print('just assigned this allele:' + str(heterodimerName))
+
+                                        # remove the unpaired alleles
+                                        csvData[sampleID][patientID][sampleTestDate][lotID].pop(leftUnpairedAllele)
+                                        csvData[sampleID][patientID][sampleTestDate][lotID].pop(rightUnpairedAllele)
+                                    else:
+                                        #print('Not a pair:' + str(leftUnpairedAllele) + ' and ' + str(rightUnpairedAllele))
+                                        pass
+                                else:
+                                    pass
+                                    #print('One from this pair was already removed:' + str(leftUnpairedAllele) + str(rightUnpairedAllele))
+
+                        # Check if there are still unpaired alleles.
+                        unpairedAlleles = sorted([alleleName for alleleName in csvData[sampleID][patientID][runDate][lotID] if '_UNPAIRED' in alleleName])
+                        if(len(unpairedAlleles)>0):
+                            print('WARNING! There are still unpaired alleles!:' + str(unpairedAlleles))
 
         # Write XML from that data.
         # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
