@@ -23,6 +23,14 @@ import copy
     ///<summary>
  '''
 
+
+def appendFeedback(newFeedback=None, validationFeedback=None):
+    if(newFeedback in validationFeedback):
+        pass
+    else:
+        validationFeedback += (newFeedback + ';\n')
+    return validationFeedback
+
 class Converter(object):
 
     def __init__(self, csvFileName=None, manufacturer=None, xmlFile=None):
@@ -64,7 +72,7 @@ class Converter(object):
         # TODO: Is there a more flexible way to do this? This breaks regularly with new date formats.
         # TODO: Warning: It's very easy to mis-interpret days and months here.
         # TODO: We can try to parse the whole document....to find a date > 12
-        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%m/%d/%Y','%d.%m.%Y','%d. %m. %Y']
+        potentialDateFormats=['%d-%m-%Y', '%Y-%m-%d', '%d-%b-%Y','%d/%m/%Y','%m/%d/%Y','%d.%m.%Y','%d. %m. %Y']
         for dateFormat in potentialDateFormats:
             try:
                 dateObject = datetime.datetime.strptime(dateString, dateFormat)
@@ -199,16 +207,12 @@ class Converter(object):
                     # row.SampleIDName='?'
                     currentRowSampleIDName = '?'
                     feedbackText = 'Empty SampleIDName found, please provide SampleIDName in every row.'
-                    # Only report this once.
-                    if (feedbackText not in validationFeedback):
-                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+                    validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback=feedbackText + ' Row=' + str(row.Index))
 
                 if (currentRowPatientID is None or len(currentRowPatientID) == 0 or currentRowPatientID == 'nan'):
                     currentRowPatientID = '?'
                     feedbackText = 'Empty PatientID found, please provide PatientID in every row.'
-                    # Only report this once.
-                    if (feedbackText not in validationFeedback):
-                        validationFeedback += feedbackText + ' Row=' + str(row.Index) + ';\n'
+                    validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback=feedbackText + ' Row=' + str(row.Index))
 
                 # State Machine Logic:
                 # First row is negative control
@@ -374,50 +378,51 @@ class Converter(object):
             try:
                 sampleID = str(row[immucorColumnNames['Sample_ID']]).strip()
             except Exception as e:
-                validationFeedback += ('Sample_ID was Missing!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Sample_ID was Missing!')
                 sampleID = '??'
 
             try:
                 patientID = str(row[immucorColumnNames['Patient_ID']]).strip()
             except Exception as e:
-                validationFeedback += ('Patient_ID was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Patient_ID was not found!')
                 patientID = '??'
 
             try:
                 sampleTestDate = str(row[immucorColumnNames['Run_Date']]).strip()
             except Exception as e:
-                validationFeedback += ('Run_Date was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Run_Date was not found!')
                 sampleTestDate = '01/01/1900'
 
             try:
                 lotID = str(row[immucorColumnNames['Lot_ID']]).strip()
             except Exception as e:
-                validationFeedback += ('Lot_ID was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Lot_ID was not found!')
                 lotID = '??'
 
             try:
                 allele = str(row[immucorColumnNames['Allele']]).strip()
             except Exception as e:
-                validationFeedback += ('Allele was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Allele was not found!')
                 allele = '??'
 
             try:
                 assignment = str(row[immucorColumnNames['Assignment']]).strip()
             except Exception as e:
-                validationFeedback += ('Assignment was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Assignment was not found!')
                 assignment = '??'
 
             try:
                 rawMfi = str(row[immucorColumnNames['Raw_Value']]).strip()
             except Exception as e:
-                validationFeedback += ('Raw_Value was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Raw_Value was not found!')
                 rawMfi = '??'
 
             try:
                 beadID = str(row[immucorColumnNames['Bead_ID']]).strip()
             except Exception as e:
-                validationFeedback += ('Bead_ID was not found!;\n')
+                validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Bead_ID was not found!')
                 beadID = '??'
+
 
             # Initiate some data structure
             # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (beadID, assignment, rawMFI)
@@ -504,11 +509,17 @@ class Converter(object):
                         else:
                             ncMfi = '-1'
                             validationFeedback += 'Missing negative control for lot ' + str(lotID) + ';\n'
+                            # Reject the document here, set the validation to something smart.
+                            self.xmlData=''
+                            return validationFeedback
                         if('PC' in csvData[sampleID][patientID][runDate][lotID]):
                             pcMfi = csvData[sampleID][patientID][runDate][lotID]['PC'][2]
                         else:
                             pcMfi = '-1'
-                            validationFeedback += 'Missing postive control for lot ' + str(lotID) + ';\n'
+                            validationFeedback += 'Missing positive control for lot ' + str(lotID) + ';\n'
+                            # Reject the document here, set the validation to something smart.
+                            self.xmlData=''
+                            return validationFeedback
 
                     patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
                         {'sampleID': str(sampleID),
@@ -540,7 +551,7 @@ class Converter(object):
                                 try:
                                     ranking = switcher[beadAssignment]
                                 except Exception as e:
-                                    validationFeedback += ('I do not understand this bead assignment, I expected Positive/Negative:' + str(beadAssignment) + ';\n')
+                                    validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='I do not understand this bead assignment, I expected Positive/Negative:' + str(beadAssignment))
                                     ranking = 2  # default value, this is negative
 
                                 current_row_panel_bead = ET.SubElement(current_row_panel, 'bead',

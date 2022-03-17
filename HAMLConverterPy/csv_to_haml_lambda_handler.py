@@ -94,16 +94,23 @@ def csv_to_haml_lambda_handler(event, context):
                     # Write out the xml text
                     # This should trigger the XML validation.
                     #print('encoding this string:' + str(type(converter.xmlText)))
-                    encoded_string = converter.xmlText.encode("utf-8")
-                    #print('encoded text:' + str(encoded_string))
-                    s3 = boto3.resource("s3")
-                    #print('saving file:' + str(xmlOutput))
-                    s3.Bucket(bucket).put_object(Key=xmlOutput, Body=encoded_string)
+                    if(len(converter.xmlText)>5):
+                        encoded_string = converter.xmlText.encode("utf-8")
 
-                    # Set validation status of the .csv file
-                    uploadDetails['is_valid'] = True
-                    uploadDetails['validation_feedback'] = 'Converted to HAML.\n' + str(converter.validationFeedback)
-                    uploadDetails['validator_type'] = 'HAML_CONVERT'
+                        #print('encoded text:' + str(encoded_string))
+                        s3 = boto3.resource("s3")
+                        #print('saving file:' + str(xmlOutput))
+                        s3.Bucket(bucket).put_object(Key=xmlOutput, Body=encoded_string)
+
+                        # Set validation status of the .csv file
+                        uploadDetails['is_valid'] = True
+                        uploadDetails['validation_feedback'] = 'Converted to HAML.\n' + str(converter.validationFeedback)
+                        uploadDetails['validator_type'] = 'HAML_CONVERT'
+                    else:
+                        # Set validation status of the .csv file
+                        uploadDetails['is_valid'] = False
+                        uploadDetails['validation_feedback'] = 'Could not convert to HAML:\n' + str(converter.validationFeedback)
+                        uploadDetails['validator_type'] = 'HAML_CONVERT'
                 except Exception as e:
                     print('Cannot save file to S3 Storage:')
                     print(str(e))
