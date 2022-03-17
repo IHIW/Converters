@@ -108,9 +108,9 @@ def parseGlString(glstring=None):
     # Split by locus
     for locusToken in glstring.split('^'):
         #print('Found locus:' + str(locusToken))
-        if('A*' in locusToken):
+        if('A*' in locusToken and 'MICA*' not in locusToken):
             glStringTyping['A']=locusToken
-        elif ('B*' in locusToken):
+        elif ('B*' in locusToken and 'MICB*' not in locusToken):
             glStringTyping['B'] = locusToken
         elif ('C*' in locusToken):
             glStringTyping['C'] = locusToken
