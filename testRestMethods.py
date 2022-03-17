@@ -196,7 +196,6 @@ def testCheckGLString(args=None):
     print('isValid:' + str(isValid))
     print('validationFeedback:' + str(validationFeedback))
 
-
 if __name__ == '__main__':
     print('Testing Rest Methods')
 

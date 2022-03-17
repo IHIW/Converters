@@ -3,8 +3,10 @@ from os.path import isdir, join
 from sys import exc_info
 from requests.exceptions import ConnectionError
 import argparse
+from lxml import etree
+import xml.etree.ElementTree as ElementTree
 
-#from  import parseXml
+
 
 try:
     import Common.IhiwRestAccess as IhiwRestAccess
@@ -156,6 +158,49 @@ def testGetUpload(uploadFileName=None, configFileName='XmlValidator/validation_c
     uploadId = IhiwRestAccess.getUploadIfExists(token=token, url=url, fileName=uploadFileName)
     print('I found this upload id:' + str(uploadId['id']))
 
+
+def testFetchGLStrings(args=None):
+    xmlFileName=args.xml
+    print('Getting GLStrings from file:'+ str(xmlFileName))
+
+    with open(xmlFileName,'r') as xmlFile:
+        xmlText = bytes(xmlFile.read(),'utf-8')
+        #print('xmltext:' + str(xmlText))
+
+        glStrings = {}
+        xmlParser = etree.XMLParser()
+        glString = ''
+        try:
+            xmlTree = etree.fromstring(xmlText, xmlParser)
+            for sampleNode in xmlTree.iter("*"):
+                if (str(sampleNode.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}sample')):
+
+                    sampleID = sampleNode.get('id')
+                    if(sampleID not in glStrings.keys()):
+                        glString = ''
+
+
+                    print('SAMPLEID FOUND:' + str(sampleID))
+                    for glStringElement in sampleNode.iter("*"):
+                        if (str(glStringElement.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
+                            # print('*****glstring text is this:' + str(element.text))
+                            if (glStringElement.text is not None):
+                                # TODO: Sometimes glStrings for the same locus are reported in different blocks.
+                                #  So this is not perfect for re-assembling GLStrings.
+                                glString += str(glStringElement.text).strip() + '^'
+
+                            if (len(glString) > 0):
+                                glStrings[sampleID] = glString[0:len(glString) - 1]  # Trim off the trailing locus delimiter
+                            else:
+                                glStrings[sampleID] = None
+
+            print('GLStrings\n' + str(glStrings))
+
+        except etree.XMLSyntaxError as err:
+            print('Could not parse xml file!' + str(err))
+            print('Filename:' + str(xmlFileName))
+
+
 if __name__=='__main__':
     try:
         print ('Starting Execution...')
@@ -184,14 +229,10 @@ if __name__=='__main__':
             testMiringValidation(args=args)
         elif (currentTest == 'NMDP'):
             testNmdpValidation(args=args)
+        elif (currentTest == 'FETCH_GLSTRINGS'):
+            testFetchGLStrings(args=args)
         else:
             print('No test was specified(currentTest=' + currentTest + '), nothing to do.')
-
-
-        #testSchemaValidation(xmlFileName=xmlFilename, schemaFileName=schemaFileName)
-        #testMiringValidation()
-        #testNmdpValidation()
-        #testSetValidationResults()
         pass
 
     except Exception:

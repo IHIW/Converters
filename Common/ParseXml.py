@@ -299,12 +299,16 @@ def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
     xmlFileObject = s3.get_object(Bucket=bucket, Key=hmlFileName)
     xmlText = xmlFileObject["Body"].read()
     xmlParser = etree.XMLParser()
+    glString = ''
     try:
         xmlTree = etree.fromstring(xmlText, xmlParser)
         for sampleNode in xmlTree.iter("*"):
             if(str(sampleNode.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}sample')):
-                glString = ''
+
                 sampleID = sampleNode.get('id')
+                if (sampleID not in glStrings.keys()):
+                    glString = ''
+
                 #print('SAMPLEID FOUND:' + str(sampleID))
                 for glStringElement in sampleNode.iter("*"):
                     if(str(glStringElement.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
