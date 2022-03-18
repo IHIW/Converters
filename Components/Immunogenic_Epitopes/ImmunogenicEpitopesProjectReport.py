@@ -130,6 +130,9 @@ def parseGlString(glstring=None):
             glStringTyping['DPB1'] = locusToken
         elif ('DPA1*' in locusToken):
             glStringTyping['DPA1'] = locusToken
+        elif('HLA-E*' in locusToken or 'HLA-F*' in locusToken or 'HLA-G*' in locusToken or 'HLA-H*' in locusToken or 'MICA*' in locusToken or 'MICB*' in locusToken):
+            # Not a problem but we're not using these.
+            pass
         else:
             print('Unknown Locus:' + str(locusToken))
 
@@ -277,23 +280,48 @@ def getFullHamlFileNames(token=None, url=None, projectIDs=None, allUploads=None,
     hamlRawFilenames = cellData.split(',')
     hamlRawFilenames = [s.strip() for s in hamlRawFilenames]
 
+    hamlUploadFilenames = []
+
+    print('cellData:' + str(cellData))
+
+
     for hamlRawFilename in hamlRawFilenames:
-        fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML'],
+        fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HAML','ANTIBODY_CSV'],
             token=token, url=url,
-            fileNameQueries=hamlRawFilenames,
+            fileNameQueries=hamlRawFilename,
             projectIDs=projectIDs,
             allUploads=allUploads,
             uploadUser=uploadUser)
 
+        print('Keyword:' + str(hamlRawFilename))
+        print('fileResults: ' + str([fileResult['fileName'] for fileResult in fileResults]))
 
-        if len(fileResults) != 1:
-            print('Warning: I found ' + str(len(fileResults)) + ' file for the keyword ' + str(hamlRawFilename))
-
-        # TODO: There should really be only one matching filename here. Should I check if there is only one?
         for fileResult in fileResults:
-            hamlFileNames.append(fileResult['fileName'])
+            if fileResult['type'] == 'HAML':
+                hamlUploadFilenames.append(fileResult['fileName'])
+            elif(fileResult['type'] == 'ANTIBODY_CSV'):
+                # TODO: can I just filter the "allUploads" instead of running another rest query here?
+                childUploads = IhiwRestAccess.getUploadsByParentId(token=token,url=url,parentId=fileResult['id'])
 
-    return hamlFileNames
+                print('childUploads of file ' + str(fileResult['fileName']))
+
+                for childUpload in childUploads:
+                    if childUpload['type'] == 'HAML':
+                        hamlUploadFilenames.append(childUpload['fileName'])
+                    else:
+                        pass
+            else:
+                raise Exception('I found a file that is neither HAML or ANTIBODY_CSV, that is strange:' + str(fileResult))
+
+    # Unique filenames
+    hamlUploadFilenames = sorted(list(set(hamlUploadFilenames)))
+
+    if len(hamlUploadFilenames) != 1:
+        print('Warning: for user ' + str(uploadUser) + ' I found ' + str(len(hamlUploadFilenames)) + ' files of type ' + str('HAML') + ' for the keywords ' + str(cellData))
+        print('\n'.join(hamlUploadFilenames))
+
+
+    return hamlUploadFilenames
 
 
 def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup=None, donorGenotypingsLookup=None, bucket=None, reportName=None):
@@ -323,35 +351,28 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
             hlaClass=None
             for specificity in sorted(antibodiesLookup[transplantationId][panel]):
                 # Is this panel ClassI or ClassII?
-                if(hlaClass is None):
-                    if(str(specificity).startswith('A*')
-                        or str(specificity).startswith('B*')
-                        or str(specificity).startswith('C*')):
-                        hlaClass = 'I'
-                        controlLookup[transplantationId]['I']['panel']=panel
-                    elif(str(specificity).startswith('D')):
-                        hlaClass = 'II'
-                        controlLookup[transplantationId]['II']['panel'] = panel
+                if(str(specificity).startswith('A*')
+                    or str(specificity).startswith('B*')
+                    or str(specificity).startswith('C*')):
+                    hlaClass = 'I'
+                    controlLookup[transplantationId][hlaClass]['panel']=panel
+                    classISpecificities.add(specificity)
+                elif(str(specificity).startswith('D')):
+                    hlaClass = 'II'
+                    controlLookup[transplantationId][hlaClass]['panel'] = panel
+                    classIISpecificities.add(specificity)
+                elif(specificity.startswith('NC : ')):
+                    if (hlaClass in('I','II')):
+                        controlLookup[transplantationId][hlaClass]['NC']=antibodiesLookup[transplantationId][panel][specificity]
                     else:
                         raise Exception('Is this class I or II?:' + str(specificity))
-
-                # Store the bead data
-                if(hlaClass =='I'):
-                    if(specificity.startswith('NC : ')):
-                        controlLookup[transplantationId]['I']['NC']=antibodiesLookup[transplantationId][panel][specificity]
-                    elif(specificity.startswith('PC : ')):
-                        controlLookup[transplantationId]['I']['PC']=antibodiesLookup[transplantationId][panel][specificity]
+                elif (specificity.startswith('PC : ')):
+                    if (hlaClass in('I','II')):
+                        controlLookup[transplantationId][hlaClass]['PC']=antibodiesLookup[transplantationId][panel][specificity]
                     else:
-                        classISpecificities.add(specificity)
-                elif(hlaClass == 'II'):
-                    if(specificity.startswith('NC : ')):
-                        controlLookup[transplantationId]['II']['NC']=antibodiesLookup[transplantationId][panel][specificity]
-                    elif(specificity.startswith('PC : ')):
-                        controlLookup[transplantationId]['II']['PC']=antibodiesLookup[transplantationId][panel][specificity]
-                    else:
-                        classIISpecificities.add(specificity)
+                        raise Exception('Is this class I or II?:' + str(specificity))
                 else:
-                    raise Exception ('Something went wrong in allele-specific report, HLA class is not defined yet.')
+                    raise Exception ('Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity))
 
     classISpecificities = sorted(list(set(classISpecificities)))
     classIISpecificities = sorted(list(set(classIISpecificities)))

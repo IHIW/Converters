@@ -456,6 +456,8 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileNameQueries=Non
         uploadTypeFilter = [uploadTypeFilter]
     if(uploadUser is not None and not isinstance(uploadUser, list)):
         uploadUser = [uploadUser]
+    if(fileNameQueries is not None and not isinstance(fileNameQueries, list)):
+        fileNameQueries = [fileNameQueries]
 
     # Convert to String for consistency..
     if(projectIDs is not None):
