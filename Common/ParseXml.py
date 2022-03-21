@@ -255,8 +255,11 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
     return isValid, validationFeedback
 
-def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
+def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQuery=None):
     beadData={}
+
+    if(sampleIdQuery is None or len(str(sampleIdQuery).strip())<1):
+        sampleIdQuery=None
 
     for hamlFileName in hamlFileNames:
 
@@ -269,24 +272,45 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None):
         xmlText = xmlFileObject["Body"].read()
         documentRoot = ElementTree.fromstring(xmlText)
 
+        # Can we find the sample ID Query within this document?
+        sampleIdFound = False
+        for patientAbAssessmentNode in documentRoot.findall('{urn:HAML.Namespace}patient-antibody-assessment'):
+            sampleID=patientAbAssessmentNode.get('sampleID')
+            if sampleIdQuery is not None and (sampleIdQuery.upper().replace(' ','') in sampleID.upper().replace(' ','')):
+                # if the sample ID was not found, maybe that's ok.
+                # Perhaps the SampleID was used in the HML file instead of in these HAML files.
+                # In this case, we should just include all the typings.
+                sampleIdFound = True
+
 
         for patientAbAssessmentNode in documentRoot.findall('{urn:HAML.Namespace}patient-antibody-assessment'):
             patientID=patientAbAssessmentNode.get('patientID')
             sampleID=patientAbAssessmentNode.get('sampleID')
-            negativeControlMfi=patientAbAssessmentNode.get('negative-control-MFI')
-            positiveControlMfi = patientAbAssessmentNode.get('positive-control-MFI')
-            for solidPhasePanelNode in patientAbAssessmentNode.findall('{urn:HAML.Namespace}solid-phase-panel'):
-                lotNumber=solidPhasePanelNode.get('kit-manufacturer') + ' : ' + solidPhasePanelNode.get('lot')
-                if lotNumber not in beadData.keys():
-                    beadData[lotNumber]={}
-                    beadData[lotNumber]['NC : '+ str(lotNumber)]=negativeControlMfi
-                    beadData[lotNumber]['PC : ' + str(lotNumber)]=positiveControlMfi
-                for beadNode in solidPhasePanelNode.findall('{urn:HAML.Namespace}bead'):
-                    specificity = beadNode.get('HLA-allele-specificity')
-                    rawMfi = beadNode.get('raw-MFI')
-                    ranking = beadNode.get('Ranking')
-                    beadData[lotNumber][specificity] = str(rawMfi)
 
+            # Use this data if:
+            # 1) No sample Id was provided
+            # 2) We couldn't find the sample ID in this HAML file (Use every sample in this case)
+            # 3) The sample ID is found in this sample.
+            if sampleIdQuery is None or not sampleIdFound or sampleIdQuery.upper().replace(' ','') in sampleID.upper().replace(' ',''):
+
+                negativeControlMfi=patientAbAssessmentNode.get('negative-control-MFI')
+                positiveControlMfi = patientAbAssessmentNode.get('positive-control-MFI')
+                for solidPhasePanelNode in patientAbAssessmentNode.findall('{urn:HAML.Namespace}solid-phase-panel'):
+                    lotNumber=solidPhasePanelNode.get('kit-manufacturer') + ' : ' + solidPhasePanelNode.get('lot')
+                    if lotNumber not in beadData.keys():
+                        beadData[lotNumber]={}
+                        beadData[lotNumber]['NC : '+ str(lotNumber)]=negativeControlMfi
+                        beadData[lotNumber]['PC : ' + str(lotNumber)]=positiveControlMfi
+                    for beadNode in solidPhasePanelNode.findall('{urn:HAML.Namespace}bead'):
+                        specificity = beadNode.get('HLA-allele-specificity')
+                        rawMfi = beadNode.get('raw-MFI')
+                        ranking = beadNode.get('Ranking')
+
+                        # What if we already found a value for this MFI? This means perhaps we found overlapping HAML files.
+                        if specificity in beadData[lotNumber].keys():
+                            beadData[lotNumber][specificity] = beadData[lotNumber][specificity] + ' ; ' + str(rawMfi)
+                        else:
+                            beadData[lotNumber][specificity] = str(rawMfi)
     return beadData
 
 def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):

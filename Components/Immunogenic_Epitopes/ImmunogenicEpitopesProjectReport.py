@@ -83,9 +83,9 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     else:
         raise Exception('Could not create login token when creating upload entries for report files.')
 
-def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilenames=None, recipHamlPostTxFilenames=None, s3=None, bucket=None, transplantationIndex=None):
-    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPreTxFilenames, s3=s3, bucket=bucket)
-    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket)
+def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilenames=None, recipHamlPostTxFilenames=None, s3=None, bucket=None, transplantationIndex=None, recipientSampleId=None):
+    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPreTxFilenames, s3=s3, bucket=bucket, sampleIdQuery=recipientSampleId)
+    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket, sampleIdQuery=recipientSampleId)
     transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames, transplantationIndex=transplantationIndex)
     return transplantationReportSpreadsheet, recipPreTxAntibodyData, recipPostTxAntibodyData
 
@@ -155,7 +155,7 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
 
     fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
         token=token, url=url,
-        fileNameQueries=[str(hla)],
+        fileNameQueries=[str(hla).strip()],
         projectIDs=projectIDs,
         allUploads=allUploads)
 
@@ -629,7 +629,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                         transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
                             donorTyping=donorTypingsSimplified, recipientTyping=recipientTypingsSimplified,
                             recipHamlPreTxFilenames=recipHamlPreTxFilenames, recipHamlPostTxFilenames=recipHamlPostTxFilenames,
-                            s3=s3, bucket=bucket, transplantationIndex=transplantationIndex)
+                            s3=s3, bucket=bucket, transplantationIndex=transplantationIndex, recipientSampleId=recipientSampleId)
                         supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
 
                         #print('The antibody report returned these values:' + str(preTxAntibodies) + str(postTxAntibodies))
