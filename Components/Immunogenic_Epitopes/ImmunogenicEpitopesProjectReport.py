@@ -339,14 +339,16 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
     for transplantationId in antibodiesLookup.keys():
         controlLookup[transplantationId] = {}
         controlLookup[transplantationId]['I'] = {}
-        controlLookup[transplantationId]['I']['PC'] = '?'
-        controlLookup[transplantationId]['I']['NC'] = '?'
-        controlLookup[transplantationId]['I']['panel'] = '?'
+        #controlLookup[transplantationId]['I']['PC'] = '?'
+        #controlLookup[transplantationId]['I']['NC'] = '?'
+        #controlLookup[transplantationId]['I']['panel'] = '?'
         controlLookup[transplantationId]['II'] = {}
-        controlLookup[transplantationId]['II']['PC'] = '?'
-        controlLookup[transplantationId]['II']['NC'] = '?'
-        controlLookup[transplantationId]['II']['panel'] = '?'
+        #controlLookup[transplantationId]['II']['PC'] = '?'
+        #controlLookup[transplantationId]['II']['NC'] = '?'
+        #controlLookup[transplantationId]['II']['panel'] = '?'
 
+
+        # TODO: Check how the panel IDs are handled here, I think this is where the bug is.
         for panel in antibodiesLookup[transplantationId]:
             hlaClass=None
             for specificity in sorted(antibodiesLookup[transplantationId][panel]):
@@ -355,20 +357,30 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
                     or str(specificity).startswith('B*')
                     or str(specificity).startswith('C*')):
                     hlaClass = 'I'
-                    controlLookup[transplantationId][hlaClass]['panel']=panel
+                    #controlLookup[transplantationId][hlaClass]['panel']=panel
+                    if panel not in controlLookup[transplantationId][hlaClass].keys():
+                        controlLookup[transplantationId][hlaClass][panel] = {}
+                        controlLookup[transplantationId][hlaClass][panel]['PC'] = '?'
+                        controlLookup[transplantationId][hlaClass][panel]['NC'] = '?'
                     classISpecificities.add(specificity)
                 elif(str(specificity).startswith('D')):
                     hlaClass = 'II'
-                    controlLookup[transplantationId][hlaClass]['panel'] = panel
+                    #controlLookup[transplantationId][hlaClass]['panel'] = panel
+                    if panel not in controlLookup[transplantationId][hlaClass].keys():
+                        controlLookup[transplantationId][hlaClass][panel] = {}
+                        controlLookup[transplantationId][hlaClass][panel]['PC'] = '?'
+                        controlLookup[transplantationId][hlaClass][panel]['NC'] = '?'
                     classIISpecificities.add(specificity)
                 elif(specificity.startswith('NC : ')):
                     if (hlaClass in('I','II')):
-                        controlLookup[transplantationId][hlaClass]['NC']=antibodiesLookup[transplantationId][panel][specificity]
+                        #controlLookup[transplantationId][hlaClass]['NC']=antibodiesLookup[transplantationId][panel][specificity]
+                        controlLookup[transplantationId][hlaClass][panel]['NC'] = antibodiesLookup[transplantationId][panel][specificity]
                     else:
                         raise Exception('Is this class I or II?:' + str(specificity))
                 elif (specificity.startswith('PC : ')):
                     if (hlaClass in('I','II')):
-                        controlLookup[transplantationId][hlaClass]['PC']=antibodiesLookup[transplantationId][panel][specificity]
+                        #controlLookup[transplantationId][hlaClass]['PC']=antibodiesLookup[transplantationId][panel][specificity]
+                        controlLookup[transplantationId][hlaClass][panel]['PC'] = antibodiesLookup[transplantationId][panel][specificity]
                     else:
                         raise Exception('Is this class I or II?:' + str(specificity))
                 else:
@@ -396,6 +408,39 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
         alleleSpecificReportWorksheet.column_dimensions[columnLetter].width = 30
 
     for transplantationId in antibodiesLookup.keys():
+
+        # Handle the case of multiple panels for a single locus
+        classIPanelString = ''
+        classIPcString = ''
+        classINcString = ''
+        for panel in controlLookup[transplantationId]['I'].keys():
+            if(len(classIPanelString) > 0):
+                # This is not the first panel
+                classIPanelString = classIPanelString + ' ; ' + panel
+                classIPcString = classIPcString + ' ; ' + controlLookup[transplantationId]['I'][panel]['PC']
+                classINcString = classINcString + ' ; ' + controlLookup[transplantationId]['I'][panel]['NC']
+            else:
+                # This the first or only panel
+                classIPanelString = panel
+                classIPcString = controlLookup[transplantationId]['I'][panel]['PC']
+                classINcString = controlLookup[transplantationId]['I'][panel]['NC']
+
+        classIIPanelString = ''
+        classIIPcString = ''
+        classIINcString = ''
+        for panel in controlLookup[transplantationId]['II'].keys():
+            if (len(classIIPanelString) > 0):
+                # This is not the first panel
+                classIIPanelString = classIIPanelString + ' ; ' + panel
+                classIIPcString = classIIPcString + ' ; ' + controlLookup[transplantationId]['II'][panel]['PC']
+                classIINcString = classIINcString + ' ; ' + controlLookup[transplantationId]['II'][panel]['NC']
+            else:
+                # This the first or only panel
+                classIIPanelString = panel
+                classIIPcString = controlLookup[transplantationId]['II'][panel]['PC']
+                classIINcString = controlLookup[transplantationId]['II'][panel]['NC']
+
+
         patientData = [str(transplantationId)
             , recipientGenotypingsLookup[transplantationId]['A']
             , recipientGenotypingsLookup[transplantationId]['B']
@@ -419,26 +464,34 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
             , donorGenotypingsLookup[transplantationId]['DQA1']
             , donorGenotypingsLookup[transplantationId]['DPB1']
             , donorGenotypingsLookup[transplantationId]['DPA1']
-            , controlLookup[transplantationId]['I']['panel']
-            , controlLookup[transplantationId]['I']['PC']
-            , controlLookup[transplantationId]['I']['NC']
-                ]
+            , classIPanelString
+            , classIPcString
+            , classINcString
+        ]
 
         for classISpecificity in classISpecificities:
-            try:
-                patientData.append(antibodiesLookup[transplantationId][ controlLookup[transplantationId]['I']['panel'] ][classISpecificity])
-            except KeyError:
-                patientData.append('?')
+            classIMfi = '?'
+            for panel in controlLookup[transplantationId]['I'].keys():
+                try:
+                    classIMfi = antibodiesLookup[transplantationId][panel][classISpecificity]
+                except KeyError:
+                    # The MFI for this locus is in a different panel.
+                    pass
+            patientData.append(classIMfi)
 
-        patientData.extend([controlLookup[transplantationId]['II']['panel']
-            , controlLookup[transplantationId]['II']['PC']
-            , controlLookup[transplantationId]['II']['NC']])
+        patientData.extend([classIIPanelString
+            , classIIPcString
+            , classIINcString])
 
         for classIISpecificity in classIISpecificities:
-            try:
-                patientData.append(antibodiesLookup[transplantationId][ controlLookup[transplantationId]['II']['panel'] ][classIISpecificity])
-            except KeyError:
-                patientData.append('?')
+            classIIMfi = '?'
+            for panel in controlLookup[transplantationId]['II'].keys():
+                try:
+                    classIIMfi = antibodiesLookup[transplantationId][panel][classIISpecificity]
+                except KeyError:
+                    # The MFI for this locus is in a different panel.
+                    pass
+            patientData.append(classIIMfi)
 
 
         alleleSpecificReportWorksheet.append(patientData)
