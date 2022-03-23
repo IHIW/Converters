@@ -6,11 +6,13 @@ from boto3 import client
 try:
     import IhiwRestAccess
     import S3_Access
+    import ParseXml
 
 except Exception as e:
     print('Failed in importing files: ' + str(e))
     from Common import IhiwRestAccess
     from Common import S3_Access
+    from Common import ParseXml
 
 s3 = client('s3')
 from sys import exc_info
@@ -46,10 +48,13 @@ def createReferenceCellLinesReport(bucket=None, newline='\r\n'):
 
     reportText = 'NGS HLA genes typing of Reference Cell Lines and Quality Control Project Report' + newline + newline
 
+    # TODO: FileSize?
+    sampleSummaryText = 'UserID,UserName+Lab,UploadName,UploadType,PT/QC,UNK,SampleIDs' + newline
+
     # Initialize my Zip Files
     zipFileHmlStream = io.BytesIO()
     hmlFileZip = zipfile.ZipFile(zipFileHmlStream, 'a', zipfile.ZIP_DEFLATED, False)
-    # TODO: A .Fastq zip as well?
+    # TODO: A .Fastq zip as well? Multiple? It is big.
 
     url=IhiwRestAccess.getUrl()
     token=IhiwRestAccess.getToken(url=url)
@@ -66,13 +71,15 @@ def createReferenceCellLinesReport(bucket=None, newline='\r\n'):
     # Key = submitter ihiw_user.id, Value = Name, Lab
     userIDs = {}
     for upload in projectHMLUploads:
-        userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ', ' + upload['createdBy']['lab']['institution']
+        userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ': ' + upload['createdBy']['lab']['institution']
     for upload in projectFastqUploads:
-        userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ', ' + upload['createdBy']['lab']['institution']
+        userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ': ' + upload['createdBy']['lab']['institution']
     print('Unique Submitter IDs:' + str(sorted(list(userIDs.keys()))))
 
     # for each submitter
-    for userID in sorted(list(userIDs.keys())):
+    for userIndex, userID in enumerate(sorted(list(userIDs.keys()))):
+        print('Finding Uploads for User:' + str(userID) + ' (' + str(userIndex + 1) + ' of ' + str(len(list(userIDs.keys()))) + ')')
+
         reportText += newline + 'User ' + str(userID) + ' (' + str(userIDs[userID]) + ')' + newline
 
         currentUserHMLs =  [hmlUpload for hmlUpload in projectHMLUploads if hmlUpload['createdBy']['id'] == userID]
@@ -80,26 +87,53 @@ def createReferenceCellLinesReport(bucket=None, newline='\r\n'):
         for hmlUpload in currentUserHMLs:
             reportText += '\t' + str(hmlUpload['fileName']) + newline
 
+            sampleSummaryText += str(userID) + ',' + str(userIDs[userID]) + ',' + str(hmlUpload['fileName'])  + ',HML,'
+
+
+
             # Get HML Information, especially Sample IDs.
             xmlFileObject = None
+            sampleIds=''
+            isPTQC=''
+            isUNK = ''
+
             try:
                 hmlFileObject = s3.get_object(Bucket=bucket, Key=hmlUpload['fileName'])
-                hmlFileZip.writestr(hmlUpload['fileName'], hmlFileObject["Body"].read())
+                hmlText=hmlFileObject["Body"].read()
+                hmlFileZip.writestr(hmlUpload['fileName'], hmlText)
+
+                sampleIds = ' ; '.join(ParseXml.getSampleIDs(xmlText=hmlText))
+
+                if ('PT' in sampleIds.upper() or 'PT' in hmlUpload['fileName'].upper()
+                    or 'QC' in sampleIds.upper() or 'QC' in hmlUpload['fileName'].upper()):
+                    isPTQC='YES'
+
+                if ('UNK' in sampleIds.upper() or 'UNK' in hmlUpload['fileName'].upper()):
+                    isUNK = 'YES'
 
             except Exception as err:
                 reportText += 'Could not fetch upload from S3: ' + str(hmlUpload['fileName'])
 
-            # TODO: Get Sample ID Lists from Each HML Object, write the sample IDs in the report.
+            sampleSummaryText += str(isPTQC) + ',' + str(isUNK) + ',' + str(sampleIds) + newline
+
 
         currentUserFASTQs = [fastqUpload for fastqUpload in projectFastqUploads if fastqUpload['createdBy']['id'] == userID]
         reportText += str(len(currentUserFASTQs)) + ' FASTQ Files Submitted:' + newline
         for fastqUpload in currentUserFASTQs:
             reportText += '\t' + str(fastqUpload['fileName']) + newline
 
-    # supportingFileZip.writestr('HelloWorld.txt', 'Hello World!')
-    hmlFileZip.writestr('SummaryReport.txt', reportText)
+            isPTQC=''
+            isUNK=''
+            if ('PT' in fastqUpload['fileName'].upper() or 'QC' in fastqUpload['fileName'].upper()):
+                isPTQC = 'YES'
 
-    # Store Report S3
+            if ('UNK' in fastqUpload['fileName'].upper()):
+                isUNK = 'YES'
+
+            sampleSummaryText += str(userID) + ',' + str(userIDs[userID]) + ',' + str(fastqUpload['fileName']) + ',FASTQ,' +  str(isPTQC) + ',' + str(isUNK) + ',' + ',' + newline
+
+    hmlFileZip.writestr('SummaryReport.txt', reportText)
+    hmlFileZip.writestr('SampleSummary.csv', sampleSummaryText)
 
     hmlFileZip.close()
     S3_Access.writeFileToS3(newFileName='Project.NGS.RefCellLines.HMLs.zip', bucket=bucket, s3ObjectBytestream=zipFileHmlStream)
@@ -110,7 +144,7 @@ def createReferenceCellLinesReport(bucket=None, newline='\r\n'):
         # TODO: Change the rest method to create upload, to allow the validation user? Or else I need admin rights...
         # TODO: Create Upload Object for the Leader (if possible?)
 
-    print('Report Text:' + str(reportText))
+    #print('Report Text:' + str(reportText))
 
 
 

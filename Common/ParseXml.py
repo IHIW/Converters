@@ -8,11 +8,33 @@ from lxml import etree
 import xml.etree.ElementTree as ElementTree
 
 
+'''
 def getSampleIDs(hml=None):
     sampleIDs=[]
     for sample in hml.sample:
         sampleIDs.append(sample.id)
     return sampleIDs
+'''
+def getSampleIDs(xmlText=None):
+    # TODO: do this in pyhml.
+    sampleIds = set()
+
+    xmlParser = etree.XMLParser()
+    glString = ''
+    try:
+        xmlTree = etree.fromstring(xmlText, xmlParser)
+        for sampleNode in xmlTree.iter("*"):
+            if (str(sampleNode.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}sample')):
+
+                sampleID = sampleNode.get('id')
+                sampleIds.add(sampleID)
+
+
+    except etree.XMLSyntaxError as err:
+        print('Could not parse xml file!' + str(err))
+        raise(err)
+    return sorted(list(sampleIds))
+
 
 def getHmlid(xmlText=None):
     # HMLID Is apparently not in the hml object, gotta parse it from the text.
