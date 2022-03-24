@@ -109,7 +109,7 @@ def validateDonorSourceType(query=None, columnName='?', required=True):
     if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
         return ''
 
-    validDonorSourceTypes = ['DCD', 'DBD', 'LIVINGDIRECTED', 'LIVINGRELATED', 'LIVINGUNKNOWN', 'PKE','OTHER']
+    validDonorSourceTypes = ['DCD', 'DBD', 'LIVINGDIRECTED', 'LIVINGUNRELATED', 'LIVINGRELATED', 'LIVINGUNKNOWN', 'PKE','OTHER']
     if(str(query).upper().replace(' ','').replace('(','').replace(')','') in validDonorSourceTypes):
         return ''
     else:

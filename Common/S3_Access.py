@@ -5,7 +5,11 @@ import boto3
 from boto3 import client
 import io
 
-from Common import IhiwRestAccess
+try:
+    import IhiwRestAccess
+except Exception as e:
+    print('S3_Access Failed in importing files: ' + str(e))
+    from Common import IhiwRestAccess
 
 s3 = client('s3')
 
@@ -61,8 +65,8 @@ def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fil
             supportingFileZip.writestr(fileNameWithRelativePath, supportingFileObject["Body"].read())
 
         except Exception as e:
-            print('Exception when writing file to zip:\n' + str(e) + '\n' + str(exc_info()))
-
+            print('Exception when writing file to zip:\n' + str(e) + '\n' + str(exc_info()) )
+            print('\nFilename:' + str(supportingFileName))
 
         # TODO: Add logic for maximum .zip file size.
         #  Note: make sure these newly created .zip files won't be included in the actual project .zip.

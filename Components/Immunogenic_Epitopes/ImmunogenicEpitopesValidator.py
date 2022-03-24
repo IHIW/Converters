@@ -18,7 +18,7 @@ try:
     import S3_Access
     import ParseExcel
 except Exception as e:
-    print('Failed in importing files: ' + str(e))
+    print('ImmunogenicEpitopesValidator Failed in importing files: ' + str(e))
     from Common import IhiwRestAccess
     from Common import Validation
     from Common import S3_Access
