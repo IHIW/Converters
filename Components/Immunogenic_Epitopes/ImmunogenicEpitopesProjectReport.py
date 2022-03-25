@@ -339,23 +339,16 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
     for transplantationId in antibodiesLookup.keys():
         controlLookup[transplantationId] = {}
         controlLookup[transplantationId]['I'] = {}
-        #controlLookup[transplantationId]['I']['PC'] = '?'
-        #controlLookup[transplantationId]['I']['NC'] = '?'
-        #controlLookup[transplantationId]['I']['panel'] = '?'
         controlLookup[transplantationId]['II'] = {}
-        #controlLookup[transplantationId]['II']['PC'] = '?'
-        #controlLookup[transplantationId]['II']['NC'] = '?'
-        #controlLookup[transplantationId]['II']['panel'] = '?'
 
-
-        # TODO: Check how the panel IDs are handled here, I think this is where the bug is.
         for panel in antibodiesLookup[transplantationId]:
             hlaClass=None
             for specificity in sorted(antibodiesLookup[transplantationId][panel]):
                 # Is this panel ClassI or ClassII?
                 if(str(specificity).startswith('A*')
                     or str(specificity).startswith('B*')
-                    or str(specificity).startswith('C*')):
+                    or str(specificity).startswith('C*')
+                    or str(specificity).startswith('Cw*')):
                     hlaClass = 'I'
                     #controlLookup[transplantationId][hlaClass]['panel']=panel
                     if panel not in controlLookup[transplantationId][hlaClass].keys():
@@ -384,6 +377,9 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
                     else:
                         raise Exception('Is this class I or II?:' + str(specificity))
                 else:
+                    print('Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity)
+                        + ' transplantationId:' + str(transplantationId)
+                        + ' panel:' + str(panel))
                     raise Exception ('Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity))
 
     classISpecificities = sorted(list(set(classISpecificities)))
