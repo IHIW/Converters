@@ -444,7 +444,10 @@ def getUploadsByProjects(token=None, url=None, projectIDs=None):
         uploads = []
         for projectId in projectIDs:
             projectUploads = getUploadsByProjectID(token=token, url=url, projectId=projectId)
-            uploads.extend(projectUploads)
+            if(projectUploads is None):
+                print('No uploads found for project ' + projectId)
+            else:
+                uploads.extend(projectUploads)
 
         return uploads
 
