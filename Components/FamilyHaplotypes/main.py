@@ -14,34 +14,23 @@ def parseArgs():
     return parser.parse_args()
 
 
-'''
-def testReferenceCellLinesData(args):
-    url = IhiwRestAccess.getUrl()
-    token = IhiwRestAccess.getToken(url=url)
 
-    immuEpsProjectID = 394
-
-    
-    '''
-
-
-def testCreateReferenceCellLineProjectReport(args=None):
+def testCreateFamilyHaplotypeProjectReport(args=None):
     print('Testing the Reference Cell Lines Project Report')
-    projectID = 394
+    projectID = 390
 
     url=IhiwRestAccess.getUrl()
     token=IhiwRestAccess.getToken(url=url)
 
     createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER','PED','INFO_CSV'])
 
-    createReferenceCellLinesReport(bucket=args.bucket)
 
 if __name__=='__main__':
     try:
         args=parseArgs()
         validatorType =args.validator
-        if(validatorType=='REFERENCE_CELL_LINE_PROJECT_REPORT'):
-            testCreateReferenceCellLineProjectReport(args=args)
+        if(validatorType=='FAMILY_HAPLOTYPE_PROJECT_REPORT'):
+            testCreateFamilyHaplotypeProjectReport(args=args)
         else:
             print('I do not understand the validator type.')
 
