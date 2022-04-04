@@ -7,7 +7,7 @@ from Common.ParseExcel import createBytestreamExcelOutputFile
 from Common.S3_Access import writeFileToS3, createProjectZipFile
 
 from Components.Immunogenic_Epitopes.ImmunogenicEpitopesValidator import validateEpitopesDataMatrix
-from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport
+from Components.Immunogenic_Epitopes.ImmunogenicEpitopesProjectReport import createImmunogenicEpitopesReport, createNonImmunogenicEpitopesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -136,11 +136,11 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     nonImmuEpsProjectID = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    #createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
+    createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
 
     createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
-    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
-    #createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
+    createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
 
 
 def testPyArd(args=None):

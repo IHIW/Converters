@@ -13,8 +13,6 @@ def parseArgs():
 
     return parser.parse_args()
 
-
-
 def testCreateFamilyHaplotypeProjectReport(args=None):
     print('Testing the Reference Cell Lines Project Report')
     projectID = 390
@@ -24,7 +22,6 @@ def testCreateFamilyHaplotypeProjectReport(args=None):
 
     createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER','PED','INFO_CSV'])
 
-
 if __name__=='__main__':
     try:
         args=parseArgs()
@@ -33,7 +30,6 @@ if __name__=='__main__':
             testCreateFamilyHaplotypeProjectReport(args=args)
         else:
             print('I do not understand the validator type.')
-
 
     except Exception:
         print ('Unexpected problem running tests:')

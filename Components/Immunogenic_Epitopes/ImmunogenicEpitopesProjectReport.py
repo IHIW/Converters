@@ -25,33 +25,6 @@ from sys import exc_info
 
 import zipfile
 import io
-from time import sleep
-
-# TODO: In general I re-worked the epitopes validator, and i need the project report to match it.
-#  I don't have per-row validation feedback to generate on the fly.
-#  Perhaps it's better to collect the data matrixes in individual tabs
-#  Validate them individually and collect the validation issues on the single tab. That would have the submitter data.
-#  Then make a first tab as a summary of all the submitted data matrices.
-
-def immunogenic_epitope_project_report_handler(event, context):
-    print('Lambda handler: Creating a project report for immunogenic epitopes.')
-    # This is the AWS Lambda handler function.
-    try:
-        # Sleep 1 second, enough time to make sure the file is available.
-        sleep(1)
-        # TODO: get the bucket from the sns message ( there is no sns message, trigger one?)
-        #bucket = content['Records'][0]['s3']['bucket']['name']
-        bucket = 'ihiw-management-upload-prod'
-        #bucket = 'ihiw-management-upload-staging'
-
-        #adminUserID=
-
-        createImmunogenicEpitopesReport(bucket=bucket)
-
-    except Exception as e:
-        print('Exception:\n' + str(e) + '\n' + str(exc_info()))
-        return str(e)
-
 
 def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     # TODO: This should be a standalone upload, not a child upload. Need some work on this part.
@@ -313,16 +286,17 @@ def getFullHamlFileNames(token=None, url=None, projectIDs=None, allUploads=None,
     hamlUploadFilenames = sorted(list(set(hamlUploadFilenames)))
 
     if len(hamlUploadFilenames) != 1:
-        print('Warning: for user ' + str(uploadUser) + ' I found ' + str(len(hamlUploadFilenames)) + ' files of type ' + str('HAML') + ' for the keywords ' + str(cellData))
-        print('\n'.join(hamlUploadFilenames))
+        pass
+        # This is common enough we don't need to warn about it..
+        #print('Warning: for user ' + str(uploadUser) + ' I found ' + str(len(hamlUploadFilenames)) + ' files of type ' + str('HAML') + ' for the keywords ' + str(cellData))
+        #print('\n'.join(hamlUploadFilenames))
 
 
     return hamlUploadFilenames
 
-def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup=None, donorGenotypingsLookup=None, bucket=None, reportName=None):
+def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup=None, donorGenotypingsLookup=None, bucket=None, reportName=None, isImmunogenic=None):
     print('Creating Allele-Specific antibody report ' + str(reportName))
     #print('recipientGenotypingsLookup:' + str(recipientGenotypingsLookup))
-
 
     # A list of alleles
     classISpecificities=set()
@@ -385,8 +359,11 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
     alleleSpecificReportWorksheet = alleleSpecificReportWorkbook.active
     alleleSpecificReportWorksheet.freeze_panes = 'B2'
 
-    headers = ['transplantation_id', 'R_A', 'R_B', 'R_C', 'R_DRB1', 'R_DRB3', 'R_DRB4', 'R_DRB5', 'R_DQB1', 'R_DQA1', 'R_DPB1', 'R_DPA1'
-        , 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1', 'classI-PanelID','classI-PC', 'classI-NC']
+    if(isImmunogenic):
+        headers = ['transplantation_id', 'R_A', 'R_B', 'R_C', 'R_DRB1', 'R_DRB3', 'R_DRB4', 'R_DRB5', 'R_DQB1', 'R_DQA1', 'R_DPB1', 'R_DPA1'
+            , 'D_A', 'D_B', 'D_C', 'D_DRB1', 'D_DRB3', 'D_DRB4', 'D_DRB5', 'D_DQB1', 'D_DQA1', 'D_DPB1', 'D_DPA1', 'classI-PanelID','classI-PC', 'classI-NC']
+    else:
+        headers = ['transplantation_id', 'A', 'B', 'C', 'DRB1', 'DRB3', 'DRB4', 'DRB5', 'DQB1', 'DQA1', 'DPB1', 'DPA1', 'classI-PanelID','classI-PC', 'classI-NC']
     headers.extend(classISpecificities)
     headers.extend(['classII-PanelID','classII-PC', 'classII-NC'])
     headers.extend(classIISpecificities)
@@ -444,21 +421,24 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
             , recipientGenotypingsLookup[transplantationId]['DQA1']
             , recipientGenotypingsLookup[transplantationId]['DPB1']
             , recipientGenotypingsLookup[transplantationId]['DPA1']
-            , donorGenotypingsLookup[transplantationId]['A']
-            , donorGenotypingsLookup[transplantationId]['B']
-            , donorGenotypingsLookup[transplantationId]['C']
-            , donorGenotypingsLookup[transplantationId]['DRB1']
-            , donorGenotypingsLookup[transplantationId]['DRB3']
-            , donorGenotypingsLookup[transplantationId]['DRB4']
-            , donorGenotypingsLookup[transplantationId]['DRB5']
-            , donorGenotypingsLookup[transplantationId]['DQB1']
-            , donorGenotypingsLookup[transplantationId]['DQA1']
-            , donorGenotypingsLookup[transplantationId]['DPB1']
-            , donorGenotypingsLookup[transplantationId]['DPA1']
-            , classIPanelString
-            , classIPcString
-            , classINcString
         ]
+
+        if isImmunogenic:
+            patientData.extend([donorGenotypingsLookup[transplantationId]['A']
+                , donorGenotypingsLookup[transplantationId]['B']
+                , donorGenotypingsLookup[transplantationId]['C']
+                , donorGenotypingsLookup[transplantationId]['DRB1']
+                , donorGenotypingsLookup[transplantationId]['DRB3']
+                , donorGenotypingsLookup[transplantationId]['DRB4']
+                , donorGenotypingsLookup[transplantationId]['DRB5']
+                , donorGenotypingsLookup[transplantationId]['DQB1']
+                , donorGenotypingsLookup[transplantationId]['DQA1']
+                , donorGenotypingsLookup[transplantationId]['DPB1']
+                , donorGenotypingsLookup[transplantationId]['DPA1']])
+
+        patientData.extend([classIPanelString
+            , classIPcString
+            , classINcString])
 
         for classISpecificity in classISpecificities:
             classIMfi = '?'
@@ -490,7 +470,6 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=alleleSpecificReportWorkbook)
     S3_Access.writeFileToS3(newFileName=reportName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
 
-
 def createGlStringFromTypings(sampleTypings=None):
     glString=''
 
@@ -500,7 +479,6 @@ def createGlStringFromTypings(sampleTypings=None):
 
     trimGlString=glString[0:-1]
     return trimGlString
-
 
 def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
     print('Creating an Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
@@ -746,16 +724,222 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
         url = IhiwRestAccess.getUrl()
         token = IhiwRestAccess.getToken(url=url)
 
-    if (projectIDs is None):
+    if(projectIDs is None):
         return
-    elif (not isinstance(projectIDs, list)):
+    elif(not isinstance(projectIDs, list)):
         projectIDs = [projectIDs]
 
     # Convert to String for consistency..
     projectIDs = [str(projectID) for projectID in projectIDs]
     projectString = str('_'.join(projectIDs))
 
-    print('The Non-immunogenic report has not yet been implemented.')
+    # preload an upload list to use repeatedly later
+    allUploads = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
+    dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
+
+    # This report is the copy of all data in the data matrix, including validation feedback.
+    dataMatrixReportWorkbook = Workbook()
+    dataMatrixReportWorksheet = dataMatrixReportWorkbook.active
+    dataMatrixReportWorksheet.freeze_panes = 'A2'
+
+    # Data Matrix Report Headers
+    dataMatrixReportHeaders = ['datarow_id','data_matrix_filename', 'data_matrix_row_num', 'submitting_user'
+        , 'submitting_lab', 'submission_date', 'recipient_glstring']
+    dataMatrixHeaders = ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=False)
+    dataMatrixReportHeaders.extend(dataMatrixHeaders)
+
+    for headerIndex, header in enumerate(dataMatrixReportHeaders):
+        dataMatrixColumnLetter = get_column_letter(headerIndex+1)
+        dataMatrixCellIndex = dataMatrixColumnLetter + '1'
+        dataMatrixReportWorksheet[dataMatrixCellIndex] = header
+        dataMatrixReportWorksheet.column_dimensions[dataMatrixColumnLetter].width = 35
+
+    # Summary of HLA Genotypes that have been submitted
+    summaryWithTypingWorkbook = Workbook()
+    summaryWithTypingWorksheet = summaryWithTypingWorkbook.active
+    summaryWithTypingWorksheet.freeze_panes = 'A2'
+
+    summaryWithTypingHeaders = ('datarow_id', 'upload_filename', 'row#', 'submitter'
+        , 'sample_id','recipient_hla', 'A', 'B', 'C', 'DRB1', 'DRB3', 'DRB4', 'DRB5', 'DQB1', 'DQA1', 'DPB1', 'DPA1')
+
+
+
+    for headerIndex, header in enumerate(summaryWithTypingHeaders):
+        dataMatrixColumnLetter = get_column_letter(headerIndex+1)
+        dataMatrixCellIndex = dataMatrixColumnLetter + '1'
+        summaryWithTypingWorksheet[dataMatrixCellIndex] = header
+        summaryWithTypingWorksheet.column_dimensions[dataMatrixColumnLetter].width = 35
+
+    supportingSpreadsheets = {}
+    reportLineIndex = 0
+
+    # I want the first data row to be index 0,
+    dataRowIndexIndex = -1
+    recipientAntibodiesLookup = {}
+    recipientGenotypingsLookup = {}
+
+    # Combine data matrices together for summary worksheet..
+    for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
+        print('Checking Validation of this file:' + dataMatrixUpload['fileName'])
+        #print('This is the upload: ' + str(dataMatrixUpload))
+
+        excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
+        inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())
+        # validateEpitopesDataMatrix returns all the information we need.
+        (validationResults, validatedWorkbook) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(
+            excelFile=inputExcelBytes, isImmunogenic=False, projectIDs=projectIDs, uploadList=allUploads)
+
+        if (validatedWorkbook is not None):
+            supportingSpreadsheets[dataMatrixUpload['fileName']] = ParseExcel.createBytestreamExcelOutputFile(
+                workbookObject=validatedWorkbook)
+            dataMatrixFileName = dataMatrixUpload['fileName']
+            submittingUser = dataMatrixUpload['createdBy']['user']['firstName'] + ' ' + \
+                             dataMatrixUpload['createdBy']['user']['lastName'] + ':\n' + \
+                             dataMatrixUpload['createdBy']['user']['email']
+            submittingLab = dataMatrixUpload['createdBy']['lab']['department'] + ', ' + \
+                            dataMatrixUpload['createdBy']['lab']['institution']
+            submissionDate = dataMatrixUpload['createdAt']
+
+            uploadUserId = dataMatrixUpload['createdBy']['id']
+            print('Found an upload user ID:' + str(uploadUserId))
+
+            # Loop input Workbook data
+            # for dataLineIndex, dataLine in enumerate(inputExcelFileData):
+            firstSheet = validatedWorkbook[validatedWorkbook.sheetnames[0]]
+            for dataLineIndex, dataLine in enumerate(firstSheet.iter_rows(min_row=2)):
+
+                currentExcelRow = dataLineIndex + 2
+
+                recipientSampleId = getDataMatrixValue(columnName='recipient_sample_id', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                recipientHla = getDataMatrixValue(columnName='recipient_hla', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+
+                # Check if there is some data here, for now it's good enough if there is some HLA typing included
+                if(len(str(recipientHla).strip()) > 1):
+                    reportLineIndex += 1
+                    dataRowIndexIndex += 1
+
+                    # Get the Donor GLString/HML File
+                    # Get the Recipient GLString/HML File
+                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=recipientSampleId)
+                    recipientTypingsSimplified = reduceGenotypings(typings=recipientTypings)
+
+                    # Put the typing in the spreadsheets.
+                    recipientGenotypingsLookup[dataRowIndexIndex] = recipientTypingsSimplified
+
+                    # Write data for summaryWithTypingWorksheet
+                    summaryWithTypingDataTuple = (str(dataRowIndexIndex), dataMatrixFileName, currentExcelRow, (submittingUser + ', ' + submittingLab)
+                        , recipientSampleId ,recipientHla, recipientTypingsSimplified['A'], recipientTypingsSimplified['B']
+                        , recipientTypingsSimplified['C'], recipientTypingsSimplified['DRB1'], recipientTypingsSimplified['DRB3'], recipientTypingsSimplified['DRB4'], recipientTypingsSimplified['DRB5']
+                        , recipientTypingsSimplified['DQB1'], recipientTypingsSimplified['DQA1'], recipientTypingsSimplified['DPB1'], recipientTypingsSimplified['DPA1']
+                    )
+                    summaryWithTypingWorksheet.append(summaryWithTypingDataTuple)
+
+                    # Get the antibody filenames
+                    hamlCellData = getDataMatrixValue(columnName='recipient_haml', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
+                    recipHamlFilenames = getFullHamlFileNames(token=token, url=url, projectIDs=projectIDs, allUploads=allUploads, cellData=hamlCellData, uploadUser=uploadUserId)
+
+
+                    # Create the Antibody Typing Report.
+                    if(len(recipientTypingsSimplified) > 0):
+
+                        transplantationReportFileName = 'AntibodyReport_' + dataMatrixUpload['fileName'] + '_Row' + str(currentExcelRow) + '.xlsx'
+                        transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
+                            donorTyping=recipientTypingsSimplified, recipientTyping=recipientTypingsSimplified,
+                            recipHamlPreTxFilenames=recipHamlFilenames, recipHamlPostTxFilenames=recipHamlFilenames,
+                            s3=s3, bucket=bucket, transplantationIndex=dataRowIndexIndex, recipientSampleId=recipientSampleId)
+                        supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
+
+                        #print('The antibody report returned these values:' + str(preTxAntibodies) + str(postTxAntibodies))
+
+                        recipientAntibodiesLookup[dataRowIndexIndex] = preTxAntibodies
+
+
+
+                    # Copy the columns (including colors and notes) into the new spreadsheet
+                    dataMatrixReportLine = [str(dataRowIndexIndex), dataMatrixUpload['fileName'], str(currentExcelRow),submittingUser,submittingLab,submissionDate
+                        ,createGlStringFromTypings(recipientTypingsSimplified)]
+
+                    # Pull the data from the data matrix and add it to the report worksheet.
+                    columnNameLookup = validatedWorkbook.columnNameLookup
+                    for headerIndex, header in enumerate(dataMatrixHeaders):
+                        if(header in columnNameLookup.keys()):
+                            dataMatrixColumnLetter = validatedWorkbook.columnNameLookup[header]
+                            dataMatrixCellIndex = dataMatrixColumnLetter + str(currentExcelRow)
+                            dataMatrixCell = firstSheet[dataMatrixCellIndex]
+                            dataMatrixReportLine.append(str(dataMatrixCell.value))
+                        else:
+                            dataMatrixReportLine.append('?')
+
+                    dataMatrixReportWorksheet.append(dataMatrixReportLine)
+
+                    # Apply Red background color and comments from the data matrix
+                    # This is done in a separate loop, it seems to mess up the line indexing otherwise.
+                    for headerIndex, header in enumerate(dataMatrixHeaders):
+                        if (header in columnNameLookup.keys()):
+                            dataMatrixColumnLetter = validatedWorkbook.columnNameLookup[header]
+                            dataMatrixCellIndex = dataMatrixColumnLetter + str(currentExcelRow)
+                            dataMatrixCell = firstSheet[dataMatrixCellIndex]
+                            dataMatrixCellColor = dataMatrixCell.fill.fgColor.value
+                            reportCellIndex = str(get_column_letter(headerIndex + 8)) + str(reportLineIndex + 1)
+
+                            try:
+                                if (dataMatrixCellColor == '00FF0000'):
+                                    # This means there was an error in this cell!
+                                    dataMatrixReportWorksheet[reportCellIndex].fill = PatternFill("solid", fgColor=dataMatrixCellColor)
+                                    dataMatrixReportWorksheet[reportCellIndex].comment = Comment(dataMatrixCell.comment.text, 'Data Matrix Validator')
+                            except Exception as e:
+                                print('That did not work:' + str(e))
+
+                        else:
+                            pass
+
+                    # TODO: Size the columns and rows better
+
+                    # TODO: Text wrapping?
+
+
+
+                else:
+                    #print('Empty Data line.')
+                    pass
+
+
+        else:
+            print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']))
+            print('Upload ID of missing data matrix:' + str(dataMatrixUpload['id']))
+
+
+    dataMatrixReportFileName = 'Project.' + projectString+ '.DataMatrixReport.xlsx'
+    outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=dataMatrixReportWorkbook)
+    S3_Access.writeFileToS3(newFileName=dataMatrixReportFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+    summaryWithTypingFileName = 'Project.' + projectString+ '.SampleSummary.xlsx'
+    outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=summaryWithTypingWorkbook)
+    S3_Access.writeFileToS3(newFileName=summaryWithTypingFileName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
+
+    preTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecific.xlsx'
+    createAlleleSpecificReport(antibodiesLookup=recipientAntibodiesLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
+       , bucket=bucket, reportName=preTxAlleleSpecificReportName, isImmunogenic=False)
+
+    '''
+    postTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPostTx.xlsx'
+    createAlleleSpecificReport(antibodiesLookup=antibodiesPostTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
+        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=postTxAlleleSpecificReportName)
+    
+ 
+        
+    # create zip file
+    zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.TransplantationReports.zip'
+    zipFileStream = io.BytesIO()
+    supportingFileZip = zipfile.ZipFile(zipFileStream, 'a', zipfile.ZIP_DEFLATED, False)
+
+    for transplantationReportFileName in supportingSpreadsheets.keys():
+        #print('Adding file ' + str(transplantationReportFileName) + ' to ' + str(zipFileName))
+        supportingFileZip.writestr(transplantationReportFileName, supportingSpreadsheets[transplantationReportFileName])
+
+    supportingFileZip.close()
+    S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
+    '''
 
 def getDataMatrixUploads(projectIDs=None, token=None, url=None, uploadList=None):
     # collect all data matrix files.
