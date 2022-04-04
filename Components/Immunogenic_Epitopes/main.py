@@ -126,8 +126,6 @@ def testCreateSchemaFilesS3(args=None):
 
         #writeFileToS3(newFileName=remotePath, bucket=bucket, s3ObjectBytestream=bytesIOObject)
 
-
-
 def testCreateImmunogenicEpitopesProjectReport(args=None):
     print('Creating Immunogenic Epitopes Project Report')
     #createImmunogenicEpitopesReport(bucket=args.bucket)
@@ -141,12 +139,18 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     #createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
 
     createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
-    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
+    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
     #createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
 
 
-
-
+def testPyArd(args=None):
+    # TODO: This code is not particurly useful at present. We can go from MAC -> allele list, but not vice versa.
+    import pyard
+    print('TestingPyArd')
+    ard = pyard.ARD()
+    #ard.refresh_mac_codes()
+    reducedGLString= ard.redux_gl("A*01:01/A*01:01N+A*02:AB^B*07:02+B*07:AB", "lgx")
+    print('Reduced:' + str(reducedGLString))
 
 
 if __name__=='__main__':
@@ -165,6 +169,8 @@ if __name__=='__main__':
             testWriteFileS3(args=args)
         elif(validatorType=='CREATE_SCHEMA_FILES'):
             testCreateSchemaFilesS3(args=args)
+        elif(validatorType=='TEST_PYARD'):
+            testPyArd(args=args)
         else:
             print('I do not understand the validator type.')
 
