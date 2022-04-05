@@ -4,10 +4,10 @@
 # You need to provide the config file validation_config.yml with entries url: {} username: {} password: {}
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/ben/github/Converters/Components/Immunogenic_Epitopes"
+PROJECT_PATH="/home/ben/github/Converters/Components/Non_Hla_Antibodies"
 ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
-LAMBDA_FUNCTION="validateImmunogenicEpitopesStaging"
-#LAMBDA_FUNCTION="validateImmunogenicEpitopesProd"
+LAMBDA_FUNCTION="validateNonHlaAntibodiesStaging"
+#LAMBDA_FUNCTION="validateNonHlaAntibodiesProd"
 
 cd $PROJECT_PATH
 
@@ -18,7 +18,6 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package openpyxl
 pip install --target ./package pyyaml
-pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
 deactivate
 
 # Zip packages
@@ -27,7 +26,7 @@ zip -r9 $PROJECT_PATH"/function.zip" .
 
 # Zip Script
 cd ..
-zip -g function.zip ImmunogenicEpitopesValidator.py
+zip -g function.zip NonHlaAntibodiesValidator.py
 
 # Zip supporting files. -j flag will junk the relative paths.
 zip -j -g function.zip ../../Common/Validation.py

@@ -4,19 +4,25 @@ import datetime
 
 # pip install git+https://github.com/nmdp-bioinformatics/pyglstring
 # pyglstring is a repository of sanity checks written by Bob Milius at NMDP/CIBMTR. Handy.
-from glstring import check
+try:
+    from glstring import check
+except Exception as e:
+    print('Warning, package glstring is not available.')
 
 # TODO: Many of these methods can be simplified/refactored. Make a method to check if something is an element in a list
 # TODO: Add the "required" flag to many of these methods.
 
-def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?', delimiter=None):
+def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=True, columnName='?', delimiter=None, required=True):
     # Return an empty string if there is a single file found.
     # Or else return text describing the problem.
     query = str(query).strip()
     validationText = ''
 
     if(len(query)<1):
-        return 'No data provided for column ' + str(columnName)
+        if(not required):
+            return ''
+        else:
+            return 'No data provided for column ' + str(columnName)
 
     # Sometimes the query is a list separated by commas or something.
     if delimiter is None:
@@ -69,6 +75,12 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
                 validationText = validationText + resultsText + '\n'
     return validationText
 
+def validateTextExists(query=None, columnName='?'):
+    if(query is None or len(query) < 1):
+        return 'No data provided for column ' + str(columnName)
+    else:
+        return ''
+
 def validateBoolean(query=None, columnName='?', required=True):
     queryText=str(query).lower().strip()
 
@@ -103,6 +115,29 @@ def validateBloodGroup(query=None, columnName='?', required=True):
         return ''
     else:
         return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid blood type.')
+
+def validateRejectionType(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
+    validRejectionTypes = ['ANTIBODY MEDIATED (ABMR)','CELLULAR','MIXED','OTHER / UNKNOWN']
+    if(str(query).upper() in validRejectionTypes):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid rejection type.')
+
+def validateDiseaseAetiology(query=None, columnName='?', required=True):
+    queryText = str(query).lower().strip()
+    if (not required and queryText in ['','unknown','na','n/a','(n/a)']):
+        return ''
+
+    validDiseaseAetiologies = ['IMMUNE','NON-IMMUNE','UNKNOWN']
+    if(str(query).upper() in validDiseaseAetiologies):
+        return ''
+    else:
+        return ('In data column ' + str(columnName) + ' the text (' + str(query) + ') does not seem to be a valid disease aetiology.')
+
 
 def validateDonorSourceType(query=None, columnName='?', required=True):
     queryText = str(query).lower().strip()
@@ -184,15 +219,6 @@ def validateHlaGenotypeEntry(query=None, searchList=None, allowPartialMatch=None
 
     # TODO: Implement the list of HML IDs.
     hmlIdValidationResults = 'Could not find file with matching HML ID'
-    '''
-    print('Checking HML ID.')
-    hmlIdList = getHmlIDsListFromUploads(uploadList=uploadList)
-    if(query in hmlIdList):
-        print(str(query) + ' is in the HML ID list! Next, check if it is unique.')
-        hmlIdValidationResults=validateUniqueEntryInList(query=query, searchList=hmlIdList, allowPartialMatch=False, columnName=columnName)
-        print('hml validation results:' + str(hmlIdValidationResults))
-        return hmlIdValidationResults
-    '''
 
     # I could not find matching File or HMLID, so let's validate GL String.
     #print('Checking if this is a sane glstring:' + str(query))
