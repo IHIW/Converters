@@ -136,11 +136,11 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     nonImmuEpsProjectID = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID,nonImmuEpsProjectID,dqEpsProjectID])
-
     createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
     createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
     createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
+
+    createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID])
 
 
 def testPyArd(args=None):
