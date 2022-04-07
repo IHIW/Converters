@@ -51,13 +51,13 @@ def immunogenic_epitope_handler(event, context):
 
         excelKey = uploadDetails['file_name']
         print('Excel Filename:' + excelKey)
+        uploadId = uploadDetails['id']
 
         validationResults = None
         # Is this an excel file? It should have the xlsx extension.
 
         url = uploadDetails['url']
         token = uploadDetails['token']
-
 
         projectName = str(uploadDetails['project_name'])
         projectID =  str(uploadDetails['project_id'])
@@ -104,7 +104,7 @@ def immunogenic_epitope_handler(event, context):
             uploadDetails['validation_feedback'] = validationFeedback
             uploadDetails['validator_type'] = validatorType
 
-            createValidationReport(isReportValid=len(validationResults) == 0, parentUploadFileName=excelKey
+            createValidationReport(isReportValid=len(validationResults) == 0, parentUploadFileName=excelKey, parentId=uploadId
                 , outputReportWorkbook=outputReportWorkbook, bucket=bucket, token=token, url=url, validatorType=validatorType)
 
         elif (fileType == 'XLSX'):
@@ -304,24 +304,31 @@ def getColumnNames(isImmunogenic=True):
 
         ]
 
-def createValidationReport(isReportValid=None, parentUploadFileName=None, outputReportWorkbook=None, bucket=None, token=None, url=None, validatorType=None):
+def createValidationReport(isReportValid=None, parentUploadFileName=None, parentId=None, outputReportWorkbook=None, bucket=None, token=None, url=None, validatorType=None):
     print('Creating a validation Report.')
     reportFileName = parentUploadFileName + '.Validation_Report.xlsx'
     reportStreamData = ParseExcel.createBytestreamExcelOutputFile(workbookObject=outputReportWorkbook)
 
-    # if it already exists, we don't need to create the upload object for the report.
-    # This throws a HTTP Error 404 if the file doesn't exist
-    # I think it's not great to use try/catch for program logic, maybe there's a better solution
-    existingUpload = IhiwRestAccess.getUploadIfExists(token=token, url=url, fileName=reportFileName)
-    if(existingUpload is None):
-        print('There is no child upload for the report file ' + str(reportFileName) + ' so I will create one.')
-        IhiwRestAccess.createConvertedUploadObject(newUploadFileName=reportFileName, newUploadFileType='XLSX', token=token, url=url,previousUploadFileName=parentUploadFileName)
-    else:
-        print('There is already a child upload(' + str(existingUpload) + ') for report file ' + str(reportFileName) + ' so I will not create one.')
+    try:
+        # Delete the Children of this parent Upload.
+        print('Looking for children of this upload object..')
+        childUploads = IhiwRestAccess.getUploadsByParentId(token=token, url=url, parentId=parentId)
+        print('Found these children:' + str(childUpload['id']) for childUpload in childUploads)
 
-    # TODO: It might be better to detect a validation status in the handler for the XLSX Report, and pass it to the next step.
-    #   This is better for step functions, and lets the handler handle the xlsx files individually.
-    #   But to do that I need to access the parent Project_Data_Matrix and get it's validation status
+        for childUpload in childUploads:
+            if (childUpload['type'] == 'XLSX'):
+                childUploadFileName = childUpload['fileName']
+                childUploadId = childUpload['id']
+                deleteResponse = IhiwRestAccess.deleteUpload(token=token, url=url, uploadId=childUploadId)
+                print('Found this response from deleting the child:' + str(deleteResponse))
+    except Exception as e:
+        print('Warning! Could not delete the previous child upload:' + str(e))
+
+    try:
+        IhiwRestAccess.createConvertedUploadObject(newUploadFileName=reportFileName, newUploadFileType='XLSX', token=token, url=url, previousUploadFileName=parentUploadFileName)
+    except Exception as e:
+        print('Warning! Could not Create the upload object for the child:' + str(e))
+
     IhiwRestAccess.setValidationStatus(uploadFileName=reportFileName, isValid=isReportValid,
         validationFeedback='Download this report for Detailed Validation Results.'
         , validatorType=validatorType + '_REPORT', token=token, url=url)

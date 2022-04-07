@@ -762,8 +762,6 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     summaryWithTypingHeaders = ('datarow_id', 'upload_filename', 'row#', 'submitter'
         , 'sample_id','recipient_hla', 'A', 'B', 'C', 'DRB1', 'DRB3', 'DRB4', 'DRB5', 'DQB1', 'DQA1', 'DPB1', 'DPA1')
 
-
-
     for headerIndex, header in enumerate(summaryWithTypingHeaders):
         dataMatrixColumnLetter = get_column_letter(headerIndex+1)
         dataMatrixCellIndex = dataMatrixColumnLetter + '1'
