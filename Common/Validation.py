@@ -76,7 +76,7 @@ def validateUniqueEntryInList(query=None, searchList=None, allowPartialMatch=Tru
     return validationText
 
 def validateTextExists(query=None, columnName='?'):
-    if(query is None or len(query) < 1):
+    if(query is None or len(str(query)) < 1):
         return 'No data provided for column ' + str(columnName)
     else:
         return ''
