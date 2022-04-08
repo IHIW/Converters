@@ -38,23 +38,23 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     if(url is not None and token is not None and len(url)>0 and len(token)>0):
 
         IhiwRestAccess.createConvertedUploadObject(newUploadFileName=summaryFileName
-                                                   , newUploadFileType='OTHER'
-                                                   , previousUploadFileName=parentUploadName
-                                                   , url=url, token=token)
+            , newUploadFileType='OTHER'
+            , previousUploadFileName=parentUploadName
+            , url=url, token=token)
         IhiwRestAccess.createConvertedUploadObject(newUploadFileName=zipFileName
-                                                   , newUploadFileType='OTHER'
-                                                   , previousUploadFileName=parentUploadName
-                                                   , url=url, token=token)
+            , newUploadFileType='OTHER'
+            , previousUploadFileName=parentUploadName
+            , url=url, token=token)
 
         IhiwRestAccess.setValidationStatus(uploadFileName=parentUploadName, isValid=True,
-                                           validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
-                                           token=token)
+            validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
+            token=token)
         IhiwRestAccess.setValidationStatus(uploadFileName=summaryFileName, isValid=True,
-                                           validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
-                                           token=token)
+            validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
+            token=token)
         IhiwRestAccess.setValidationStatus(uploadFileName=zipFileName, isValid=True,
-                                           validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
-                                           token=token)
+            validationFeedback='Valid Report.', validatorType='PROJECT_REPORT', url=url,
+            token=token)
     else:
         raise Exception('Could not create login token when creating upload entries for report files.')
 
@@ -183,8 +183,6 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
 
     else:
         typings.update(parseGlStrings(glstrings=[hla]))
-
-    #print('returning typings' + str(typings))
     return typings
 
 def reduceGenotypings(typings=None):
@@ -294,7 +292,6 @@ def getFullHamlFileNames(token=None, url=None, projectIDs=None, allUploads=None,
         # This is common enough we don't need to warn about it..
         #print('Warning: for user ' + str(uploadUser) + ' I found ' + str(len(hamlUploadFilenames)) + ' files of type ' + str('HAML') + ' for the keywords ' + str(cellData))
         #print('\n'.join(hamlUploadFilenames))
-
 
     return hamlUploadFilenames
 
@@ -635,10 +632,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                         antibodiesPreTxLookup[transplantationIndex] = preTxAntibodies
                         antibodiesPostTxLookup[transplantationIndex] = postTxAntibodies
 
-
-
                     # Copy the columns (including colors and notes) into the new spreadsheet
-
                     dataMatrixReportLine = [str(transplantationIndex), dataMatrixUpload['fileName'], str(currentExcelRow),submittingUser,submittingLab,submissionDate
                         ,createGlStringFromTypings(recipientTypingsSimplified), createGlStringFromTypings(donorTypingsSimplified),transplantationReportFileName]
 
@@ -672,25 +666,18 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                                     dataMatrixReportWorksheet[reportCellIndex].comment = Comment(dataMatrixCell.comment.text, 'Data Matrix Validator')
                             except Exception as e:
                                 print('That did not work:' + str(e))
-
                         else:
                             pass
 
                     # TODO: Size the columns and rows better
-
                     # TODO: Text wrapping?
-
-
 
                 else:
                     #print('Empty Data line.')
                     pass
-
-
         else:
             print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']))
             print('Upload ID of missing data matrix:' + str(dataMatrixUpload['id']))
-
 
     dataMatrixReportFileName = 'Project.' + projectString+ '.DataMatrixReport.xlsx'
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=dataMatrixReportWorkbook)
@@ -707,7 +694,6 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     postTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPostTx.xlsx'
     createAlleleSpecificReport(antibodiesLookup=antibodiesPostTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
         , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=postTxAlleleSpecificReportName)
-
 
     # create zip file
     zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.TransplantationReports.zip'
@@ -738,7 +724,7 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     projectString = str('_'.join(projectIDs))
 
     # preload an upload list to use repeatedly later
-    allUploads = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
+    allUploads = IhiwRestAccess.getFilteredUploads(token=token, url=url, projectIDs=projectIDs)
     dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
 
     # This report is the copy of all data in the data matrix, including validation feedback.
@@ -839,7 +825,6 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
                     hamlCellData = getDataMatrixValue(columnName='recipient_haml', validatedWorkbook=validatedWorkbook, currentExcelRow=currentExcelRow, firstSheet=firstSheet)
                     recipHamlFilenames = getFullHamlFileNames(token=token, url=url, projectIDs=projectIDs, allUploads=allUploads, cellData=hamlCellData, uploadUser=uploadUserId)
 
-
                     # Create the Antibody Typing Report.
                     if(len(recipientTypingsSimplified) > 0):
 
@@ -853,8 +838,6 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
                         #print('The antibody report returned these values:' + str(preTxAntibodies) + str(postTxAntibodies))
 
                         recipientAntibodiesLookup[dataRowIndexIndex] = preTxAntibodies
-
-
 
                     # Copy the columns (including colors and notes) into the new spreadsheet
                     dataMatrixReportLine = [str(dataRowIndexIndex), dataMatrixUpload['fileName'], str(currentExcelRow),submittingUser,submittingLab,submissionDate
@@ -890,25 +873,19 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
                                     dataMatrixReportWorksheet[reportCellIndex].comment = Comment(dataMatrixCell.comment.text, 'Data Matrix Validator')
                             except Exception as e:
                                 print('That did not work:' + str(e))
-
                         else:
                             pass
 
                     # TODO: Size the columns and rows better
-
-                    # TODO: Text wrapping?
-
-
+                    # TODO: Text wrapping? Make it look nice
 
                 else:
                     #print('Empty Data line.')
                     pass
 
-
         else:
             print('No workbook data was found for data matrix ' + str(dataMatrixUpload['fileName']))
             print('Upload ID of missing data matrix:' + str(dataMatrixUpload['id']))
-
 
     dataMatrixReportFileName = 'Project.' + projectString+ '.DataMatrixReport.xlsx'
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=dataMatrixReportWorkbook)
@@ -921,26 +898,6 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     preTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecific.xlsx'
     createAlleleSpecificReport(antibodiesLookup=recipientAntibodiesLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
        , bucket=bucket, reportName=preTxAlleleSpecificReportName, isImmunogenic=False)
-
-    '''
-    postTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPostTx.xlsx'
-    createAlleleSpecificReport(antibodiesLookup=antibodiesPostTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
-        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=postTxAlleleSpecificReportName)
-    
- 
-        
-    # create zip file
-    zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.TransplantationReports.zip'
-    zipFileStream = io.BytesIO()
-    supportingFileZip = zipfile.ZipFile(zipFileStream, 'a', zipfile.ZIP_DEFLATED, False)
-
-    for transplantationReportFileName in supportingSpreadsheets.keys():
-        #print('Adding file ' + str(transplantationReportFileName) + ' to ' + str(zipFileName))
-        supportingFileZip.writestr(transplantationReportFileName, supportingSpreadsheets[transplantationReportFileName])
-
-    supportingFileZip.close()
-    S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
-    '''
 
 def getDataMatrixUploads(projectIDs=None, token=None, url=None, uploadList=None):
     # collect all data matrix files.
