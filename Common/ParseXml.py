@@ -345,7 +345,6 @@ def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
     xmlFileObject = s3.get_object(Bucket=bucket, Key=hmlFileName)
     xmlText = xmlFileObject["Body"].read()
     xmlParser = etree.XMLParser()
-    glString = ''
     try:
         xmlTree = etree.fromstring(xmlText, xmlParser)
         for sampleNode in xmlTree.iter("*"):
@@ -353,24 +352,15 @@ def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
 
                 sampleID = sampleNode.get('id')
                 if (sampleID not in glStrings.keys()):
-                    glString = ''
+                    glStrings[sampleID] = []
 
-                #print('SAMPLEID FOUND:' + str(sampleID))
                 for glStringElement in sampleNode.iter("*"):
                     if(str(glStringElement.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}glstring')):
-                        #print('*****glstring text is this:' + str(element.text))
-                        if(glStringElement.text is not None):
-                            # TODO: Sometimes glStrings for the same locus are reported in different blocks.
-                            #  So this is not perfect for re-assembling GLStrings.
-                            glString += str(glStringElement.text).strip() + '^'
+                        if(glStringElement.text is not None and len(glStringElement.text)>0):
+                            glStrings[sampleID].append(glStringElement.text)
 
-                        if (len(glString) > 0):
-                            glStrings[sampleID] = glString[0:len(glString) - 1]  # Trim off the trailing locus delimiter
-                        else:
-                            glStrings[sampleID] = None
-
-
-        # TODO: HLA typing can also be reported as A series of diploid locus blocks in HML
+        # TODO: HLA typing can also be reported as A series of diploid locus blocks in HML.
+        #  Should I fetch those and form them into a GLString?
         # schemas.nmdp.org
         return glStrings
 

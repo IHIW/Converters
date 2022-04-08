@@ -74,52 +74,62 @@ def getDataMatrixValue(validatedWorkbook=None, columnName=None, currentExcelRow=
     except Exception as e:
         return '?'
 
-def parseGlString(glstring=None):
+def parseGlStrings(glstrings=None):
     # Parse GL String, locus delimiters. Keep copies of genes together, I guess.
     #print('parsing GL String:' + str(glstring))
     glStringTyping={}
 
     # Split by locus
-    for locusToken in glstring.split('^'):
-        #print('Found locus:' + str(locusToken))
-        if('A*' in locusToken and 'MICA*' not in locusToken):
-            glStringTyping['A']=locusToken
-        elif ('B*' in locusToken and 'MICB*' not in locusToken):
-            glStringTyping['B'] = locusToken
-        elif ('C*' in locusToken):
-            glStringTyping['C'] = locusToken
-        elif ('DRB1*' in locusToken):
-            glStringTyping['DRB1'] = locusToken
-        elif ('DRB3*' in locusToken):
-            glStringTyping['DRB3'] = locusToken
-        elif ('DRB4*' in locusToken):
-            glStringTyping['DRB4'] = locusToken
-        elif ('DRB5*' in locusToken):
-            glStringTyping['DRB5'] = locusToken
-        elif ('DQB1*' in locusToken):
-            glStringTyping['DQB1'] = locusToken
-        elif ('DQA1*' in locusToken):
-            glStringTyping['DQA1'] = locusToken
-        elif ('DPB1*' in locusToken):
-            glStringTyping['DPB1'] = locusToken
-        elif ('DPA1*' in locusToken):
-            glStringTyping['DPA1'] = locusToken
-        elif('HLA-E*' in locusToken or 'HLA-F*' in locusToken or 'HLA-G*' in locusToken or 'HLA-H*' in locusToken or 'MICA*' in locusToken or 'MICB*' in locusToken):
-            # Not a problem but we're not using these.
-            pass
-        else:
-            print('Unknown Locus:' + str(locusToken))
+    for glstring in glstrings:
+        for locusToken in glstring.split('^'):
+            #print('Found locus:' + str(locusToken))
+            if('A*' in locusToken and 'MICA*' not in locusToken):
+                #glStringTyping['A']=locusToken
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'A':locusToken})
+            elif ('B*' in locusToken and 'MICB*' not in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'B':locusToken})
+            elif ('C*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'C':locusToken})
+            elif ('DRB1*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DRB1':locusToken})
+            elif ('DRB3*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DRB3':locusToken})
+            elif ('DRB4*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DRB4':locusToken})
+            elif ('DRB5*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DRB5':locusToken})
+            elif ('DQB1*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DQB1':locusToken})
+            elif ('DQA1*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DQA1':locusToken})
+            elif ('DPB1*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DPB1':locusToken})
+            elif ('DPA1*' in locusToken):
+                glStringTyping = updateTypings(typings=glStringTyping, newTypings={'DPA1':locusToken})
+            elif('HLA-E*' in locusToken or 'HLA-F*' in locusToken or 'HLA-G*' in locusToken or 'HLA-H*' in locusToken or 'MICA*' in locusToken or 'MICB*' in locusToken):
+                # Not a problem but we're not using these.
+                pass
+            else:
+                print('Unknown Locus:' + str(locusToken))
 
     return glStringTyping
 
 def updateTypings(typings=None, newTypings=None):
-    #print('Updating Typings\n' + str(typings) + '\nwith new typings\n' + str(newTypings))
     for locus in newTypings.keys():
-        if(typings[locus] == '?'):
+        if(locus not in typings.keys() or typings[locus] == '?'):
             typings[locus] = newTypings[locus]
         else:
-            # Using a genotype ambiguity separator here.
-            typings[locus] = typings[locus] + '|' + newTypings[locus]
+            genotypeAmbiguitySeparator='|'
+            alleleCopySeparator='+'
+            # In a GLString, '|' is the genotype ambiguity separator.
+            # '+' separates copies of a gene at a single locus.
+            # Which to use? Most likely, these are two alleles typed separately.
+            # But if they are genotypes (Already include a '+' or '|'), we can separate using '|'
+            if(genotypeAmbiguitySeparator in typings[locus] or genotypeAmbiguitySeparator in newTypings[locus]
+                or alleleCopySeparator in typings[locus] or alleleCopySeparator in newTypings[locus]):
+                typings[locus] = typings[locus] + genotypeAmbiguitySeparator + newTypings[locus]
+            else:
+                typings[locus] = typings[locus] + alleleCopySeparator + newTypings[locus]
     return typings
 
 def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs=None, bucket=None, sampleID=None):
@@ -151,24 +161,18 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
         #print('I found ' + str(len(fileResults)) + ' files, parsing for GLStrings...')
         for fileResult in fileResults:
             #print('Checking file for glstrings:' + str(fileResult['fileName']))
-            #print('Parsing file:' + str(fileResult) + ' for glStrings.')
             currentGlStrings = ParseXml.getGlStringsFromHml(hmlFileName=fileResult['fileName'], s3=s3, bucket=bucket)
-            #print('I found:' + str(currentGlStrings))
-
-            #print('Looking for sample id:(' + str(sampleID) + ')')
-
-            #print('Found this GLString:' + str(currentGlString))
+            #print('Found this currentGlStrings:' + str(currentGlStrings))
             if currentGlStrings is not None:
                 for hmlSampleId in currentGlStrings.keys():
                     if (sampleID is None or sampleID.strip()=='?' or len(str(sampleID).strip()) < 1):
                         # If there is no SampleID Given in DataMatrix, use all the GLStrings.
-                        # TODO: This probably isn't completely correct. But we want to see the problem (multiple sample IDs) in the reports.
                         # This will probably result in multiple samples from one HML assigned to this person.
-                        typings = updateTypings(typings=typings, newTypings=parseGlString(currentGlStrings[hmlSampleId]))
+                        typings = updateTypings(typings=typings, newTypings=parseGlStrings(glstrings=currentGlStrings[hmlSampleId]))
                     else:
                         # Check if the data matrix sample id is in the data matrix
                         if(str(sampleID).strip().upper() in str(hmlSampleId).strip().upper()):
-                            typings = updateTypings(typings=typings, newTypings=parseGlString(currentGlStrings[hmlSampleId]))
+                            typings = updateTypings(typings=typings, newTypings=parseGlStrings(glstrings=currentGlStrings[hmlSampleId]))
                         else:
                             # TODO: What do we do if there is no matching sample? We found an HML file but no Sample?
                             # This is another sample in the same HML file.
@@ -178,7 +182,7 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
                 print('Warning, No GL Strings found for HML file ' + fileResult['fileName'])
 
     else:
-        typings.update(parseGlString(glstring=hla))
+        typings.update(parseGlStrings(glstrings=[hla]))
 
     #print('returning typings' + str(typings))
     return typings
