@@ -550,7 +550,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
     # Combine data matrices together for summary worksheet..
     for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
-        print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
+        print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex+1) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
         #print('This is the upload: ' + str(dataMatrixUpload))
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
@@ -782,7 +782,7 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
 
     # Combine data matrices together for summary worksheet..
     for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
-        print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
+        print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex+1) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
         inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())

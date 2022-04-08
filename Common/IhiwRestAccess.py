@@ -293,7 +293,7 @@ def getUploads(token=None, url=None, timeout=120):
 
     return response
 
-def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
+def getFilteredUploads(projectIDs=[], uploadTypes=None, token=None, url=None):
     if(projectIDs is None):
         raise Exception('I need a project ID to filter on.')
     elif(not isinstance(projectIDs, list)):
@@ -309,19 +309,14 @@ def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
     uploadTypes = [str(uploadType) for uploadType in uploadTypes]
 
     # Get Uploads
+    filteredUploadList = []
     for projectID in projectIDs:
-
         uploadList = getUploadsByProjectID(token=token, url=url, projectId=projectID)
 
-        filteredUploadList = []
         if uploadList is not None:
             for upload in uploadList:
-                uploadProjectId = str(upload['project']['id'])
                 uploadType = str(upload['type'])
-                #print('uploadProjectId:' + uploadProjectId)
-                #print('uploadType:' + uploadType)
-
-                if ((len(uploadTypes)==0 or uploadType in uploadTypes)):
+                if (uploadTypes is None or len(uploadTypes)==0 or uploadType in uploadTypes):
                     filteredUploadList.append(upload)
                 else:
                     pass
@@ -427,26 +422,11 @@ def getUploadsByProjectID(token=None, url=None, projectId=None):
             print(str(e) + ' when searching for uploads by project ' + str(projectId))
             return None
 
-def getUploadsByProjects(token=None, url=None, projectIDs=None):
-    if (url is None):
-        url = getUrl()
-    if (token is None):
-        token = getToken(url=url)
-    if(projectIDs is None):
-        print('Warning! No projectIds were provided, cannot find uploads.')
-        return None
-    else:
-        if (projectIDs is not None and not isinstance(projectIDs, list)):
-            projectIDs = [projectIDs]
-        uploads = []
-        for projectId in projectIDs:
-            projectUploads = getUploadsByProjectID(token=token, url=url, projectId=projectId)
-            if(projectUploads is None):
-                print('No uploads found for project ' + projectId)
-            else:
-                uploads.extend(projectUploads)
 
-        return uploads
+# TODO: I deprecated this method, delete it at some point. Use getFilteredUploads instead. These methods had almost the same logic.
+def getUploadsByProjects(token=None, url=None, projectIDs=None):
+    raise Exception ('getUploadsByProjects is deprecated, use getFilteredUploads instead.')
+
 
 def getUploadFileNamesByPartialKeyword(token=None, url=None, fileNameQueries=None, projectIDs=None, allUploads=None, uploadTypeFilter=None, uploadUser=None):
     # Make lists of the filter options.
@@ -508,13 +488,8 @@ def getUploadFileNamesByPartialKeyword(token=None, url=None, fileNameQueries=Non
             else:
                 pass
 
-        #print('for fileNameQuery ' + str(fileNameQueries) + ' I found these uploads(n=' +str(len(uploadList)) + '):\n' + str(uploadList))
-
         # TODO: What if there are duplicate files? will list(set(list)) work? This could cause a bug when adding files to the zip. Not sure.
-        #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))
-        # list comprehension to remove duplicate uploads
-        #uploadList = [dict(t) for t in {tuple(d.items()) for d in uploadList}]
-        #print('returning this file list of len ' + str(len(uploadList)) + ' : ' + str(uploadList))
+
         return uploadList
 
 def getUploadByFilename(token=None, url=None, fileName=None):
@@ -562,14 +537,11 @@ def deleteUpload(token=None, url=None, uploadId=None):
     if(token is None):
         token = getToken(url=url)
     print('deleting upload by id:(' + str(uploadId) + ')')
-
     try:
 
         if token is None or len(token) < 1:
             print('Error. No login token available when Deleting upload.')
             return None
-
-
         fullUrl = str(url) + '/api/uploads/' + str(uploadId)
         body = {}
 
@@ -577,11 +549,6 @@ def deleteUpload(token=None, url=None, uploadId=None):
         updateRequest = request.Request(url=fullUrl, data=encodedJsonData, method='DELETE')
         updateRequest.add_header('Content-Type', 'application/json')
         updateRequest.add_header('Authorization', 'Bearer ' + token)
-
-        # TODO: Something weird happening with permissions etc. Debug this, this occurs when I "Edit" an antibody_csv file
-        print('Delete Upload fullURL:(' + str(fullUrl) + ')')
-        print('Delete Upload token:(' + str(token) + ')')
-        print('Delete Upload updateRequest:(' + str(updateRequest) + ')')
 
         responseData = request.urlopen(updateRequest).read().decode("UTF-8")
         print('Response from deleting upload:' + str(responseData))
@@ -639,16 +606,11 @@ def fixUpload(uploadName=None, uploadType=None, projectID=None, url=None, token=
     try:
         print('Saving Upload:' + str(oldUpload))
 
-
-
-
         fullUrl = str(url) + '/api/uploads'
 
         body = {
             'upload': newUpload
-
         }
-
 
 
         print('body:' + str(body))
