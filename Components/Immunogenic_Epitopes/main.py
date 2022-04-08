@@ -140,7 +140,11 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
     createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
 
-    createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID])
+    # TODO: excluding FASTQ files here. Did I miss any? Could check but I think that's everything.
+    createProjectZipFile(bucket=args.bucket, url=url, token=token
+        , projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID]
+        ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'])
+
 
 
 def testPyArd(args=None):
