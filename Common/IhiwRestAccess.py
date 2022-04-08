@@ -317,16 +317,17 @@ def getFilteredUploads(projectIDs=[], uploadTypes=[], token=None, url=None):
         uploadList = getUploadsByProjectID(token=token, url=url, projectId=projectID)
 
         filteredUploadList = []
-        for upload in uploadList:
-            uploadProjectId = str(upload['project']['id'])
-            uploadType = str(upload['type'])
-            #print('uploadProjectId:' + uploadProjectId)
-            #print('uploadType:' + uploadType)
+        if uploadList is not None:
+            for upload in uploadList:
+                uploadProjectId = str(upload['project']['id'])
+                uploadType = str(upload['type'])
+                #print('uploadProjectId:' + uploadProjectId)
+                #print('uploadType:' + uploadType)
 
-            if ((len(uploadTypes)==0 or uploadType in uploadTypes)):
-                filteredUploadList.append(upload)
-            else:
-                pass
+                if ((len(uploadTypes)==0 or uploadType in uploadTypes)):
+                    filteredUploadList.append(upload)
+                else:
+                    pass
 
     print('I found a total of ' + str(len(filteredUploadList)) + ' filtered uploads for projects ' + str(projectIDs) + ' and upload types ' + str(uploadTypes) +'.\n')
     return filteredUploadList
