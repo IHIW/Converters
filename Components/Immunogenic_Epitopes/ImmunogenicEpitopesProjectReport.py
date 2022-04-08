@@ -501,7 +501,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     projectString = str('_'.join(projectIDs))
 
     # preload an upload list to use repeatedly later
-    allUploads = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
+    allUploads = IhiwRestAccess.getFilteredUploads(token=token, url=url, projectIDs=projectIDs)
     dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
 
     # This report is the copy of all data in the data matrix, including validation feedback.

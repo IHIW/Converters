@@ -300,7 +300,7 @@ def getFilteredUploads(projectIDs=[], uploadTypes=None, token=None, url=None):
         projectIDs = [projectIDs]
 
     if(uploadTypes is None):
-        pass
+        uploadTypes = []
     elif(not isinstance(uploadTypes, list)):
         uploadTypes = [uploadTypes]
 
