@@ -570,7 +570,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
             submissionDate = dataMatrixUpload['createdAt']
 
             uploadUserId = dataMatrixUpload['createdBy']['id']
-            print('Found an upload user ID:' + str(uploadUserId))
+            #print('Found an upload user ID:' + str(uploadUserId))
 
             # Loop input Workbook data
             # for dataLineIndex, dataLine in enumerate(inputExcelFileData):

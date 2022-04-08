@@ -202,7 +202,6 @@ def getCredentials(configFileName='validation_config.yml'):
         user=configDict['username']
         password = configDict['password']
 
-        print('Finished Fetching Credentials.')
         return (user, password)
     except Exception as e:
         print('Could not load login configuration.')
@@ -216,7 +215,6 @@ def getUrl(configFileName='validation_config.yml'):
         configDict = yaml.load(configStream, Loader=yaml.FullLoader)
         url = configDict['url']
 
-        print('Finished Fetching Url.')
         return url
     except Exception as e:
         print('Could not load login configuration.')
@@ -247,7 +245,6 @@ def getToken(url=None, user=None, password=None):
         requestResponse=request.urlopen(tokenRequest)
         responseData=ast.literal_eval(requestResponse.read().decode("UTF-8"))
         tokenText = responseData['id_token']
-        print('Finished Fetching Token.')
         return tokenText
     except urllib.error.HTTPError as e:
         print('HTTP error when obtaining token:' + str(e))
@@ -343,7 +340,6 @@ def getIhiwUserById(token=None, url=None, ihiwUserId=None):
         return None
 
     try:
-
         fullUrl = str(url) + '/api/ihiw-users/' + str(ihiwUserId)
         body = {}
 
