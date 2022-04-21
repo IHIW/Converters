@@ -1,7 +1,7 @@
 from boto3 import client
 #import json
 #import urllib
-
+from Common.S3_Access import writeFileToS3
 
 try:
     import IhiwRestAccess
@@ -15,11 +15,53 @@ except Exception as e:
     from Common import ParseXml
 
 s3 = client('s3')
-from sys import exc_info
 
 import zipfile
 import io
-from time import sleep
 
 
+def createFamilyHaplotypeReport(bucket=None, newline='\r\n', projectIDs=None, url=None, token=None, fileTypeFilter=None):
+    print('Creating a Reference Cell Lines Report.')
 
+    reportText = 'Family Haplotype Report' + newline + newline
+
+    if(projectIDs is None):
+        raise Exception('Cannot create report because you did not give me a project ID')
+    elif(not isinstance(projectIDs, list)):
+        projectIDs = [projectIDs]
+    projectIDs = [str(projectID) for projectID in projectIDs]
+
+    if url is None:
+        url=IhiwRestAccess.getUrl()
+    if token is None:
+        token=IhiwRestAccess.getToken(url=url)
+
+    print('Website URL:' + str(url))
+    print('bucket:' + str(bucket))
+
+    for projectId in projectIDs:
+
+        print('ProjectID:' + str(projectId))
+        projectUploads = IhiwRestAccess.getFilteredUploads(projectIDs=[projectId], uploadTypes=fileTypeFilter, token=token, url=url)
+    
+        # Key = submitter ihiw_user.id, Value = Name, Lab
+        userIDs = {}
+        for upload in projectUploads:
+            userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ': ' + upload['createdBy']['lab']['institution']
+
+        print('Unique Submitter IDs:' + str(sorted(list(userIDs.keys()))))
+        # for each submitter
+        for userIndex, userID in enumerate(sorted(list(userIDs.keys()))):
+            print('Finding Uploads for User:' + str(userID) + ' (' + str(userIndex + 1) + ' of ' + str(len(list(userIDs.keys()))) + ')')
+    
+            reportText += newline + 'User ' + str(userID) + ' (' + str(userIDs[userID]) + ')' + newline
+
+            currentUserUploads =  [upload for upload in projectUploads if upload['createdBy']['id'] == userID]
+
+
+            reportText += str(len(currentUserUploads)) + ' Uploads Files Submitted:' + newline
+            for hmlUpload in currentUserUploads:
+                reportText += '\t' + str(hmlUpload['fileName']) + ' : ' + str(hmlUpload['type']) + newline
+
+    print('Report Text' + newline + reportText)
+    writeFileToS3(s3ObjectBytestream=reportText, newFileName='Project.' + '_'.join(projectIDs) + '.Report.txt', bucket=bucket)

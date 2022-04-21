@@ -3,7 +3,7 @@ import argparse
 
 from Common import IhiwRestAccess
 from Common.S3_Access import createProjectZipFile
-from Components.Reference_CellLines.NgsReferenceCellLinesProjectReport import createReferenceCellLinesReport
+from Components.FamilyHaplotypes.FamilyHaplotypesProjectReport import createFamilyHaplotypeReport
 
 
 def parseArgs():
@@ -19,8 +19,10 @@ def testCreateFamilyHaplotypeProjectReport(args=None):
 
     url=IhiwRestAccess.getUrl()
     token=IhiwRestAccess.getToken(url=url)
-
+    
+    createFamilyHaplotypeReport(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER','PED','INFO_CSV'])
     createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER','PED','INFO_CSV'])
+
 
 if __name__=='__main__':
     try:
