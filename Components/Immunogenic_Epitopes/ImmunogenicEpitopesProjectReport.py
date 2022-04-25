@@ -171,7 +171,7 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
                         typings = updateTypings(typings=typings, newTypings=parseGlStrings(glstrings=currentGlStrings[hmlSampleId]))
                     else:
                         # Check if the data matrix sample id is in the data matrix
-                        if(str(sampleID).strip().upper() in str(hmlSampleId).strip().upper()):
+                        if(str(sampleID).strip().upper() == str(hmlSampleId).strip().upper()):
                             typings = updateTypings(typings=typings, newTypings=parseGlStrings(glstrings=currentGlStrings[hmlSampleId]))
                         else:
                             # TODO: What do we do if there is no matching sample? We found an HML file but no Sample?
