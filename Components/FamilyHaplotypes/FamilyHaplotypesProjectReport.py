@@ -44,17 +44,29 @@ def createFamilyHaplotypeReport(bucket=None, newline='\r\n', projectIDs=None, ur
         print('ProjectID:' + str(projectId))
         projectUploads = IhiwRestAccess.getFilteredUploads(projectIDs=[projectId], uploadTypes=fileTypeFilter, token=token, url=url)
     
-        # Key = submitter ihiw_user.id, Value = Name, Lab
+        # Key = submitter ihiw_user.id, Value = Name, Lab, etc...
         userIDs = {}
         for upload in projectUploads:
-            userIDs[upload['createdBy']['id']] = upload['createdBy']['user']['firstName'] + ' ' + upload['createdBy']['user']['lastName'] + ': ' + upload['createdBy']['lab']['institution']
+            userIDs[upload['createdBy']['id']] = (
+                'Uploads Created By: ' + upload['createdBy']['user']['firstName']
+                + ' ' + upload['createdBy']['user']['lastName']
+                + '\nUploader Email: ' + upload['createdBy']['user']['email']
+                + '\nLab:\n' + upload['createdBy']['lab']['labCode']
+                + '\n' + upload['createdBy']['lab']['department']
+                + '\n' + upload['createdBy']['lab']['institution']
+                + '\nLab Created By: ' + upload['createdBy']['lab']['firstName']
+                + ' ' + upload['createdBy']['lab']['lastName']
+                + '\nLab Director: ' + upload['createdBy']['lab']['director']
+                + '\nLab Email: ' + upload['createdBy']['lab']['email']
+
+            )
 
         print('Unique Submitter IDs:' + str(sorted(list(userIDs.keys()))))
         # for each submitter
         for userIndex, userID in enumerate(sorted(list(userIDs.keys()))):
             print('Finding Uploads for User:' + str(userID) + ' (' + str(userIndex + 1) + ' of ' + str(len(list(userIDs.keys()))) + ')')
     
-            reportText += newline + 'User ' + str(userID) + ' (' + str(userIDs[userID]) + ')' + newline
+            reportText += newline + 'User ' + str(userID) + '\n' + str(userIDs[userID]) + newline
 
             currentUserUploads =  [upload for upload in projectUploads if upload['createdBy']['id'] == userID]
 
