@@ -229,7 +229,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
         return('Could not aquire a login token.', inputExcelData, validationErrors)
     try:
         if(uploadList is None):
-            uploadList = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
+            #uploadList = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
+            uploadList = IhiwRestAccess.getFilteredUploads(token=token, url=url, projectIDs=projectIDs)
         hmlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='HML')
         hamlUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='HAML')
         antibodyCsvUploadList = Validation.createFileListFromUploads(uploads=uploadList, projectFilter=projectIDs, fileTypeFilter='ANTIBODY_CSV')

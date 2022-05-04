@@ -38,7 +38,7 @@ def testValidateImmunogenicEpitopes(args=None):
 def testValidateNonImmunogenicEpitopes(excelFile=None):
     print('Starting up the non immunogenic epitopes methods.')
 
-    nonImmunogenicEpitopeProjectNumber = getProjectID(projectName='non_immunogenic_epitopes')
+    nonImmunogenicEpitopeProjectNumber = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     (validationResults, outputReportWorkbook) = validateEpitopesDataMatrix(excelFile=excelFile, isImmunogenic=False, projectIDs=[nonImmunogenicEpitopeProjectNumber])
     print('Validation Results:\n' + str(validationResults))
 
@@ -143,7 +143,7 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     # TODO: excluding FASTQ files here. Did I miss any? Could check but I think that's everything.
     createProjectZipFile(bucket=args.bucket, url=url, token=token
         , projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID]
-        ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'])
+       ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'])
 
 
 

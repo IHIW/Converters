@@ -19,7 +19,7 @@ def testCreateFamilyHaplotypeProjectReport(args=None):
 
     url=IhiwRestAccess.getUrl()
     token=IhiwRestAccess.getToken(url=url)
-    
+
     createFamilyHaplotypeReport(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER','PED','INFO_CSV'])
     createProjectZipFile(bucket=args.bucket, url=url, token=token, projectIDs=[projectID], fileTypeFilter=['HML','OTHER','PED','INFO_CSV'])
 
