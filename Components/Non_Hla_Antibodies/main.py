@@ -1,13 +1,14 @@
 from sys import exc_info
 import argparse
 from os.path import split, join
-from io import BytesIO
+#from io import BytesIO
 from Common import IhiwRestAccess
-from Common.ParseExcel import createBytestreamExcelOutputFile
-from Common.S3_Access import writeFileToS3, createProjectZipFile
-from Common.IhiwRestAccess import getProjectID
+#from Common.ParseExcel import createBytestreamExcelOutputFile
+#from Common.S3_Access import writeFileToS3, createProjectZipFile
+#from Common.IhiwRestAccess import getProjectID
 
 from Components.Non_Hla_Antibodies.NonHlaAntibodiesValidator import validateNonHlaAntibodiesDataMatrix
+from Components.Non_Hla_Antibodies.NonHlaAntibodiesProjectReport import createNonHlaAntibodiesReport
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -35,12 +36,23 @@ def testValidateNonHlaAntibodies(args=None):
     outputReportWorkbook.save(reportLocalFilePath)
 
 
+def testCreateNonHlaAntibodiesProjectReport(args=None):
+    projectID = 404
+
+    url=IhiwRestAccess.getUrl()
+    token=IhiwRestAccess.getToken(url=url)
+
+    createNonHlaAntibodiesReport(token=token,url=url, bucket=args.bucket, projectIDs=[projectID])
+
+
 if __name__=='__main__':
     try:
         args=parseArgs()
         validatorType =args.validator
         if(validatorType=='NON_HLA_ANTIBODIES'):
             testValidateNonHlaAntibodies(args=args)
+        elif(validatorType=='NON_HLA_ANTIBODIES_PROJECT_REPORT'):
+            testCreateNonHlaAntibodiesProjectReport(args=args)
         else:
             print('I do not understand the validator type.')
 

@@ -1,22 +1,22 @@
 from boto3 import client
 from openpyxl import Workbook
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import PatternFill
-from openpyxl.comments import Comment
+#from openpyxl.utils import get_column_letter
+#from openpyxl.styles import PatternFill
+#from openpyxl.comments import Comment
 
 try:
     import IhiwRestAccess
     import ParseExcel
-    import ParseXml
-    import Validation
+    #import ParseXml
+    #import Validation
     import S3_Access
-    import NonHlaAntibodiesValidator
+    #import NonHlaAntibodiesValidator
 except Exception as e:
     print('Failed in importing files: ' + str(e))
     from Common import IhiwRestAccess
     from Common import ParseExcel
-    from Common import ParseXml
-    from Common import Validation
+    #from Common import ParseXml
+    ##from Common import Validation
     from Common import S3_Access
     import NonHlaAntibodiesValidator
 
@@ -41,8 +41,11 @@ def createNonHlaAntibodiesReport(bucket=None, projectIDs=None, url=None, token=N
     projectIDs = [str(projectID) for projectID in projectIDs]
     projectString = str('_'.join(projectIDs))
 
+    S3_Access.createProjectZipFile(bucket=bucket, url=url, token=token, projectIDs=projectIDs, fileTypeFilter=['OTHER', 'ANTIBODY_CSV','PROJECT_DATA_MATRIX'])
+
+
     # preload an upload list to use repeatedly later
-    allUploads = IhiwRestAccess.getUploadsByProjects(token=token, url=url, projectIDs=projectIDs)
+    allUploads = IhiwRestAccess.getFilteredUploads(token=token, url=url, projectIDs=projectIDs)
     #dataMatrixUploadList = getDataMatrixUploads(projectIDs=projectIDs, token=token, url=url, uploadList=allUploads)
 
     # This report is the copy of all data in the data matrix, including validation feedback.
