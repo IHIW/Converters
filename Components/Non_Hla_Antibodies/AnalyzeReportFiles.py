@@ -20,8 +20,9 @@ def parseImmucorFile(csvDataLines=None, delimiter=',',csvFileName=None):
     currentCsvData['data']={}
 
     medianDatasetFound=False
+    print('Parsing File:' + str(csvFileName))
 
-    for csvDataLine in csvDataLines:
+    for csvLineIndex, csvDataLine in enumerate(csvDataLines):
         #print('Line:' + str(csvDataLine))
         csvTokens = csvDataLine.split(delimiter)
         csvTokens = [token.strip().replace('"','') for token in csvTokens]
@@ -34,6 +35,7 @@ def parseImmucorFile(csvDataLines=None, delimiter=',',csvFileName=None):
             elif(csvTokens[0] == ''):
                 # End of the data set, we're done reading here.
                 medianDatasetFound=False
+                print('Done reading the Median DataSet on line ' + str(csvLineIndex + 1))
                 break # TODO: What if there are more than one? I assume there wont be
             else:
                 # this row contains data
@@ -49,7 +51,7 @@ def parseImmucorFile(csvDataLines=None, delimiter=',',csvFileName=None):
                 #print('Sample Count Line:' + str(csvTokens))
                 currentCsvData['expected_sample_count'] = int(csvTokens[1])
             elif(csvTokens[0] == 'DataType:' and csvTokens[1] == 'Median'):
-                #print('Found the Median DataSet')
+                print('Found the Median DataSet on line ' + str(csvLineIndex + 1))
                 medianDatasetFound = True
             else:
                 pass# Do nothing with this line
@@ -192,7 +194,7 @@ def writeCombinedData(csvData=None, outputDirectory=None, delimiter =',', newlin
     if(rawOrClean=='raw'):
         outputFileName = join(outputDirectory, 'CombinedRawData.csv')
     elif(rawOrClean=='clean'):
-        outputFileName = join(outputDirectory, 'CombinedRawCleaned.csv')
+        outputFileName = join(outputDirectory, 'CombinedCleanedData.csv')
     else:
         raise Exception('Am I printing raw or cleaned data?')
 
@@ -547,6 +549,7 @@ def readDataMatrices(dataDirectory=None, outputDirectory=None):
     excelData = {}
     unanalyzedMatrices = {}
 
+    #for excelFileName in ['1668_1651853299704_PROJECT_DATA_MATRIX_ESPCRE_non_hla_antibodies_data.xlsx']:# TODO: This is testing code for a single matrix
     for excelFileName in excelFileNames:
         print('Reading file:' + str(excelFileName))
         xlWorkbook = load_workbook(filename=join(dataMatrixDirectory, excelFileName))
@@ -600,21 +603,167 @@ def readDataMatrices(dataDirectory=None, outputDirectory=None):
         excelData[excelFileName]=currentExcelData
     return excelData
 
+def createSampleLookup(dataRow=None, headers=None, manufacturer=None):
+    pass
+    sampleLookup = {}
+    sampleLookup['manufacturer']=manufacturer
+    # Make a lookup table with Antigen:AdjustedMFI
+
+    if len(dataRow) != len(headers):
+        # I think this will happen when there are extra columns in the csv..
+        raise Exception ('Data row is not the same length as headers')
+
+    for headerIndex, headerAntigen in enumerate(headers):
+        if(headerIndex > 1):
+            sampleLookup[headerAntigen] = dataRow[headerIndex]
+
+    return sampleLookup
+
+def queryCsv(csvSearchKey=None, csvData=None, sampleIdSearchKey=None):
+    dataRows = []
+    csvNames = []
+    sampleIds = []
+
+    # If there is no sample ID, I can't find anything.
+    if(sampleIdSearchKey is None or len(str(sampleIdSearchKey).strip()) < 1):
+        return dataRows, csvNames, sampleIds
+
+    for csvKey in csvData.keys():
+        for csvSearchKeyToken in str(csvSearchKey).strip().split(','):
+            if(len(str(csvSearchKeyToken).strip())>1 and str(csvSearchKeyToken).upper().strip() in str(csvKey).upper()):
+                csvNames.append(csvKey)
+
+
+    # TODO: What if there are commas separating sample ID??
+    for csvName in csvNames:
+        for sampleIdKey in csvData[csvName]['clean']['data'].keys():
+            cleanSearchKey = str(sampleIdSearchKey).upper().strip().replace(' ','')
+            cleanKey = str(sampleIdKey).upper().strip().replace(' ','')
+            if (sampleIdSearchKey is not None and len(cleanSearchKey) > 0 and cleanSearchKey == cleanKey):
+                sampleIds.append(sampleIdSearchKey)
+                dataRows.append(csvData[csvName]['clean']['data'][sampleIdKey])
+
+    if(len(dataRows) != len(csvNames) or len(csvNames) != len(sampleIds)):
+        print('dataRows:' + str(dataRows))
+        print('csvNames:' + str(csvNames))
+        print('sampleIds:' + str(sampleIds))
+        print('sampleIdSearchKey:' + str(sampleIdSearchKey))
+        print('csvSearchKey:' + str(csvSearchKey))
+        print('WARNING! The data rows are not the same length as sample ids! This probably means a sample goes missing')
+
+    return dataRows, csvNames, sampleIds
+
+def findSampleData(csvData=None, dataMatrixDataRow=None):
+    preTxData = {}
+    postTxData = {}
+
+    preTxImmucorDataRows, preTxCsvImmucorNames, preTxSampleIdsImmucor = queryCsv(csvSearchKey=dataMatrixDataRow['pre_tx_csv_immucor'], csvData=csvData, sampleIdSearchKey=dataMatrixDataRow['pre_tx_sample_id'])
+    preTxOneLambdaDataRows, preTxCsvOneLambdaNames, preTxSampleIdsOneLambda = queryCsv(csvSearchKey=dataMatrixDataRow['pre_tx_csv_onelambda'], csvData=csvData, sampleIdSearchKey=dataMatrixDataRow['pre_tx_sample_id'])
+    postTxImmucorDataRows, postTxCsvImmucorNames, postTxSampleIdsImmucor = queryCsv(csvSearchKey=dataMatrixDataRow['post_tx_csv_immucor'], csvData=csvData, sampleIdSearchKey=dataMatrixDataRow['post_tx_sample_id'])
+    postTxOneLambdaDataRows, postTxCsvOneLambdaNames, postTxSampleIdsOneLambda = queryCsv(csvSearchKey=dataMatrixDataRow['post_tx_csv_onelambda'], csvData=csvData, sampleIdSearchKey=dataMatrixDataRow['post_tx_sample_id'])
+
+    for index, preTxImmucorDataRow in enumerate(preTxImmucorDataRows):
+        preTxData[preTxCsvImmucorNames[index]]={}
+        preTxData[preTxCsvImmucorNames[index]][preTxSampleIdsImmucor[index]] = createSampleLookup(dataRow=preTxImmucorDataRow, headers=csvData[preTxCsvImmucorNames[index]]['clean']['header_tokens'], manufacturer='immucor')
+    for index, preTxOneLambdaDataRow in enumerate(preTxOneLambdaDataRows):
+        preTxData[preTxCsvOneLambdaNames[index]] = {}
+        preTxData[preTxCsvOneLambdaNames[index]][preTxSampleIdsOneLambda[index]] = createSampleLookup(dataRow=preTxOneLambdaDataRow, headers=csvData[preTxCsvOneLambdaNames[index]]['clean']['header_tokens'], manufacturer='onelambda')
+
+    for index, postTxImmucorDataRow in enumerate(postTxImmucorDataRows):
+        postTxData[postTxCsvImmucorNames[index]] = {}
+        postTxData[postTxCsvImmucorNames[index]][postTxSampleIdsImmucor[index]] = createSampleLookup(dataRow=postTxImmucorDataRow, headers=csvData[postTxCsvImmucorNames[index]]['clean']['header_tokens'], manufacturer='immucor')
+    for index, postTxOneLambdaDataRow in enumerate(postTxOneLambdaDataRows):
+        postTxData[postTxCsvOneLambdaNames[index]] = {}
+        postTxData[postTxCsvOneLambdaNames[index]][postTxSampleIdsOneLambda[index]] = createSampleLookup(dataRow=postTxOneLambdaDataRow, headers=csvData[postTxCsvOneLambdaNames[index]]['clean']['header_tokens'], manufacturer='onelambda')
+
+    return preTxData,postTxData
 
 def splitSamples(dataMatrixData=None, csvData=None):
     print('Splitting samples into reject and control')
-    rejectionData = {}
-    controlData = {}
+    rejectionPreTx = {}
+    rejectionPostTx = {}
+    controlPreTx = {}
+    controlPostTx = {}
 
     for excelFileName in dataMatrixData.keys():
-        print('excel:' + str(excelFileName))
-        for sampleId in dataMatrixData[excelFileName].keys():
-            print('sampleId:' + str(sampleId))
+        #print('excel:' + str(excelFileName))
+        rejectionPreTx[excelFileName] = {}
+        rejectionPostTx[excelFileName] = {}
+        controlPreTx[excelFileName] = {}
+        controlPostTx[excelFileName] = {}
 
-            preTxData, postTxData = findSampleData(csvData=csvData, dataMatrixDataRow=dataMatrixData[excelFileName][sampleId])
+        for patientId in dataMatrixData[excelFileName].keys():
+            '''
+            rejectionPreTx[excelFileName][sampleId] = {}
+            rejectionPostTx[excelFileName][sampleId] = {}
+            controlPreTx[excelFileName][sampleId] = {}
+            controlPostTx[excelFileName][sampleId] = {}
+            #print('sampleId:' + str(sampleId))
+            '''
 
-    return rejectionData, controlData
+            currentDataMatrixRow = dataMatrixData[excelFileName][patientId]
+            preTxData, postTxData = findSampleData(csvData=csvData, dataMatrixDataRow=currentDataMatrixRow)
 
+            if(currentDataMatrixRow['rejection']=='Y'):
+                rejectionPreTx[excelFileName][patientId] = preTxData
+                rejectionPostTx[excelFileName][patientId] = postTxData
+            elif(currentDataMatrixRow['rejection']=='N'):
+                controlPreTx[excelFileName][patientId] = preTxData
+                controlPostTx[excelFileName][patientId] = postTxData
+            else:
+                raise Exception ('not sure if this is rejection or control sample')
+
+    return rejectionPreTx, rejectionPostTx, controlPreTx, controlPostTx
+
+def writeSortedData(cleanedBeadData=None, outputFileName=None, delimiter=',', newline='\n'):
+    print('Writing file:' + str(outputFileName))
+    #Combine all possible antigens and sort the list.
+    allAntigens = set()
+    for dataMatrixFileName in cleanedBeadData.keys():
+        for patientId in cleanedBeadData[dataMatrixFileName].keys():
+            for csvFileName in cleanedBeadData[dataMatrixFileName][patientId].keys():
+                for sampleId in cleanedBeadData[dataMatrixFileName][patientId][csvFileName].keys():
+                    for antigenName in cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId].keys():
+                        if(len(antigenName.strip())>0
+                            and antigenName not in ['Total Events', 'Notes','NC','PC','manufacturer']):
+                            allAntigens.add(antigenName)
+    allAntigens = sorted(list(allAntigens))
+
+    headerRow = delimiter.join(['DataMatrix','PatientId','CSVFileName','SampleId','Manufacturer','NC','PC']) + delimiter + delimiter.join(allAntigens)
+
+    with open(outputFileName,'w') as outputFile:
+        outputFile.write(headerRow + newline)
+        for dataMatrixFileName in cleanedBeadData.keys():
+            for patientId in cleanedBeadData[dataMatrixFileName].keys():
+                for csvFileName in cleanedBeadData[dataMatrixFileName][patientId].keys():
+                    for sampleId in cleanedBeadData[dataMatrixFileName][patientId][csvFileName].keys():
+                        dataRow = delimiter.join([dataMatrixFileName,str(patientId),csvFileName,sampleId])
+
+                        # Add manufacturer Control
+                        if ('manufacturer' in cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId].keys()):
+                            dataRow = dataRow + delimiter + cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId]['manufacturer']
+                        else:
+                            dataRow = dataRow + delimiter + ''
+
+                        # Add Negative Control
+                        if ('NC' in cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId].keys()):
+                            dataRow = dataRow + delimiter + cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId]['NC']
+                        else:
+                            dataRow = dataRow + delimiter + ''
+
+                        # Add Positive Control
+                        if ('PC' in cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId].keys()):
+                            dataRow = dataRow + delimiter + cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId]['PC']
+                        else:
+                            dataRow = dataRow + delimiter + ''
+
+                        for antigenName in allAntigens:
+                            if(antigenName in cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId].keys()):
+                                dataRow = dataRow + delimiter + cleanedBeadData[dataMatrixFileName][patientId][csvFileName][sampleId][antigenName]
+                            else:
+                                dataRow = dataRow + delimiter + ''
+
+                        outputFile.write(dataRow + newline)
 
 def analyzeData(dataDirectory=None, outputDirectory=None):
     print('Looking for data files in ' + str(dataDirectory))
@@ -636,10 +785,13 @@ def analyzeData(dataDirectory=None, outputDirectory=None):
     dataMatrixData = readDataMatrices(dataDirectory=dataDirectory, outputDirectory=outputDirectory)
 
     # Split data rows into rejection and control samples
-    rejectionData, controlData = splitSamples(dataMatrixData=dataMatrixData,csvData=csvData)
+    rejectionPreTx, rejectionPostTx, controlPreTx, controlPostTx = splitSamples(dataMatrixData=dataMatrixData,csvData=csvData)
 
-    #print('Writing files to ' + str(outputDirectory))
-
+    # Write out all the results
+    writeSortedData(cleanedBeadData=rejectionPreTx, outputFileName = join(outputDirectory,'Rejection.PreTx.csv'))
+    writeSortedData(cleanedBeadData=rejectionPostTx, outputFileName=join(outputDirectory, 'Rejection.PostTx.csv'))
+    writeSortedData(cleanedBeadData=controlPreTx, outputFileName = join(outputDirectory,'Control.PreTx.csv'))
+    writeSortedData(cleanedBeadData=controlPostTx, outputFileName=join(outputDirectory, 'Control.PostTx.csv'))
 
 if __name__=='__main__':
     try:
