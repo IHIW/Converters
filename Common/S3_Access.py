@@ -13,7 +13,6 @@ except Exception as e:
 
 s3 = client('s3')
 
-
 def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fileTypeFilter=None):
     print('Creating Project Zip Files for project(s) ' + str(projectIDs))
     #print('URL=' + str(url))
@@ -114,7 +113,6 @@ def getUploadListFromS3(bucket=None):
     except Exception as e:
         print('Problem saving file!\n' + str(e))
 
-
 def revalidateUpload(bucket=None, uploadFilename=None):
     print('Touching the upload ' + str(uploadFilename) + ' in bucket ' + str(bucket))
     try:
@@ -132,3 +130,16 @@ def revalidateUpload(bucket=None, uploadFilename=None):
 
     except Exception as e:
         print('Problem Revalidating Upload:\n' + str(e))
+
+def getFileSize(bucket=None, uploadFilename=None):
+    print('Getting the file size of the upload ' + str(uploadFilename) + ' in bucket ' + str(bucket))
+    try:
+        s3Client = client('s3')
+        fileObject = s3Client.get_object(Bucket=bucket, Key=uploadFilename)
+        fileSizeBytes=fileObject['ContentLength']
+        # kilobytes = bytes/1024. We do Binary here
+        return 1.0 * fileSizeBytes / 1024
+
+    except Exception as e:
+        print('Problem Getting File Size:\n' + str(e))
+        return 0.0

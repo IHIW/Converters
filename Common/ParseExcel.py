@@ -27,9 +27,6 @@ def alleleListFromTypings(typings=None):
 
     return alleleList
 
-
-
-
 def createExcelTransplantationReport(donorTyping=None, recipientTyping=None, preTxFileNames=['PreTXFileName']
         , postTxFileNames=['PostTXFileName'], recipPreTxAntibodyData=None, recipPostTxAntibodyData=None, transReport=None, reportName=None, transplantationIndex=None):
 
