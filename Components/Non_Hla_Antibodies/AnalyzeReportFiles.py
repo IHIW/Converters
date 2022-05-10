@@ -486,7 +486,8 @@ def cleanHeaders(rawHeaderTokens=None, manufacturer=None):
                 # Otherwise, it's LG3
 
                 # Check if 41,42,43,45 are also in this panel
-                if('041' in rawHeaderTokens or '042' in rawHeaderTokens or '043' in rawHeaderTokens or '045' in rawHeaderTokens):
+                if('041' in rawHeaderTokens or '042' in rawHeaderTokens or '043' in rawHeaderTokens or '045' in rawHeaderTokens
+                    or '41' in rawHeaderTokens or '42' in rawHeaderTokens or '43' in rawHeaderTokens or '45' in rawHeaderTokens):
                     # This is the collagen panel #
                     cleanTokens[headerTokenIndex] = 'COLLAGEN V'
                 else:
@@ -498,7 +499,8 @@ def cleanHeaders(rawHeaderTokens=None, manufacturer=None):
                 # If this is in Group 3, it's COLLAGEN I
                 # Otherwise, it's PLA2R
                 # Check if 41,42,43,45 are also in this panel
-                if('041' in rawHeaderTokens or '042' in rawHeaderTokens or '043' in rawHeaderTokens or '045' in rawHeaderTokens):
+                if('041' in rawHeaderTokens or '042' in rawHeaderTokens or '043' in rawHeaderTokens or '045' in rawHeaderTokens
+                    or '41' in rawHeaderTokens or '42' in rawHeaderTokens or '43' in rawHeaderTokens or '45' in rawHeaderTokens):
                     # This is the collagen panel #
                     cleanTokens[headerTokenIndex] = 'COLLAGEN I'
                 else:
