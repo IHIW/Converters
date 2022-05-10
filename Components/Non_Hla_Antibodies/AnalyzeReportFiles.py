@@ -117,6 +117,14 @@ def parseOneLambdaFile(csvDataLines=None, csvFileName=None, delimiter=','):
 
                 sampleId=csvTokens[1]
                 currentCsvData['data'][sampleId] = csvTokens
+
+                # Handle edge cases of broken delimiters. Europeans sometimes have commas instead of dots in their decimals.
+                # This is not very clever way to do it.
+                if (',' in csvTokens[2] or ',' in csvTokens[3] or ',' in csvTokens[4]):
+                    currentCsvData['data'][sampleId] = [dirtyToken.replace(',','.') for dirtyToken in currentCsvData['data'][sampleId]]
+                pass
+
+
         else:
             if(csvTokens[0] == 'Samples'):
                 #print('Sample Count Line:' + str(csvTokens))
@@ -150,16 +158,13 @@ def readCsvFiles(dataDirectory=None, outputDirectory=None):
     # for csvFileName in ['1659_1651225315252_ANTIBODY_CSV_DEUVER_220413-NonHLA2_Auto1_20220413_114040.csv']: # One Lambda File
 
         # These files have a weird delimiter. I think they re-saved the file and need to re-export it. The files are full of extra dots.
-        '''
-        if(csvFileName in ['1676_1651237757189_ANTIBODY_CSV_NLDHEI_OL_group1_group2_post-Txsamples.csv'
-            ,'1676_1651237951070_ANTIBODY_CSV_NLDHEI_OL_group1_group2_pre-Txsamples.csv'
-            ,'1676_1651238170785_ANTIBODY_CSV_NLDHEI_OL_group3_post-Txsamples.csv'
-            ,'1676_1651238309188_ANTIBODY_CSV_NLDHEI_OL_group3_pre-Txsamples.csv']):
+        if(csvFileName in ['1676_1652112057217_ANTIBODY_CSV_NLDHEI_OL_group3_pre-Txsamples_v2.csv'
+            ,'1676_1652112057163_ANTIBODY_CSV_NLDHEI_OL_group3_post-Txsamples_v2.csv'
+            ,'1676_1652112057106_ANTIBODY_CSV_NLDHEI_OL_group1_group2_pre-Txsamples_v2.csv'
+            ,'1676_1652112057000_ANTIBODY_CSV_NLDHEI_OL_group1_group2_post-Txsamples_v2.csv']):
             delimiter=';'
         else:
             delimiter=','
-        '''
-        delimiter = ','
 
 
         print('Reading file ' + str(csvFileName))
@@ -424,8 +429,6 @@ def cleanHeaders(rawHeaderTokens=None, manufacturer=None):
                 cleanTokens[headerTokenIndex] = 'AGT'
             elif (int(headerToken) == 39):
                 cleanTokens[headerTokenIndex] = 'CHAF1B'
-            elif (int(headerToken) == 40):
-                cleanTokens[headerTokenIndex] = 'PLA2R'
             elif (int(headerToken) == 47):
                 cleanTokens[headerTokenIndex] = 'GSTT1'
             elif (int(headerToken) == 48):
@@ -452,8 +455,6 @@ def cleanHeaders(rawHeaderTokens=None, manufacturer=None):
                 cleanTokens[headerTokenIndex] = 'CXCL9'
             elif (int(headerToken) == 81):
                 cleanTokens[headerTokenIndex] = 'GDNF'
-            elif (int(headerToken) == 44):
-                cleanTokens[headerTokenIndex] = 'LG3'
             elif (int(headerToken) == 48):
                 cleanTokens[headerTokenIndex] = 'LMNA'
             elif (int(headerToken) == 49):
@@ -478,10 +479,32 @@ def cleanHeaders(rawHeaderTokens=None, manufacturer=None):
                 cleanTokens[headerTokenIndex] = 'CXCL9'
             elif (int(headerToken) == 81):
                 cleanTokens[headerTokenIndex] = 'GDNF'
+
             elif (int(headerToken) == 44):
-                cleanTokens[headerTokenIndex] = 'LG3'
-            elif (int(headerToken) == 40):  # TODO: there are more beads, but some of these bead id repeat. There is a #40 in the twice?
-                cleanTokens[headerTokenIndex] = 'COLLAGEN I'
+                # 44 is either LG3 or COLLAGEN V
+                # If this is in Group 3, it's COLLAGEN IV.
+                # Otherwise, it's LG3
+
+                # Check if 41,42,43,45 are also in this panel
+                if('041' in rawHeaderTokens or '042' in rawHeaderTokens or '043' in rawHeaderTokens or '045' in rawHeaderTokens):
+                    # This is the collagen panel #
+                    cleanTokens[headerTokenIndex] = 'COLLAGEN V'
+                else:
+                    # Not Collagen.
+                    cleanTokens[headerTokenIndex] = 'LG3'
+
+            elif (int(headerToken) == 40):
+                # 40 is either PLA2R or COLLAGEN I
+                # If this is in Group 3, it's COLLAGEN I
+                # Otherwise, it's PLA2R
+                # Check if 41,42,43,45 are also in this panel
+                if('041' in rawHeaderTokens or '042' in rawHeaderTokens or '043' in rawHeaderTokens or '045' in rawHeaderTokens):
+                    # This is the collagen panel #
+                    cleanTokens[headerTokenIndex] = 'COLLAGEN I'
+                else:
+                    # Not Collagen.
+                    cleanTokens[headerTokenIndex] = 'PLA2R'
+
             elif (int(headerToken) == 41):
                 cleanTokens[headerTokenIndex] = 'COLLAGEN II'
             elif (int(headerToken) == 42):
