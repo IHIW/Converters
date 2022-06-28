@@ -298,7 +298,7 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQu
         sampleIdFound = False
         for patientAbAssessmentNode in documentRoot.findall('{urn:HAML.Namespace}patient-antibody-assessment'):
             sampleID=patientAbAssessmentNode.get('sampleID')
-            if sampleIdQuery is not None and (sampleIdQuery.upper().replace(' ','') in sampleID.upper().replace(' ','')):
+            if sampleIdQuery is not None and (str(sampleIdQuery).upper().replace(' ','') in str(sampleID).upper().replace(' ','')):
                 # if the sample ID was not found, maybe that's ok.
                 # Perhaps the SampleID was used in the HML file instead of in these HAML files.
                 # In this case, we should just include all the typings.

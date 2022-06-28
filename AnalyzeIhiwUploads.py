@@ -37,24 +37,38 @@ def writeData(allUploadData=None, outputDirectory=None, delimiter = ',', newline
 
     countsPerProject = {}
     countsPerLab = {}
+    countsPerUploadType = {}
     fileSizePerProject = {}
     fileSizePerLab = {}
+    fileSizePerUploadType = {}
 
     for projectId in allUploadData.keys():
         for uploadId in allUploadData[projectId].keys():
             uploadData = allUploadData[projectId][uploadId]
+
             if(uploadData['projectName'] not in countsPerProject.keys()):
                 countsPerProject[uploadData['projectName']] = 0
                 fileSizePerProject[uploadData['projectName']] = 0
+
             if(uploadData['submitterLab'] not in countsPerLab.keys()):
                 countsPerLab[uploadData['submitterLab']] = 0
                 fileSizePerLab[uploadData['submitterLab']] = 0
 
+            if(uploadData['type'] not in countsPerUploadType.keys()):
+                countsPerUploadType[uploadData['type']] = 0
+                fileSizePerUploadType[uploadData['type']] = 0
+
             try:
                 countsPerProject[uploadData['projectName']] += 1
                 fileSizePerProject[uploadData['projectName']] += float(uploadData['fileSizeKb'])
+
                 countsPerLab[uploadData['submitterLab']] += 1
                 fileSizePerLab[uploadData['submitterLab']] += float(uploadData['fileSizeKb'])
+
+                countsPerUploadType[uploadData['type']] += 1
+                fileSizePerUploadType[uploadData['type']] += float(uploadData['fileSizeKb'])
+
+
             except Exception as e:
                 print('Problem updating the allUploadSummaryData:') + str(e)
 
@@ -79,6 +93,18 @@ def writeData(allUploadData=None, outputDirectory=None, delimiter = ',', newline
                 , str(countsPerProject[projectName])
                 ,str(fileSizePerProject[projectName])
                 ,str(float(fileSizePerProject[projectName])/1024)])
+            outputFile.write(dataLine + newline)
+
+
+        outputFile.write(newline + newline)
+
+        headerLine = delimiter.join(['Type','Upload_Count','Total_File_Size(Kb)','Total_File_Size(Mb)'])
+        outputFile.write(headerLine + newline)
+        for uploadType in countsPerUploadType.keys():
+            dataLine = delimiter.join([str(uploadType).replace(',',';')
+                , str(countsPerUploadType[uploadType])
+                ,str(fileSizePerUploadType[uploadType])
+                ,str(float(fileSizePerUploadType[uploadType])/1024)])
             outputFile.write(dataLine + newline)
 
 
