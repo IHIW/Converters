@@ -347,10 +347,10 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
                     else:
                         raise Exception('Is this class I or II?:' + str(specificity))
                 else:
-                    print('Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity)
+                    print('*******WARNING!!Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity)
                         + ' transplantationId:' + str(transplantationId)
                         + ' panel:' + str(panel))
-                    raise Exception ('Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity))
+                    #raise Exception ('Something went wrong in allele-specific report, HLA class could not be determined:' + str(specificity))
 
     classISpecificities = sorted(list(set(classISpecificities)))
     classIISpecificities = sorted(list(set(classIISpecificities)))
