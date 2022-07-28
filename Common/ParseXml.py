@@ -313,7 +313,7 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQu
             # 1) No sample Id was provided
             # 2) We couldn't find the sample ID in this HAML file (Use every sample in this case)
             # 3) The sample ID is found in this sample.
-            if sampleIdQuery is None or not sampleIdFound or sampleIdQuery.upper().replace(' ','') in sampleID.upper().replace(' ',''):
+            if sampleIdQuery is None or not sampleIdFound or str(sampleIdQuery).upper().replace(' ','') in str(sampleID).upper().replace(' ',''):
 
                 negativeControlMfi=patientAbAssessmentNode.get('negative-control-MFI')
                 positiveControlMfi = patientAbAssessmentNode.get('positive-control-MFI')
