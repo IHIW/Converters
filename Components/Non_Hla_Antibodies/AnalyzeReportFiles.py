@@ -5,7 +5,6 @@ import argparse
 
 from openpyxl import load_workbook
 
-
 def parseArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--data", required=True, help="directory containing data files directly from extracted Project .zip , the path to the project_Testing_the_clinica...folder", type=str)
@@ -585,6 +584,8 @@ def readDataMatrices(dataDirectory=None, outputDirectory=None):
         # Get the column indexes
         patientIdColumn=None
         rejectionColumn=None
+        rejectionTypeColumn=None
+        diseaseAetiologyColumn=None
         preTxSampleIdColumn=None
         preTxCsvImmucorColumn=None
         postTxSampleIdColumn=None
@@ -597,6 +598,10 @@ def readDataMatrices(dataDirectory=None, outputDirectory=None):
                 patientIndexColumn = colIndexRaw
             elif str(col[0].value).lower().strip() == 'rejection':
                 rejectionColumn = colIndexRaw
+            elif str(col[0].value).lower().strip() == 'rejection_type':
+                rejectionTypeColumn = colIndexRaw
+            elif str(col[0].value).lower().strip() == 'disease_aetiology':
+                diseaseAetiologyColumn = colIndexRaw
             elif str(col[0].value).lower().strip() == 'pre_tx_sample_id':
                 preTxSampleIdColumn = colIndexRaw
             elif str(col[0].value).lower().strip() == 'pre_tx_csv_immucor':
@@ -618,6 +623,8 @@ def readDataMatrices(dataDirectory=None, outputDirectory=None):
                 if(patientId is not None and len(str(patientId).strip()) > 0):
                     currentExcelData[patientId] = {}
                     currentExcelData[patientId]['rejection']=row[rejectionColumn].value
+                    currentExcelData[patientId]['rejection_type'] = row[rejectionTypeColumn].value
+                    currentExcelData[patientId]['disease_aetiology'] = row[diseaseAetiologyColumn].value
                     currentExcelData[patientId]['pre_tx_sample_id']=row[preTxSampleIdColumn].value
                     currentExcelData[patientId]['pre_tx_csv_immucor']=row[preTxCsvImmucorColumn].value
                     currentExcelData[patientId]['post_tx_sample_id']=row[postTxSampleIdColumn].value
@@ -651,6 +658,9 @@ def queryCsv(csvSearchKey=None, csvData=None, sampleIdSearchKey=None):
 
     # If there is no sample ID, I can't find anything.
     if(sampleIdSearchKey is None or len(str(sampleIdSearchKey).strip()) < 1):
+        #print('Warning. No Sample ID or search key.')
+        #print('csvSearchKey=' + str(csvSearchKey))
+        #print('sampleIdSearchKey=' + str(sampleIdSearchKey))
         return dataRows, csvNames, sampleIds
 
     for csvKey in csvData.keys():
@@ -664,7 +674,7 @@ def queryCsv(csvSearchKey=None, csvData=None, sampleIdSearchKey=None):
         for sampleIdKey in csvData[csvName]['clean']['data'].keys():
             cleanSearchKey = str(sampleIdSearchKey).upper().strip().replace(' ','')
             cleanKey = str(sampleIdKey).upper().strip().replace(' ','')
-            if (sampleIdSearchKey is not None and len(cleanSearchKey) > 0 and cleanSearchKey == cleanKey):
+            if (sampleIdSearchKey is not None and len(cleanSearchKey) > 0 and str(cleanSearchKey) == str(cleanKey)):
                 sampleIds.append(sampleIdSearchKey)
                 dataRows.append(csvData[csvName]['clean']['data'][sampleIdKey])
 
@@ -687,19 +697,25 @@ def findSampleData(csvData=None, dataMatrixDataRow=None):
     postTxImmucorDataRows, postTxCsvImmucorNames, postTxSampleIdsImmucor = queryCsv(csvSearchKey=dataMatrixDataRow['post_tx_csv_immucor'], csvData=csvData, sampleIdSearchKey=dataMatrixDataRow['post_tx_sample_id'])
     postTxOneLambdaDataRows, postTxCsvOneLambdaNames, postTxSampleIdsOneLambda = queryCsv(csvSearchKey=dataMatrixDataRow['post_tx_csv_onelambda'], csvData=csvData, sampleIdSearchKey=dataMatrixDataRow['post_tx_sample_id'])
 
-    for index, preTxImmucorDataRow in enumerate(preTxImmucorDataRows):
-        preTxData[preTxCsvImmucorNames[index]]={}
-        preTxData[preTxCsvImmucorNames[index]][preTxSampleIdsImmucor[index]] = createSampleLookup(dataRow=preTxImmucorDataRow, headers=csvData[preTxCsvImmucorNames[index]]['clean']['header_tokens'], manufacturer='immucor')
-    for index, preTxOneLambdaDataRow in enumerate(preTxOneLambdaDataRows):
-        preTxData[preTxCsvOneLambdaNames[index]] = {}
-        preTxData[preTxCsvOneLambdaNames[index]][preTxSampleIdsOneLambda[index]] = createSampleLookup(dataRow=preTxOneLambdaDataRow, headers=csvData[preTxCsvOneLambdaNames[index]]['clean']['header_tokens'], manufacturer='onelambda')
+    try:
+        for index, preTxImmucorDataRow in enumerate(preTxImmucorDataRows):
+            preTxData[preTxCsvImmucorNames[index]]={}
+            preTxData[preTxCsvImmucorNames[index]][preTxSampleIdsImmucor[index]] = createSampleLookup(dataRow=preTxImmucorDataRow, headers=csvData[preTxCsvImmucorNames[index]]['clean']['header_tokens'], manufacturer='immucor')
+        for index, preTxOneLambdaDataRow in enumerate(preTxOneLambdaDataRows):
+            preTxData[preTxCsvOneLambdaNames[index]] = {}
+            preTxData[preTxCsvOneLambdaNames[index]][preTxSampleIdsOneLambda[index]] = createSampleLookup(dataRow=preTxOneLambdaDataRow, headers=csvData[preTxCsvOneLambdaNames[index]]['clean']['header_tokens'], manufacturer='onelambda')
 
-    for index, postTxImmucorDataRow in enumerate(postTxImmucorDataRows):
-        postTxData[postTxCsvImmucorNames[index]] = {}
-        postTxData[postTxCsvImmucorNames[index]][postTxSampleIdsImmucor[index]] = createSampleLookup(dataRow=postTxImmucorDataRow, headers=csvData[postTxCsvImmucorNames[index]]['clean']['header_tokens'], manufacturer='immucor')
-    for index, postTxOneLambdaDataRow in enumerate(postTxOneLambdaDataRows):
-        postTxData[postTxCsvOneLambdaNames[index]] = {}
-        postTxData[postTxCsvOneLambdaNames[index]][postTxSampleIdsOneLambda[index]] = createSampleLookup(dataRow=postTxOneLambdaDataRow, headers=csvData[postTxCsvOneLambdaNames[index]]['clean']['header_tokens'], manufacturer='onelambda')
+        for index, postTxImmucorDataRow in enumerate(postTxImmucorDataRows):
+            postTxData[postTxCsvImmucorNames[index]] = {}
+            postTxData[postTxCsvImmucorNames[index]][postTxSampleIdsImmucor[index]] = createSampleLookup(dataRow=postTxImmucorDataRow, headers=csvData[postTxCsvImmucorNames[index]]['clean']['header_tokens'], manufacturer='immucor')
+        for index, postTxOneLambdaDataRow in enumerate(postTxOneLambdaDataRows):
+            postTxData[postTxCsvOneLambdaNames[index]] = {}
+            postTxData[postTxCsvOneLambdaNames[index]][postTxSampleIdsOneLambda[index]] = createSampleLookup(dataRow=postTxOneLambdaDataRow, headers=csvData[postTxCsvOneLambdaNames[index]]['clean']['header_tokens'], manufacturer='onelambda')
+    except Exception as e:
+        print('Exception!' + str(e))
+        print('dataMatrixDataRow:' + str(dataMatrixDataRow))
+
+        raise e
 
     return preTxData,postTxData
 
@@ -790,6 +806,31 @@ def writeSortedData(cleanedBeadData=None, outputFileName=None, delimiter=',', ne
 
                         outputFile.write(dataRow + newline)
 
+def splitByRejectionTypeAndAetiology(cleanedBeadData=None, dataMatrixData=None):
+    beadsByRejection={}
+    beadsByDiseaseAetiology={}
+
+    for dataMatrixFileName in cleanedBeadData.keys():
+        for patientId in cleanedBeadData[dataMatrixFileName].keys():
+            rejectionType = dataMatrixData[dataMatrixFileName][patientId]['rejection_type']
+            aetiology = dataMatrixData[dataMatrixFileName][patientId]['disease_aetiology']
+
+            # Initializing the data structures. Same as cleanedBeadData but split by rejection/aetiology
+            if rejectionType not in beadsByRejection.keys():
+                beadsByRejection[rejectionType] = {}
+            if dataMatrixFileName not in beadsByRejection[rejectionType].keys():
+                beadsByRejection[rejectionType][dataMatrixFileName] = {}
+
+            if aetiology not in beadsByDiseaseAetiology.keys():
+                beadsByDiseaseAetiology[aetiology] = {}
+            if dataMatrixFileName not in beadsByDiseaseAetiology[aetiology].keys():
+                beadsByDiseaseAetiology[aetiology][dataMatrixFileName] = {}
+
+            beadsByRejection[rejectionType][dataMatrixFileName][patientId] = cleanedBeadData[dataMatrixFileName][patientId]
+            beadsByDiseaseAetiology[aetiology][dataMatrixFileName][patientId] = cleanedBeadData[dataMatrixFileName][patientId]
+
+    return beadsByRejection, beadsByDiseaseAetiology
+
 def analyzeData(dataDirectory=None, outputDirectory=None):
     print('Looking for data files in ' + str(dataDirectory))
 
@@ -817,6 +858,43 @@ def analyzeData(dataDirectory=None, outputDirectory=None):
     writeSortedData(cleanedBeadData=rejectionPostTx, outputFileName=join(outputDirectory, 'Rejection.PostTx.csv'))
     writeSortedData(cleanedBeadData=controlPreTx, outputFileName = join(outputDirectory,'Control.PreTx.csv'))
     writeSortedData(cleanedBeadData=controlPostTx, outputFileName=join(outputDirectory, 'Control.PostTx.csv'))
+
+    aetiologySubdir = join(outputDirectory,'SplitByAetiology')
+    rejectionTypeSubdir = join(outputDirectory, 'SplitByRejectionType')
+    if not isdir(aetiologySubdir):
+        makedirs(aetiologySubdir)
+        makedirs(rejectionTypeSubdir)
+
+    # PreTX Rejections Split
+    preTxSplitRejectionType, preTxSplitDiseaseAetiology = splitByRejectionTypeAndAetiology(cleanedBeadData=rejectionPreTx, dataMatrixData=dataMatrixData)
+    for rejectionType in preTxSplitRejectionType.keys():
+        writeSortedData(cleanedBeadData=preTxSplitRejectionType[rejectionType], outputFileName=join(rejectionTypeSubdir, 'Rejection.Type.' + str(rejectionType).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PreTx.csv'))
+    for aetiology in preTxSplitDiseaseAetiology.keys():
+        writeSortedData(cleanedBeadData=preTxSplitDiseaseAetiology[aetiology], outputFileName=join(aetiologySubdir, 'Rejection.Aetiology.' + str(aetiology).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PreTx.csv'))
+
+    # Post TX Rejections
+    postTxSplitRejectionType, postTxSplitDiseaseAetiology = splitByRejectionTypeAndAetiology(cleanedBeadData=rejectionPostTx, dataMatrixData=dataMatrixData)
+    for rejectionType in postTxSplitRejectionType.keys():
+        writeSortedData(cleanedBeadData=postTxSplitRejectionType[rejectionType], outputFileName=join(rejectionTypeSubdir, 'Rejection.Type.' + str(rejectionType).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PostTx.csv'))
+    for aetiology in postTxSplitDiseaseAetiology.keys():
+        writeSortedData(cleanedBeadData=postTxSplitDiseaseAetiology[aetiology], outputFileName=join(aetiologySubdir, 'Rejection.Aetiology.' + str(aetiology).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PostTx.csv'))
+
+    # PreTX Controls Split
+    preTxSplitControlRejectionType, preTxSplitControlDiseaseAetiology = splitByRejectionTypeAndAetiology(cleanedBeadData=controlPreTx, dataMatrixData=dataMatrixData)
+    #for rejectionType in preTxSplitControlRejectionType.keys():
+    #    writeSortedData(cleanedBeadData=preTxSplitControlRejectionType[rejectionType], outputFileName=join(rejectionTypeSubdir, 'Control.Type.' + str(rejectionType).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PreTx.csv'))
+    for aetiology in preTxSplitControlDiseaseAetiology.keys():
+        writeSortedData(cleanedBeadData=preTxSplitControlDiseaseAetiology[aetiology], outputFileName=join(aetiologySubdir, 'Control.Aetiology.' + str(aetiology).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PreTx.csv'))
+
+    # PostTX Controls Split
+    postTxSplitControlRejectionType, postTxSplitControlDiseaseAetiology = splitByRejectionTypeAndAetiology(cleanedBeadData=controlPostTx, dataMatrixData=dataMatrixData)
+    #for rejectionType in postTxSplitControlRejectionType.keys():
+    #    writeSortedData(cleanedBeadData=postTxSplitControlRejectionType[rejectionType], outputFileName=join(rejectionTypeSubdir, 'Control.Type.' + str(rejectionType).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PostTx.csv'))
+    for aetiology in postTxSplitControlDiseaseAetiology.keys():
+        writeSortedData(cleanedBeadData=postTxSplitControlDiseaseAetiology[aetiology], outputFileName=join(aetiologySubdir, 'Control.Aetiology.' + str(aetiology).replace('/','.').replace(' ','').replace('(','').replace(')','') + '.PostTx.csv'))
+
+
+
 
 if __name__=='__main__':
     try:
