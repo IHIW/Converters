@@ -136,19 +136,17 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     nonImmuEpsProjectID = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
-    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
     createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
 
     # TODO: excluding FASTQ files here. Did I miss any? Could check but I think that's everything.
-    #createProjectZipFile(bucket=args.bucket, url=url, token=token
-    #    , projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID]
-    #   ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'])
-
-
+    createProjectZipFile(bucket=args.bucket, url=url, token=token
+       , projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID]
+       ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'])
 
 def testPyArd(args=None):
-    # TODO: This code is not particurly useful at present. We can go from MAC -> allele list, but not vice versa.
+    # TODO: This code is not particularly useful at present. We can go from MAC -> allele list, but not vice versa.
     import pyard
     print('TestingPyArd')
     ard = pyard.ARD()

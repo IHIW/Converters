@@ -121,13 +121,29 @@ def updateTypings(typings=None, newTypings=None):
         else:
             genotypeAmbiguitySeparator='|'
             alleleCopySeparator='+'
+            alleleAmbiguitySeparator='/'
             # In a GLString, '|' is the genotype ambiguity separator.
             # '+' separates copies of a gene at a single locus.
             # Which to use? Most likely, these are two alleles typed separately.
             # But if they are genotypes (Already include a '+' or '|'), we can separate using '|'
             if(genotypeAmbiguitySeparator in typings[locus] or genotypeAmbiguitySeparator in newTypings[locus]
                 or alleleCopySeparator in typings[locus] or alleleCopySeparator in newTypings[locus]):
-                typings[locus] = typings[locus] + genotypeAmbiguitySeparator + newTypings[locus]
+
+                # Get rid of all allele delimiters
+                beforeOptions = sorted(list(set(str(typings[locus]).replace('/','+').replace('|','+').split('+'))))
+                afterOptions = sorted(list(set(str(newTypings[locus]).replace('/','+').replace('|','+').split('+'))))
+
+                # This might break things
+                # I *ASSUME* that each glstring is meant to represent a single allele
+                # This probably isn't correct, but it hides errors in genotypes reported in HML GLStrings. (for better or worse)
+
+                newAlleleString = alleleAmbiguitySeparator.join(beforeOptions) + alleleCopySeparator + alleleAmbiguitySeparator.join(afterOptions)
+                print('\n*****Warning: Multiple genotypes options detected. They were rejoined:\n' + str(typings[locus]) + '\n+\n' + str(newTypings[locus]) + '\n=\n' + newAlleleString)
+
+                typings[locus] = newAlleleString
+
+                # We were previously joining by the genotype ambiguity separator.
+                #typings[locus] = typings[locus] + genotypeAmbiguitySeparator + newTypings[locus]
             else:
                 typings[locus] = typings[locus] + alleleCopySeparator + newTypings[locus]
     return typings
@@ -376,39 +392,38 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
         alleleSpecificReportWorksheet[cellIndex] = header
         alleleSpecificReportWorksheet.column_dimensions[columnLetter].width = 30
 
+
     for transplantationId in antibodiesLookup.keys():
 
-        # Handle the case of multiple panels for a single locus
-        classIPanelString = ''
-        classIPcString = ''
-        classINcString = ''
+        classIPanels = {}
         for panel in controlLookup[transplantationId]['I'].keys():
-            if(len(classIPanelString) > 0):
-                # This is not the first panel
-                classIPanelString = classIPanelString + ' ; ' + panel
-                classIPcString = classIPcString + ' ; ' + controlLookup[transplantationId]['I'][panel]['PC']
-                classINcString = classINcString + ' ; ' + controlLookup[transplantationId]['I'][panel]['NC']
-            else:
-                # This the first or only panel
-                classIPanelString = panel
-                classIPcString = controlLookup[transplantationId]['I'][panel]['PC']
-                classINcString = controlLookup[transplantationId]['I'][panel]['NC']
+            classIPanels[panel] = {}
+            classIPanels[panel]['PC'] = controlLookup[transplantationId]['I'][panel]['PC']
+            classIPanels[panel]['NC'] = controlLookup[transplantationId]['I'][panel]['NC']
+            classIPanels[panel]['specificities'] = []
+            for classISpecificity in classISpecificities:
+                classIMfi = '?'
+                try:
+                    classIMfi = antibodiesLookup[transplantationId][panel][classISpecificity]
+                except KeyError:
+                    # The MFI for this locus is in a different panel.
+                    pass
+                classIPanels[panel]['specificities'].append(classIMfi)
 
-        classIIPanelString = ''
-        classIIPcString = ''
-        classIINcString = ''
+        classIIPanels = {}
         for panel in controlLookup[transplantationId]['II'].keys():
-            if (len(classIIPanelString) > 0):
-                # This is not the first panel
-                classIIPanelString = classIIPanelString + ' ; ' + panel
-                classIIPcString = classIIPcString + ' ; ' + controlLookup[transplantationId]['II'][panel]['PC']
-                classIINcString = classIINcString + ' ; ' + controlLookup[transplantationId]['II'][panel]['NC']
-            else:
-                # This the first or only panel
-                classIIPanelString = panel
-                classIIPcString = controlLookup[transplantationId]['II'][panel]['PC']
-                classIINcString = controlLookup[transplantationId]['II'][panel]['NC']
-
+            classIIPanels[panel] = {}
+            classIIPanels[panel]['PC'] = controlLookup[transplantationId]['II'][panel]['PC']
+            classIIPanels[panel]['NC'] = controlLookup[transplantationId]['II'][panel]['NC']
+            classIIPanels[panel]['specificities'] = []
+            for classIISpecificity in classIISpecificities:
+                classIIMfi = '?'
+                try:
+                    classIIMfi = antibodiesLookup[transplantationId][panel][classIISpecificity]
+                except KeyError:
+                    # The MFI for this locus is in a different panel.
+                    pass
+                classIIPanels[panel]['specificities'].append(classIIMfi)
 
         patientData = [str(transplantationId)
             , recipientGenotypingsLookup[transplantationId]['A']
@@ -437,36 +452,32 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
                 , donorGenotypingsLookup[transplantationId]['DPB1']
                 , donorGenotypingsLookup[transplantationId]['DPA1']])
 
-        patientData.extend([classIPanelString
-            , classIPcString
-            , classINcString])
+        panelCount = max(len(classIPanels.keys()), len(classIIPanels.keys()))
 
-        for classISpecificity in classISpecificities:
-            classIMfi = '?'
-            for panel in controlLookup[transplantationId]['I'].keys():
-                try:
-                    classIMfi = antibodiesLookup[transplantationId][panel][classISpecificity]
-                except KeyError:
-                    # The MFI for this locus is in a different panel.
-                    pass
-            patientData.append(classIMfi)
+        for panelIndex in range(0,panelCount):
+            dataLine = patientData.copy()
 
-        patientData.extend([classIIPanelString
-            , classIIPcString
-            , classIINcString])
+            # Add the class I data
+            try:
+                panel = sorted(list(classIPanels.keys()))[panelIndex]
+                dataLine.extend([panel, classIPanels[panel]['PC'], classIPanels[panel]['NC']])
+                dataLine.extend(classIPanels[panel]['specificities'])
+            except Exception as e:
+                dataLine.extend((3+len(classISpecificities))*['.'])
+                #print('No class I specificities for index ' + str(panelIndex) + '(Not a Problem)')
+                #raise e
 
-        for classIISpecificity in classIISpecificities:
-            classIIMfi = '?'
-            for panel in controlLookup[transplantationId]['II'].keys():
-                try:
-                    classIIMfi = antibodiesLookup[transplantationId][panel][classIISpecificity]
-                except KeyError:
-                    # The MFI for this locus is in a different panel.
-                    pass
-            patientData.append(classIIMfi)
+            # Add the class II data
+            try:
+                panel = sorted(list(classIIPanels.keys()))[panelIndex]
+                dataLine.extend([panel, classIIPanels[panel]['PC'], classIIPanels[panel]['NC']])
+                dataLine.extend(classIIPanels[panel]['specificities'])
+            except Exception as e:
+                dataLine.extend((3+len(classIISpecificities))*['.'])
+                #print('No class I specificities for index ' + str(panelIndex) + '(Not a Problem)')
+                #raise e
 
-
-        alleleSpecificReportWorksheet.append(patientData)
+            alleleSpecificReportWorksheet.append(dataLine)
 
     outputWorkbookbyteStream = ParseExcel.createBytestreamExcelOutputFile(workbookObject=alleleSpecificReportWorkbook)
     S3_Access.writeFileToS3(newFileName=reportName, bucket=bucket, s3ObjectBytestream=outputWorkbookbyteStream)
@@ -544,9 +555,9 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     recipientGenotypingsLookup = {}
     donorGenotypingsLookup = {}
 
-
     # Combine data matrices together for summary worksheet..
-    for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
+    for dataMatrixIndex, dataMatrixUpload in enumerate(sorted(dataMatrixUploadList, key=lambda d: d['id'])):
+    #for dataMatrixIndex, dataMatrixUpload in enumerate(sorted(dataMatrixUploadList, key=lambda d: d['id'])[8:9]): # Debugging, one line
         print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex+1) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
         #print('This is the upload: ' + str(dataMatrixUpload))
 
@@ -689,11 +700,11 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
     preTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPreTx.xlsx'
     createAlleleSpecificReport(antibodiesLookup=antibodiesPreTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
-        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=preTxAlleleSpecificReportName)
+        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=preTxAlleleSpecificReportName, isImmunogenic=True)
 
     postTxAlleleSpecificReportName = 'Project.' + str('_'.join(projectIDs)) + '.AlleleSpecificPostTx.xlsx'
     createAlleleSpecificReport(antibodiesLookup=antibodiesPostTxLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
-        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=postTxAlleleSpecificReportName)
+        , donorGenotypingsLookup=donorGenotypingsLookup, bucket=bucket, reportName=postTxAlleleSpecificReportName, isImmunogenic=True)
 
     # create zip file
     zipFileName = 'Project.' + str('_'.join(projectIDs)) + '.TransplantationReports.zip'
@@ -767,7 +778,8 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     recipientGenotypingsLookup = {}
 
     # Combine data matrices together for summary worksheet..
-    for dataMatrixIndex, dataMatrixUpload in enumerate(dataMatrixUploadList):
+    for dataMatrixIndex, dataMatrixUpload in enumerate(sorted(dataMatrixUploadList, key=lambda d: d['id'])):
+    #for dataMatrixIndex, dataMatrixUpload in enumerate(sorted(dataMatrixUploadList, key=lambda d: d['id'])[4:5]): # Debugging, single file
         print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex+1) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
 
         excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])

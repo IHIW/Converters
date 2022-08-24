@@ -359,8 +359,12 @@ def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
                         if(glStringElement.text is not None and len(glStringElement.text)>0):
                             glStrings[sampleID].append(glStringElement.text)
 
-        # TODO: HLA typing can also be reported as A series of diploid locus blocks in HML.
-        #  Should I fetch those and form them into a GLString?
+                    # These are allele elements, not glstrings. They *should* be fully-formed HLA alleles, which..
+                    # ..sort of are simple glstrings?  Hope this does not break things.
+                    if (str(glStringElement.tag) == str('{http://schemas.nmdp.org/spec/hml/1.0.1}allele')):
+                        if (glStringElement.text is not None and len(glStringElement.text) > 0):
+                            glStrings[sampleID].append(glStringElement.text)
+
         # schemas.nmdp.org
         return glStrings
 
