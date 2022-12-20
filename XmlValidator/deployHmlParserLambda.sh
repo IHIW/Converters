@@ -3,8 +3,8 @@
 # And you must have previously run "aws configure" to set up your machine for access to the AWS Environment.
 # Feel free to try it without activating the virtual environment (remove the line source $ENVIRONMENT_PATH"/bin/activate")
 # it may or may not be necessary depending on your local python environment.
-PROJECT_PATH="/home/bmatern/github/Converters/XmlValidator"
-ENVIRONMENT_PATH="/home/bmatern/github/Converters/venv"
+PROJECT_PATH="/home/ben/github/Converters/XmlValidator"
+ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
 HANDLER_FILE="HmlGlStringParser.py"
 LAMBDA_FUNCTION="parseHmlStaging"
 #LAMBDA_FUNCTION="parseHmlProd"
@@ -18,10 +18,7 @@ rm function.zip
 source $ENVIRONMENT_PATH"/bin/activate"
 pip install --target ./package lxml
 pip install --target ./package pyyaml
-#pip install -Iv --target ./package biopython==1.71
-#pip install -Iv --target ./package numpy==1.14.2
 pip install --target ./package git+https://github.com/nmdp-bioinformatics/pyglstring
-#pip install --target ./package pyhml
 deactivate
 
 # Zip packages
@@ -34,10 +31,6 @@ zip -g function.zip $HANDLER_FILE
 zip -j -g function.zip ../Common/IhiwRestAccess.py
 zip -j -g function.zip ../Common/Validation.py
 zip -j -g function.zip ../Common/ParseXml.py
-
-
-# Zip Config File
-zip -g function.zip validation_config.yml
 
 # Upload to AWS
 aws lambda update-function-code --function-name $LAMBDA_FUNCTION --zip-file fileb://function.zip
