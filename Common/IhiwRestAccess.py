@@ -143,25 +143,28 @@ def createConvertedUploadObject(newUploadFileName=None, newUploadFileType=None, 
         print('Error when creating the Upload object for converted file:\n' + str(e) + '\n' + str(exc_info()))
         return False
 
-'''
-def createNewUploadObject(newUploadFileName=None, newUploadFileType=None, token=None, url=None):
+def createProjectSummaryUploadObject(projectId=None, newUploadFileName=None, newUploadFileType=None, token=None, url=None):
     print('Creating new upload object,\t' + 'newUploadFileType=' + str(newUploadFileType))
 
     if(url is None):
         url = getUrl()
     if(token is None):
         token = getToken(url=url)
+
+    if token is None or len(token) < 1:
+        print('Error. No login token available when creating converted upload object.')
+        return None
+
     try:
-        fullUrl = str(url) + '/api/uploads'
+        fullUrl = str(url) + '/api/uploads/projectsummary'
 
         # Body is empty, we're passing the interesting stuff in the parameters.
         body = {}
 
         params = {
-            'oldFileName': previousUploadFileName
-            #'oldfileName': previousUploadFileName
-            ,'newType': newUploadFileType
-            ,'newFileName':newUploadFileName
+            'projectId': projectId
+            ,'summaryFileType': newUploadFileType
+            ,'summaryFileName':newUploadFileName
             }
         query_string = urllib.parse.urlencode(params)
         fullUrl = fullUrl + "?" + query_string
@@ -189,12 +192,13 @@ def createNewUploadObject(newUploadFileName=None, newUploadFileType=None, token=
         print('Syntax error when parsing response from request:\n' + str(e) + '\n' + str(exc_info()))
         return False
     except urllib.error.HTTPError as e:
-        print('HTTP error when creating the Upload object for converted file for upload file ' + str(previousUploadFileName) + ' : ' + str(e))
+        print('HTTP error when creating the Upload object for converted file for upload file ' + str(newUploadFileType) + ' : ' + str(e))
         return False
     except Exception as e:
         print('Error when creating the Upload object for converted file:\n' + str(e) + '\n' + str(exc_info()))
         return False
-'''
+
+
 def getCredentials(configFileName='validation_config.yml'):
     try:
         configStream = open(configFileName, 'r')

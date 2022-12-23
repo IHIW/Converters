@@ -134,8 +134,7 @@ def revalidateUpload(bucket=None, uploadFilename=None):
 def getFileSize(bucket=None, uploadFilename=None):
     print('Getting the file size of the upload ' + str(uploadFilename) + ' in bucket ' + str(bucket))
     try:
-        s3Client = client('s3')
-        fileObject = s3Client.get_object(Bucket=bucket, Key=uploadFilename)
+        fileObject = getFile(bucket=bucket, uploadFilename=uploadFilename)
         fileSizeBytes=fileObject['ContentLength']
         # kilobytes = bytes/1024. We do Binary here
         return 1.0 * fileSizeBytes / 1024
@@ -143,3 +142,14 @@ def getFileSize(bucket=None, uploadFilename=None):
     except Exception as e:
         print('Problem Getting File Size:\n' + str(e))
         return 0.0
+
+def getFile(bucket=None, uploadFilename=None):
+    print('Getting the upload ' + str(uploadFilename) + ' in bucket ' + str(bucket))
+    try:
+        s3Client = client('s3')
+        fileObject = s3Client.get_object(Bucket=bucket, Key=uploadFilename)
+        return fileObject
+
+    except Exception as e:
+        print('Problem Getting File Size:\n' + str(e))
+        return None

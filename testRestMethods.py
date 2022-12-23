@@ -4,7 +4,7 @@ import time
 
 from Common.IhiwRestAccess import createConvertedUploadObject, setValidationStatus, getUrl, getToken, getCredentials, \
     getUploadByFilename, deleteUpload, getUploadsByParentId, getUploads, getProjectID, getUploadsByProjectID, fixUpload, \
-    getFilteredUploads, getUploadsByProjects
+    getFilteredUploads, getUploadsByProjects, createProjectSummaryUploadObject
 from Common.Validation import validateGlStrings
 from OrphanedUploads.queryOrphanedUploads import queryOrphanedUploads
 from Common.S3_Access import revalidateUpload
@@ -196,6 +196,13 @@ def testCheckGLString(args=None):
     print('isValid:' + str(isValid))
     print('validationFeedback:' + str(validationFeedback))
 
+
+def testCreateNewUpload(args=None):
+    print('Creating new upload:' + str(args.upload))
+
+    createProjectSummaryUploadObject(projectId=int(args.project), newUploadFileName=str(args.upload), newUploadFileType="OTHER")
+
+
 if __name__ == '__main__':
     print('Testing Rest Methods')
 
@@ -221,6 +228,8 @@ if __name__ == '__main__':
             testListUploads(args=args)
         elif (task == 'CHECK_GLSTRING'):
             testCheckGLString(args=args)
+        elif (task == 'CREATE_UPLOAD'):
+            testCreateNewUpload(args=args)
         else:
             print('I do not understand which task to perform')
 
