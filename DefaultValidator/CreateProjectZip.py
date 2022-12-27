@@ -25,9 +25,12 @@ def createZipFile(oldFileName=None, newFileName=None, projectId=None, url=None, 
     totalFileCount = len(projectUploads)
 
     # Loop Uploads
-    for upload in projectUploads:
-        print('Some upload info:')
-        print(str(upload))
+    for uploadIndex, upload in enumerate(projectUploads):
+
+        if uploadIndex % 500 == 0:
+            print('Zipping upload # ' + str(uploadIndex) + '/' + str(len(projectUploads)))
+            print('Some upload info:')
+            print(str(upload))
 
         laboratory = upload['createdBy']['lab']['institution']
         labId = str(upload['createdBy']['lab']['id'])
@@ -42,7 +45,7 @@ def createZipFile(oldFileName=None, newFileName=None, projectId=None, url=None, 
             try:
                 fileSizeKB = 1.0 * uploadData['ContentLength'] / 1024
 
-                if fileSizeKB > 5000:
+                if fileSizeKB > 4000:
                     fileSizeKB = str(fileSizeKB) + ' (Not included in ZIP file)'
                 else:
                     fileText = uploadData["Body"].read()

@@ -3,8 +3,8 @@
 # And you must have previously run "aws configure" to set up your machine for access to the AWS Environment.
 PROJECT_PATH="/home/ben/github/Converters/DefaultValidator"
 ENVIRONMENT_PATH="/home/ben/github/Converters/venv"
-LAMBDA_FUNCTION="zipProjectFilesStaging"
-#LAMBDA_FUNCTION="zipProjectFilesStagingProd"
+#LAMBDA_FUNCTION="zipProjectFilesStaging"
+LAMBDA_FUNCTION="zipProjectFilesProd"
 
 cd $PROJECT_PATH
 
