@@ -229,13 +229,16 @@ def reduceGenotypings(typings=None):
                         bothAlleles = []
                         for alleleString in alleleStrings:
                             #print('Allele String:' + str(alleleString))
-                            alleleOptions = set()
+                            # alleleOptions: Key=2field allele, value = decimal representation of 2f nomenclature tokens (Useful for numerically sorting alleles)
+                            alleleOptions = {}
                             for allele in alleleString.split('/'):
                                 #print('Allele:' + str(allele))
                                 # Get the first 2 fields
                                 nomenclatureTokens = allele.split(':')
                                 if(len(nomenclatureTokens)==1):
-                                    alleleOptions.add(allele)
+                                    #''.join(filter(str.isdigit, 'aas30dsa20'))
+                                    numericalValue = ''.join(filter(str.isdigit, str(nomenclatureTokens[0].split('*')[1])))
+                                    alleleOptions[allele]=float(numericalValue)
                                 else:
                                     shortAlleleName = nomenclatureTokens[0] + ':' + nomenclatureTokens[1]
                                     expressionCharacter = allele[-1]
@@ -244,9 +247,15 @@ def reduceGenotypings(typings=None):
                                         # Check if there are > 2 fields before adding charcter, otherwise we get doubled-up expression characters.
                                         if(len(nomenclatureTokens)>2):
                                             shortAlleleName = shortAlleleName + expressionCharacter
-                                    alleleOptions.add(shortAlleleName)
+                                    numericalValue = ''.join(filter(str.isdigit, str(nomenclatureTokens[0].split('*')[1] + '.' + nomenclatureTokens[1])))
+                                    alleleOptions[shortAlleleName] = float(numericalValue)
+
                                 #print('alleleOptions:' + str(alleleOptions))
-                            bothAlleles.append('/'.join(sorted(list(alleleOptions))))
+
+                            # Sort by numbers and not letters. The dict keys have a numerical value representing the allele.
+                            sortedAlleleOptions = list(dict(sorted(alleleOptions.items(),key=lambda x: x[1])).keys())
+                            alleleOptionString='/'.join(sortedAlleleOptions)
+                            bothAlleles.append(alleleOptionString)
                             #print('BothAlleles:' + str(bothAlleles))
 
                         genotypeOptions.add('+'.join(sorted(list(bothAlleles))))
@@ -341,7 +350,7 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
                         controlLookup[transplantationId][hlaClass][panel] = {}
                         controlLookup[transplantationId][hlaClass][panel]['PC'] = '?'
                         controlLookup[transplantationId][hlaClass][panel]['NC'] = '?'
-                    classISpecificities.add(specificity)
+                    classISpecificities.add(specificity.strip())
                 elif(str(specificity).startswith('D')):
                     hlaClass = 'II'
                     #controlLookup[transplantationId][hlaClass]['panel'] = panel
@@ -349,7 +358,7 @@ def createAlleleSpecificReport(antibodiesLookup=None, recipientGenotypingsLookup
                         controlLookup[transplantationId][hlaClass][panel] = {}
                         controlLookup[transplantationId][hlaClass][panel]['PC'] = '?'
                         controlLookup[transplantationId][hlaClass][panel]['NC'] = '?'
-                    classIISpecificities.add(specificity)
+                    classIISpecificities.add(specificity.strip())
                 elif(specificity.startswith('NC : ')):
                     if (hlaClass in('I','II')):
                         #controlLookup[transplantationId][hlaClass]['NC']=antibodiesLookup[transplantationId][panel][specificity]
@@ -519,7 +528,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
     # Data Matrix Report Headers
     dataMatrixReportHeaders = ['transplantation_index','data_matrix_filename', 'data_matrix_row_num', 'submitting_user'
-        , 'submitting_lab', 'submission_date', 'donor_glstring', 'recipient_glstring', 'transplantation_report']
+        , 'submitting_lab', 'submission_date', 'recipient_glstring', 'donor_glstring', 'transplantation_report']
     dataMatrixHeaders = ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=True)
     dataMatrixReportHeaders.extend(dataMatrixHeaders)
 

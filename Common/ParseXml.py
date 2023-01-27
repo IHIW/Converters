@@ -324,7 +324,7 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQu
                         beadData[lotNumber]['NC : '+ str(lotNumber)]=negativeControlMfi
                         beadData[lotNumber]['PC : ' + str(lotNumber)]=positiveControlMfi
                     for beadNode in solidPhasePanelNode.findall('{urn:HAML.Namespace}bead'):
-                        specificity = beadNode.get('HLA-allele-specificity')
+                        specificity = beadNode.get('HLA-allele-specificity').strip()
                         rawMfi = beadNode.get('raw-MFI')
                         ranking = beadNode.get('Ranking')
 
