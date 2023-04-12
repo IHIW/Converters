@@ -1,5 +1,6 @@
 import zipfile
-from os.path import join
+from os import makedirs, listdir
+from os.path import join, isdir, isfile
 from sys import exc_info
 import boto3
 from boto3 import client
@@ -13,7 +14,7 @@ except Exception as e:
 
 s3 = client('s3')
 
-def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fileTypeFilter=None):
+def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fileTypeFilter=None, localTempFolder=None):
     print('Creating Project Zip Files for project(s) ' + str(projectIDs))
     #print('URL=' + str(url))
 
@@ -59,9 +60,15 @@ def createProjectZipFile(bucket=None, projectIDs=None, url=None, token=None, fil
                 #print('Adding file ' + str(supportingFile) + ' to ' + str(zipFileName))
                 print('Progress = ' + str(uploadIndex) + '/' + str(len(projectUploads)) + ' = ' + str (100 * (uploadIndex/len(projectUploads))) + '%')
 
-            supportingFileObject = s3.get_object(Bucket=bucket, Key=supportingFileName)
+            #supportingFileObject = s3.get_object(Bucket=bucket, Key=supportingFileName)
             fileNameWithRelativePath=join('project_' + str(uploadProjectName),join(uploadType,supportingFileName))
-            supportingFileZip.writestr(fileNameWithRelativePath, supportingFileObject["Body"].read())
+            #supportingFileZip.writestr(fileNameWithRelativePath, supportingFileObject["Body"].read())
+            if str(supportingFileName).upper().endswith('.ZIP'):
+                print('Skipping zip file ' + str(supportingFileName))
+            else:
+                fileText = getFileText(bucket=bucket, uploadFileName=supportingFileName, localTempFolder=localTempFolder)
+                supportingFileZip.writestr(fileNameWithRelativePath, fileText)
+
 
         except Exception as e:
             print('Exception when writing file to zip:\n' + str(e) + '\n' + str(exc_info()) )
@@ -151,5 +158,63 @@ def getFile(bucket=None, uploadFilename=None):
         return fileObject
 
     except Exception as e:
-        print('Problem Getting File Size:\n' + str(e))
+        print('Problem Getting File:\n' + str(e))
         return None
+
+def getFileBytestream(bucket=None, uploadFileName=None, localTempFolder=None):
+    if localTempFolder is None or len(localTempFolder) < 2:
+        fileObject = s3.get_object(Bucket=bucket, Key=uploadFileName)
+        bytestream = io.BytesIO(fileObject["Body"].read())
+        return bytestream
+    else:
+        if not isdir(localTempFolder):
+            makedirs(localTempFolder)
+
+        try:
+            # Read the local file
+            with open(join(localTempFolder,uploadFileName), "rb") as fh:
+                bytestream = io.BytesIO(fh.read())
+                #print('Returning Local File:' + str(uploadFileName))
+                return bytestream
+        except FileNotFoundError as e:
+            # Read the remote file
+            #print('Returning Remote File:' + str(uploadFileName))
+            fileObject = s3.get_object(Bucket=bucket, Key=uploadFileName)
+            bytestream = io.BytesIO(fileObject["Body"].read())
+            # Write it locally
+            with open(join(localTempFolder,uploadFileName), "wb") as binary_file:
+                binary_file.write(bytestream.getbuffer())
+
+            return bytestream
+
+    raise Exception ('Something went wrong when getting a file bytestream, I forgot to return a value. upload=' + str(uploadFileName) + ' bucket= ' + str(bucket) + ' tempfolder=' + str(localTempFolder))
+
+
+def getFileText(bucket=None, uploadFileName=None, localTempFolder=None):
+    if localTempFolder is None or len(localTempFolder) < 2:
+        fileObject = s3.get_object(Bucket=bucket, Key=uploadFileName)
+        fileText = fileObject["Body"].read()
+        return fileText
+    else:
+        if not isdir(localTempFolder):
+            makedirs(localTempFolder)
+
+        try:
+            # Read the local file
+            with open(join(localTempFolder,uploadFileName), "rb") as fh:
+                fileText = fh.read()
+                #print('Returning Local File:' + str(uploadFileName))
+                return fileText
+        except FileNotFoundError as e:
+            # Read the remote file
+            #print('Returning Remote File:' + str(uploadFileName))
+            fileObject = s3.get_object(Bucket=bucket, Key=uploadFileName)
+            fileText = fileObject["Body"].read()
+            # Write it locally
+            with open(join(localTempFolder,uploadFileName), "wb") as binary_file:
+                binary_file.write(fileText)
+
+            return fileText
+
+    raise Exception ('Something went wrong when getting a file, I forgot to return a value. upload=' + str(uploadFileName) + ' bucket= ' + str(bucket) + ' tempfolder=' + str(localTempFolder))
+

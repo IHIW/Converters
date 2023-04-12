@@ -58,9 +58,9 @@ def createUploadEntriesForReport(summaryFileName=None, zipFileName=None):
     else:
         raise Exception('Could not create login token when creating upload entries for report files.')
 
-def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilenames=None, recipHamlPostTxFilenames=None, s3=None, bucket=None, transplantationIndex=None, recipientSampleId=None):
-    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPreTxFilenames, s3=s3, bucket=bucket, sampleIdQuery=recipientSampleId)
-    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket, sampleIdQuery=recipientSampleId)
+def getTransplantationReportSpreadsheet(donorTyping=None, recipientTyping=None, recipHamlPreTxFilenames=None, recipHamlPostTxFilenames=None, s3=None, bucket=None, transplantationIndex=None, recipientSampleId=None, localTempFolder=None):
+    recipPreTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPreTxFilenames, s3=s3, bucket=bucket, sampleIdQuery=recipientSampleId, localTempFolder=localTempFolder)
+    recipPostTxAntibodyData = ParseXml.parseHamlFileForBeadData(hamlFileNames=recipHamlPostTxFilenames, s3=s3, bucket=bucket, sampleIdQuery=recipientSampleId, localTempFolder=localTempFolder)
     transplantationReportSpreadsheet = ParseExcel.createExcelTransplantationReport(donorTyping=donorTyping, recipientTyping=recipientTyping, recipPreTxAntibodyData=recipPreTxAntibodyData, recipPostTxAntibodyData=recipPostTxAntibodyData, preTxFileNames=recipHamlPreTxFilenames, postTxFileNames=recipHamlPostTxFilenames, transplantationIndex=transplantationIndex)
     return transplantationReportSpreadsheet, recipPreTxAntibodyData, recipPostTxAntibodyData
 
@@ -148,7 +148,7 @@ def updateTypings(typings=None, newTypings=None):
                 typings[locus] = typings[locus] + alleleCopySeparator + newTypings[locus]
     return typings
 
-def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs=None, bucket=None, sampleID=None):
+def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs=None, bucket=None, sampleID=None, localTempFolder=None):
     #print('getting typingData for (' + str(hla) + ')')
 
     fileResults = IhiwRestAccess.getUploadFileNamesByPartialKeyword(uploadTypeFilter=['HML'],
@@ -177,7 +177,7 @@ def constructTypings(allUploads=None, hla=None, token=None, url=None, projectIDs
         #print('I found ' + str(len(fileResults)) + ' files, parsing for GLStrings...')
         for fileResult in fileResults:
             #print('Checking file for glstrings:' + str(fileResult['fileName']))
-            currentGlStrings = ParseXml.getGlStringsFromHml(hmlFileName=fileResult['fileName'], s3=s3, bucket=bucket)
+            currentGlStrings = ParseXml.getGlStringsFromHml(hmlFileName=fileResult['fileName'], s3=s3, bucket=bucket, localTempFolder=localTempFolder)
             #print('Found this currentGlStrings:' + str(currentGlStrings))
             if currentGlStrings is not None:
                 for hmlSampleId in currentGlStrings.keys():
@@ -501,8 +501,9 @@ def createGlStringFromTypings(sampleTypings=None):
     trimGlString=glString[0:-1]
     return trimGlString
 
-def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
+def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None, localTempFolder=None):
     print('Creating an Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
+    print('Using this local temp folder:' + str(localTempFolder))
 
     if url is None:
         url = IhiwRestAccess.getUrl()
@@ -570,8 +571,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
         print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex+1) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
         #print('This is the upload: ' + str(dataMatrixUpload))
 
-        excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
-        inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())
+        inputExcelBytes = S3_Access.getFileBytestream(bucket=bucket, uploadFileName=dataMatrixUpload['fileName'], localTempFolder=localTempFolder)
+
         # validateEpitopesDataMatrix returns all the information we need.
         (validationResults, validatedWorkbook) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(
             excelFile=inputExcelBytes, isImmunogenic=True, projectIDs=projectIDs, uploadList=allUploads)
@@ -608,8 +609,8 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
 
                     # Get the Donor GLString/HML File
                     # Get the Recipient GLString/HML File
-                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=recipientSampleId)
-                    donorTypings = constructTypings(allUploads=allUploads, hla=donorHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=donorSampleId)
+                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=recipientSampleId, localTempFolder=localTempFolder)
+                    donorTypings = constructTypings(allUploads=allUploads, hla=donorHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=donorSampleId, localTempFolder=localTempFolder)
 
                     recipientTypingsSimplified = reduceGenotypings(typings=recipientTypings)
                     donorTypingsSimplified = reduceGenotypings(typings=donorTypings)
@@ -644,7 +645,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
                         transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
                             donorTyping=donorTypingsSimplified, recipientTyping=recipientTypingsSimplified,
                             recipHamlPreTxFilenames=recipHamlPreTxFilenames, recipHamlPostTxFilenames=recipHamlPostTxFilenames,
-                            s3=s3, bucket=bucket, transplantationIndex=transplantationIndex, recipientSampleId=recipientSampleId)
+                            s3=s3, bucket=bucket, transplantationIndex=transplantationIndex, recipientSampleId=recipientSampleId, localTempFolder=localTempFolder)
                         supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
 
                         #print('The antibody report returned these values:' + str(preTxAntibodies) + str(postTxAntibodies))
@@ -727,7 +728,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
-def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None):
+def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None, localTempFolder=None):
     print('Creating an non-Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
 
     if url is None:
@@ -791,8 +792,8 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     #for dataMatrixIndex, dataMatrixUpload in enumerate(sorted(dataMatrixUploadList, key=lambda d: d['id'])[4:5]): # Debugging, single file
         print('Checking Validation of this file:' + dataMatrixUpload['fileName'] + ' (' + str(dataMatrixIndex+1) + '/' + str(len(dataMatrixUploadList)) + ') for projects ' + str(projectIDs))
 
-        excelFileObject = s3.get_object(Bucket=bucket, Key=dataMatrixUpload['fileName'])
-        inputExcelBytes = io.BytesIO(excelFileObject["Body"].read())
+        inputExcelBytes = S3_Access.getFileBytestream(bucket=bucket, uploadFileName=dataMatrixUpload['fileName'], localTempFolder=localTempFolder)
+
         # validateEpitopesDataMatrix returns all the information we need.
         (validationResults, validatedWorkbook) = ImmunogenicEpitopesValidator.validateEpitopesDataMatrix(
             excelFile=inputExcelBytes, isImmunogenic=False, projectIDs=projectIDs, uploadList=allUploads)
@@ -828,7 +829,7 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
 
                     # Get the Donor GLString/HML File
                     # Get the Recipient GLString/HML File
-                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=recipientSampleId)
+                    recipientTypings = constructTypings(allUploads=allUploads, hla=recipientHla, token=token, url=url, projectIDs=projectIDs, bucket=bucket, sampleID=recipientSampleId, localTempFolder=localTempFolder)
                     recipientTypingsSimplified = reduceGenotypings(typings=recipientTypings)
 
                     # Put the typing in the spreadsheets.
@@ -853,7 +854,7 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
                         transplantationReportText, preTxAntibodies, postTxAntibodies = getTransplantationReportSpreadsheet(
                             donorTyping=recipientTypingsSimplified, recipientTyping=recipientTypingsSimplified,
                             recipHamlPreTxFilenames=recipHamlFilenames, recipHamlPostTxFilenames=recipHamlFilenames,
-                            s3=s3, bucket=bucket, transplantationIndex=dataRowIndexIndex, recipientSampleId=recipientSampleId)
+                            s3=s3, bucket=bucket, transplantationIndex=dataRowIndexIndex, recipientSampleId=recipientSampleId, localTempFolder=localTempFolder)
                         supportingSpreadsheets[transplantationReportFileName] = transplantationReportText
 
                         #print('The antibody report returned these values:' + str(preTxAntibodies) + str(postTxAntibodies))

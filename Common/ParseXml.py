@@ -7,6 +7,12 @@ from Bio.Align.Applications import ClustalOmegaCommandline
 from lxml import etree
 import xml.etree.ElementTree as ElementTree
 
+try:
+    import S3_Access
+except Exception as e:
+    print('Failed in importing files: ' + str(e))
+    from Common import S3_Access
+
 
 '''
 def getSampleIDs(hml=None):
@@ -277,7 +283,7 @@ def extrapolateConsensusFromVariants(hml=None, outputDirectory=None, xmlDirector
 
     return isValid, validationFeedback
 
-def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQuery=None):
+def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQuery=None, localTempFolder=None):
     beadData={}
 
     if(sampleIdQuery is None or len(str(sampleIdQuery).strip())<1):
@@ -286,12 +292,11 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQu
     for hamlFileName in hamlFileNames:
 
         try:
-            xmlFileObject = s3.get_object(Bucket=bucket, Key=hamlFileName)
+            xmlText = S3_Access.getFileText(bucket=bucket, uploadFileName=hamlFileName, localTempFolder=localTempFolder)
         except Exception as err:
             print('Failed loading HAML data for key ' + str(hamlFileName))
             return beadData
 
-        xmlText = xmlFileObject["Body"].read()
         documentRoot = ElementTree.fromstring(xmlText)
 
         # Can we find the sample ID Query within this document?
@@ -335,15 +340,18 @@ def parseHamlFileForBeadData(hamlFileNames=None,s3=None, bucket=None, sampleIdQu
                             beadData[lotNumber][specificity] = str(rawMfi)
     return beadData
 
-def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None):
+def getGlStringsFromHml(hmlFileName=None, s3=None, bucket=None, localTempFolder=None):
     # TODO: Use the pyhml package. currently it requires to pass a string as an HML file name.
     #  Can I do that using the S3 key?
     #  Might need to save the file directly in a temp directory for lambda to access it. Figure that out.
     glStrings = {}
 
     # Parse XML
-    xmlFileObject = s3.get_object(Bucket=bucket, Key=hmlFileName)
-    xmlText = xmlFileObject["Body"].read()
+    # TODO: Using a temp folder with these methods
+    #xmlFileObject = s3.get_object(Bucket=bucket, Key=hmlFileName)
+    #xmlText = xmlFileObject["Body"].read()
+    xmlText = S3_Access.getFileText(bucket=bucket, uploadFileName=hmlFileName, localTempFolder=localTempFolder)
+
     xmlParser = etree.XMLParser()
     try:
         xmlTree = etree.fromstring(xmlText, xmlParser)

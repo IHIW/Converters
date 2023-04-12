@@ -16,6 +16,7 @@ def parseArgs():
     parser.add_argument("-up", "--upload", required=False, help="upload file name", type=str)
     parser.add_argument("-b", "--bucket", required=False, help="S3 Bucket Name", type=str )
     parser.add_argument("-i", "--input", required=False, help="Input Folder", type=str)
+    parser.add_argument("-t", "--temp", required=False, help="Optional Temp Folder to store uploads locally", type=str)
 
     return parser.parse_args()
 
@@ -136,14 +137,14 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     nonImmuEpsProjectID = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID])
-    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID])
-    createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID])
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID], localTempFolder=args.temp)
+    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID], localTempFolder=args.temp)
+    createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID], localTempFolder=args.temp)
 
     # TODO: excluding FASTQ files here. Did I miss any? Could check but I think that's everything.
     createProjectZipFile(bucket=args.bucket, url=url, token=token
        , projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID]
-       ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'])
+       ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'], localTempFolder=args.temp)
 
 def testPyArd(args=None):
     # TODO: This code is not particularly useful at present. We can go from MAC -> allele list, but not vice versa.
