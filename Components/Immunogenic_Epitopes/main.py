@@ -137,11 +137,12 @@ def testCreateImmunogenicEpitopesProjectReport(args=None):
     nonImmuEpsProjectID = IhiwRestAccess.getProjectID(projectName='non_immunogenic_epitopes')
     dqEpsProjectID = IhiwRestAccess.getProjectID(projectName='dq_immunogenicity')
 
-    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID], localTempFolder=args.temp)
-    createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID], localTempFolder=args.temp)
+    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[dqEpsProjectID], localTempFolder=args.temp)
+    #createImmunogenicEpitopesReport(bucket=args.bucket, projectIDs=[immuEpsProjectID], localTempFolder=args.temp)
     createNonImmunogenicEpitopesReport(bucket=args.bucket, projectIDs = [nonImmuEpsProjectID], localTempFolder=args.temp)
 
     # TODO: excluding FASTQ files here. Did I miss any? Could check but I think that's everything.
+    # TODO: This also might include .zip files. They're categorizerd as Other. Maybe I should skip .zip files somehow, I have them filtered by ending with .zip but thats not a great solution
     createProjectZipFile(bucket=args.bucket, url=url, token=token
        , projectIDs=[immuEpsProjectID, nonImmuEpsProjectID, dqEpsProjectID]
        ,fileTypeFilter=['XLSX','PROJECT_DATA_MATRIX','OTHER','INFO_CSV','HML','HAML','ANTIBODY_CSV'], localTempFolder=args.temp)

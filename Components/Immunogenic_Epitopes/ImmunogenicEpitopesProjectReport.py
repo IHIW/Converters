@@ -728,6 +728,69 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     supportingFileZip.close()
     S3_Access.writeFileToS3(newFileName=zipFileName, bucket=bucket, s3ObjectBytestream=zipFileStream)
 
+
+def createPircheInputFile(pircheAnalysisStructure=None, newline='\n', delimiter=','):
+    inputFileText = ''
+    keys = sorted(list(pircheAnalysisStructure.keys()))
+    for listIndex, patientIndex in enumerate(keys):
+        patientGenotype = pircheAnalysisStructure[patientIndex]['patient_typing']
+        patientIdentifier = 'patient_' + str(patientIndex)
+        patientAlleles = set()
+        for locus in patientGenotype.keys():
+            for allele in patientGenotype[locus].split('+'):
+                if allele != '?':
+                    patientAlleles.add(allele.strip().replace('HLA-',''))
+
+        patientAlleles = sorted(list(patientAlleles))
+        patientLine = patientIdentifier + delimiter + delimiter.join(patientAlleles) + newline
+        inputFileText += patientLine
+        for alleleKey in pircheAnalysisStructure[patientIndex].keys():
+            #for heterodimerSplit in alleleKey.split('~'):
+            if (alleleKey.startswith('A*') or
+                alleleKey.startswith('B*') or
+                alleleKey.startswith('C*') or
+                alleleKey.startswith('DRB1*') or
+                alleleKey.startswith('DRB3*') or
+                alleleKey.startswith('DRB4*') or
+                alleleKey.startswith('DRB5*') or
+                alleleKey.startswith('DQB1*') or
+                alleleKey.startswith('DQA1*') or
+                alleleKey.startswith('DPB1*') or
+                alleleKey.startswith('DPA1*')):
+                valid = True
+                try:
+                    heterodimerAlleles = alleleKey.split('~')
+                    heterodimerAllelesClean = [allele.strip().replace('*','_').replace(':','_') for allele in heterodimerAlleles]
+                    alleleClean = '_'.join(heterodimerAllelesClean)
+                except Exception as e:
+                    alleleClean = 'MalformedAllele'
+                    valid=False
+                try:
+                    mfiString = str(round(float(pircheAnalysisStructure[patientIndex][alleleKey])))
+                except Exception as e:
+                    print('Warning: for patient index ' + str(patientIndex) + ' on allele ' + str(alleleKey) + ' i could not handle the mfi value:' + str(pircheAnalysisStructure[patientIndex][alleleKey]))
+                    mfiString = 'MalformedMFI'
+                    valid=False
+                donorIdentifier = 'donor_' + str(patientIndex) + '__' + alleleClean + '__' + mfiString
+                # To do PIRCHE analysis we need to include HLA-A,-B,-C,-DRB1 (I think, maybe not C?)
+                # Use the patient's alleles to prevent artificial pirche scores.
+                spikedPatientAlleles = delimiter.join([patientGenotype['A'].split('+')[0],patientGenotype['B'].split('+')[0],patientGenotype['C'].split('+')[0],patientGenotype['DRB1'].split('+')[0]]).replace('HLA-','')
+                donorAlleles = delimiter.join(heterodimerAlleles)
+                # TODO: Should I skip the self alleles? they (should) get a zero pirche score.
+                if valid:
+                    donorLine = delimiter.join([donorIdentifier,donorAlleles,spikedPatientAlleles]) + newline
+                    inputFileText += donorLine
+            else:
+                pass
+                #print('Skipping the key ' + str(heterodimerSplit))
+        # Separate the pirche pairs
+        if listIndex + 1 < len(keys):
+            inputFileText += delimiter + newline
+        else:
+            print('done.')
+    return inputFileText
+
+
 def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, token=None, localTempFolder=None):
     print('Creating an non-Immunogenic Epitopes Submission Report for project ids ' + str(projectIDs))
 
@@ -764,6 +827,11 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
         dataMatrixCellIndex = dataMatrixColumnLetter + '1'
         dataMatrixReportWorksheet[dataMatrixCellIndex] = header
         dataMatrixReportWorksheet.column_dimensions[dataMatrixColumnLetter].width = 35
+
+    # Collect some data to make a PIRCHE input file.
+    # Key = sample_ID (maybe construct something here)
+    # Value = Dict of MFI lookups.
+    pircheAnalysisStructure = {}
 
     # Summary of HLA Genotypes that have been submitted
     summaryWithTypingWorkbook = Workbook()
@@ -861,6 +929,14 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
 
                         recipientAntibodiesLookup[dataRowIndexIndex] = preTxAntibodies
 
+                        # Add some data to the pirche structure
+                        if dataRowIndexIndex not in pircheAnalysisStructure.keys():
+                            pircheAnalysisStructure[dataRowIndexIndex] = {}
+                            pircheAnalysisStructure[dataRowIndexIndex]['patient_typing'] = recipientTypingsSimplified
+                        for kit in preTxAntibodies.keys():
+                            for allele in preTxAntibodies[kit].keys():
+                                pircheAnalysisStructure[dataRowIndexIndex][allele] = preTxAntibodies[kit][allele]
+
                     # Copy the columns (including colors and notes) into the new spreadsheet
                     dataMatrixReportLine = [str(dataRowIndexIndex), dataMatrixUpload['fileName'], str(currentExcelRow),submittingUser,submittingLab,submissionDate
                         ,createGlStringFromTypings(recipientTypingsSimplified)]
@@ -921,6 +997,10 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     createAlleleSpecificReport(antibodiesLookup=recipientAntibodiesLookup, recipientGenotypingsLookup=recipientGenotypingsLookup
        , bucket=bucket, reportName=preTxAlleleSpecificReportName, isImmunogenic=False)
 
+    pircheAnalysisFileName = 'Project.' + str('_'.join(projectIDs)) + '.PircheInput.csv'
+    pircheInputText = createPircheInputFile(pircheAnalysisStructure=pircheAnalysisStructure)
+    S3_Access.writeFileToS3(newFileName=pircheAnalysisFileName, bucket=bucket, s3ObjectBytestream=pircheInputText)
+
 def getDataMatrixUploads(projectIDs=None, token=None, url=None, uploadList=None):
     # collect all data matrix files.
     if(uploadList is None):
@@ -947,10 +1027,4 @@ def getDataMatrixUploads(projectIDs=None, token=None, url=None, uploadList=None)
     print(
         'I found a total of ' + str(len(dataMatrixUploadList)) + ' data matrices for project' + str(projectIDs) + '.\n')
     return dataMatrixUploadList
-
-
-
-
-
-
 
