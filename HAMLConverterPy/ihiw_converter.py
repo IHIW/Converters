@@ -291,15 +291,21 @@ class Converter(object):
                             Specs = row.Specificity.split(",")
                             try:
                                 Raw = int(round(float(str(row.RawData).replace(',','.'))))
-                                Norm = int(round(float(str(row.NormalData).replace(',','.'))))
                                 #print('Raw:' + str(Raw))
                             except Exception as e:
                                 Raw = -1
-                                Norm = -1
-                                print('Could not identify values for raw MFI(' + str(row.RawData) + 'Normalized MFI: ' + str(row.RawData) +
+                                print('Could not identify values for raw MFI(' + str(row.RawData)
                                       + ') . SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(currentRowPatientID) + '. Data was in an unexpected format.')
                                 print('Exception:' + str(e))
-
+                            
+                            try:
+                                Norm = int(round(float(str(row.NormalValue).replace(',','.'))))
+                                #print('Norm:' + str(Norm))
+                            except Exception as e:
+                                Norm = -1
+                                print('Could not identify values for raw MFI(' + str(row.NormalValue)
+                                      + ') . SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(currentRowPatientID) + '. Data was in an unexpected format.')
+                                print('Exception:' + str(e))
                             # TODO: We're not assigning the ranking in the best way.
                             #  A better strategy is to load all the MFIs and give them a ranking. Before writing the values. Add this logic.
                             try:
