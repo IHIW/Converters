@@ -291,10 +291,12 @@ class Converter(object):
                             Specs = row.Specificity.split(",")
                             try:
                                 Raw = int(round(float(str(row.RawData).replace(',','.'))))
+                                Norm = int(round(float(str(row.NormalData).replace(',','.'))))
                                 #print('Raw:' + str(Raw))
                             except Exception as e:
                                 Raw = -1
-                                print('Could not identify values for raw MFI(' + str(row.RawData)
+                                Norm = -1
+                                print('Could not identify values for raw MFI(' + str(row.RawData) + 'Normalized MFI: ' + str(row.RawData) +
                                       + ') . SampleID = ' + str(currentRowSampleIDName) + '. PatientID = ' + str(currentRowPatientID) + '. Data was in an unexpected format.')
                                 print('Exception:' + str(e))
 
@@ -328,6 +330,7 @@ class Converter(object):
                             current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
                                 {'HLA-allele-specificity':str(locusDataRow),
                                     'raw-MFI':str(Raw),
+                                    'adjusted-MFI':str(Norm),
                                     'Ranking':str(Ranking),
                                 })
 
