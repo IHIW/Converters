@@ -360,7 +360,7 @@ class Converter(object):
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
 
         # A lookup for the columns. They're not very apparent in the pandas DataFrame so we need to find the data. I don't like Pandas, it is difficult.
-        immucorColumnNames = {'Sample_ID':-1, 'Patient_ID':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
+        immucorColumnNames = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
 
         # colnames = [str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]
         #print('Bad Colnames:' + str(pandasCsvReader.columns.tolist()))
@@ -391,7 +391,7 @@ class Converter(object):
                 sampleID = '??'
 
             try:
-                patientID = str(row[immucorColumnNames['Patient_ID']]).strip()
+                patientID = str(row[immucorColumnNames['Patient_Name']]).strip()
             except Exception as e:
                 validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Patient_ID was not found!')
                 patientID = '??'
@@ -520,7 +520,7 @@ class Converter(object):
                             validationFeedback += 'Missing negative control for lot ' + str(lotID) + ';\n'
                             # Reject the document here, set the validation to something smart.
                             self.xmlData=''
-                            return validationFeedback
+                            #return validationFeedback
                         if('PC' in csvData[sampleID][patientID][runDate][lotID]):
                             pcMfi = csvData[sampleID][patientID][runDate][lotID]['PC'][2]
                         else:
@@ -528,28 +528,26 @@ class Converter(object):
                             validationFeedback += 'Missing positive control for lot ' + str(lotID) + ';\n'
                             # Reject the document here, set the validation to something smart.
                             self.xmlData=''
-                            return validationFeedback
+                            #return validationFeedback
 
-                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                        {'sampleID': str(sampleID),
-                         'patientID': str(patientID),
-                         'reporting-centerID': str(reportingCenterID),
-                         # TODO No reporting center in the input file. Should we pass that in somehow?
-                         'sample-test-date': self.formatRunDate(runDate),
-                         'negative-control-MFI': str(ncMfi),
-                         'positive-control-MFI': str(pcMfi)
-                         })
+                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient',
+                        {'patient-id': str(patientID)})
+                    sampleAntibodyAssmtElement = ET.SubElement(patientAntibodyAssmtElement, 'sample', 
+                        {'sample-id': str(sampleID)})
 
                     # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
                     for lotID in csvData[sampleID][patientID][runDate]:
-                        current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                        assayAntibodyAssmtElement = ET.SubElement(sampleAntibodyAssmtElement, 'assay')
+                        panelAntibodyAssmtElement = ET.SubElement(assayAntibodyAssmtElement, 'working-sample', 
+                            {'working-sample-id': str(sampleID)})
+                        current_row_panel = ET.SubElement(panelAntibodyAssmtElement, 'solid-phase-panel', 
                             {'kit-manufacturer': self.manufacturer,
-                            'lot': lotID
+                            'lot-number': lotID
                             })
 
                         for allele in csvData[sampleID][patientID][runDate][lotID]:
 
-                            baedID, beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
+                            beadID, beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
 
                             # Skip if it's NC or PC, we already printed those values.
                             if(allele=='NC' and beadAssignment=='NC') or (allele=='PC' and beadAssignment=='PC'):
@@ -563,11 +561,17 @@ class Converter(object):
                                     validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='I do not understand this bead assignment, I expected Positive/Negative:' + str(beadAssignment))
                                     ranking = 2  # default value, this is negative
 
-                                current_row_panel_bead = ET.SubElement(current_row_panel, 'bead',
-                                    {'HLA-allele-specificity': str(allele),
-                                    'raw-MFI': str(rawMfi).replace(',', '.'),
-                                    'Ranking': str(ranking),
-                                    })
+                                current_row_panel_bead = ET.SubElement(current_row_panel, 'bead')
+                                current_row_panel_beadInfo = ET.SubElement(current_row_panel_bead, 'bead-info', 
+                                                                           {'HLA-target-type': str(allele),
+                                                                            'bead-id': str(beadID)})
+                                current_row_panel_beadRaw = ET.SubElement(current_row_panel_bead, 'raw-data', 
+                                                                           {'sample-raw-MFI': rawMfi})
+                                current_row_panel_beadAdjusted = ET.SubElement(current_row_panel_bead, 'converted-data', 
+                                                                           {'sample-adjusted-MFI': 'NA'})
+                                current_row_panel_beadInterpretation = ET.SubElement(current_row_panel_beadAdjusted, 'bead-interpretation', 
+                                                                           {'classification-entity': 'MatchIt',
+                                                                            'bead-classification': beadAssignment})
 
 
         self.xmlData = ET.tostring(data)
@@ -638,6 +642,7 @@ def parseArgs():
     parser.add_argument("-x", "--xml", help="xml(haml) file to write output to.", type=str, required=True)
 
     return parser.parse_args()
+
 
 
 if __name__ == '__main__':
