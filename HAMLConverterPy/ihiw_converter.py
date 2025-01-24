@@ -182,7 +182,7 @@ class Converter(object):
             # The first row contains the negative control info.
             # The second row contains positive control info.
             reportingCenter = makeSubElement(data, 'reporting-center')
-            reportingCenter.text = 'Reporting Center ID'
+            reportingCenter.text = self.labID
 
             documentContext = makeSubElement(data, 'document-context')
             documentContext.text = 'Sample document context for working purposes'
@@ -258,7 +258,7 @@ class Converter(object):
 
                     sampleElement = makeSubElement(patientElement, 'sample',
                                                                 {'sample-id': sampleID,
-                                                                 'testing_laboratory': 'DaSH Hackathon Lab'})
+                                                                 'testing_laboratory': self.labID})
 
                     assayElement = makeSubElement(sampleElement, 'assay',
                                                                 {'assay-date': self.formatRunDate(row.RunDate),
@@ -351,8 +351,10 @@ class Converter(object):
 
                             rawData = makeSubElement(beadElement, 'raw-data', {'sample-raw-MFI': str(Raw)})
                             adjustedData = makeSubElement(beadElement, 'converted-data', {'sample-adjusted-MFI': str(Norm)})
-                            beadInterp = makeSubElement(adjustedData, 'bead-interpretation', {'classification-entity': 'One Lambda Software',
-                                                        'bead-classification':str(Ranking)})
+                            beadInterp = makeSubElement(adjustedData, 'bead-interpretation', 
+                                                        {'classification-entity': 'One Lambda Software',
+                                                        'bead-classification': '',
+                                                        'bead-rank': str(Ranking)})
 
 
             # create a new XML file with the results
@@ -516,12 +518,10 @@ class Converter(object):
         # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
         # for each sample id/row start converting
         data = ET.Element("haml", xmlns='urn:HAML.Namespace', version='0.4.3')
-
         labIDElement = makeSubElement(data, "reporting-center")
         labIDElement.text = self.labID
         labIDElement = makeSubElement(data, "document-context")
         labIDElement.text = "Sample document context for working purposes"
-
         # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
 
         # Each sampleID/patientID combination gets a patient-antibody-assessment element
@@ -550,20 +550,6 @@ class Converter(object):
                             self.xmlData=''
                             #return validationFeedback
 
-                    patientElement = ET.SubElement(data, 'patient-antibody-assessment',
-                        {'sampleID': str(sampleID),
-                         'patientID': str(patientID),
-                         'sample-test-date': self.formatRunDate(runDate),
-                         'negative-control-MFI': str(ncMfi),
-                         'positive-control-MFI': str(pcMfi)
-                         })
-
-                    # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
-                    for lotID in csvData[sampleID][patientID][runDate]:
-                        current_row_panel = ET.SubElement(patientElement, 'solid-phase-panel',
-                            {'kit-manufacturer': self.manufacturer,
-                            'lot': lotID
-                             
                     patientAntibodyAssmtElement = makeSubElement(data, 'patient', 
                                                                  {'patient-id': patientID})
                     sampleAntibodyAssmtElement = makeSubElement(patientAntibodyAssmtElement, 'sample',
@@ -573,13 +559,12 @@ class Converter(object):
                     # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
                     for lotID in csvData[sampleID][patientID][runDate]:
                         assayAntibodyAssmtElement = makeSubElement(sampleAntibodyAssmtElement, 'assay', 
-                                                                  {'test-date': str(runDate)})
+                                                                  {'test-date': self.formatRunDate(runDate)})
                         panelAntibodyAssmtElement = makeSubElement(assayAntibodyAssmtElement, 'working-sample', 
                             {'working-sample-id': str(sampleID)})
                         current_row_panel = makeSubElement(panelAntibodyAssmtElement, 'solid-phase-panel', 
                             {'kit-manufacturer': str(self.manufacturer),
                             'lot-number': str(lotID)
-
                             })
 
                         for allele in csvData[sampleID][patientID][runDate][lotID]:
@@ -608,7 +593,8 @@ class Converter(object):
                                                                            {'sample-adjusted-MFI': 'NA'})
                                 current_row_panel_beadInterpretation = makeSubElement(current_row_panel_beadAdjusted, 'bead-interpretation', 
                                                                            {'classification-entity': 'MatchIt',
-                                                                            'bead-classification': beadAssignment})
+                                                                            'bead-classification': beadAssignment,
+                                                                            'bead-rank': str(switcher[beadAssignment])})
                                 #TODO check if we need to convert +- to # or # to +-
 
 
@@ -672,6 +658,7 @@ def readCsvFile(csvFileName=None, delimiter=None, allFieldsQuoted=False):
         print('Exception when reading csv file ' + str(csvFileName) + ' : ' + str(e))
         raise(e)
 
+# This is a helper function helping format the tags into separate subElements instead of attributes
 def makeSubElement(parent, tag, extra=None):
     SE = ET.SubElement(parent, tag)
     if (extra is None):
