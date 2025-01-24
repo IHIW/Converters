@@ -33,7 +33,7 @@ def appendFeedback(newFeedback=None, validationFeedback=None):
 
 class Converter(object):
 
-    def __init__(self, csvFileName=None, manufacturer=None, xmlFile=None):
+    def __init__(self, csvFileName=None, manufacturer=None, xmlFile=None, labID=None):
         self.csvFileName = csvFileName
         self.manufacturer = manufacturer
         self.allFieldsQuoted = None
@@ -47,6 +47,7 @@ class Converter(object):
         #self.decimal = None
         self.dateFormat = '%d-%m-%Y'
         self.validationFeedback=''
+        self.labID = labID
 
     def formatRunDate(self, RunDate=None):
         # format the date to the correct haml (ISO) style.
@@ -373,7 +374,7 @@ class Converter(object):
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
 
         # A lookup for the columns. They're not very apparent in the pandas DataFrame so we need to find the data. I don't like Pandas, it is difficult.
-        immucorColumnNames = {'Sample_ID':-1, 'Patient_ID':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
+        immucorColumnNames = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
 
         # colnames = [str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]
         #print('Bad Colnames:' + str(pandasCsvReader.columns.tolist()))
@@ -404,7 +405,7 @@ class Converter(object):
                 sampleID = '??'
 
             try:
-                patientID = str(row[immucorColumnNames['Patient_ID']]).strip()
+                patientID = str(row[immucorColumnNames['Patient_Name']]).strip()
             except Exception as e:
                 validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='Patient_ID was not found!')
                 patientID = '??'
@@ -515,6 +516,12 @@ class Converter(object):
         # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
         # for each sample id/row start converting
         data = ET.Element("haml", xmlns='urn:HAML.Namespace', version='0.4.3')
+
+        labIDElement = makeSubElement(data, "reporting-center")
+        labIDElement.text = self.labID
+        labIDElement = makeSubElement(data, "document-context")
+        labIDElement.text = "Sample document context for working purposes"
+
         # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
 
         # Each sampleID/patientID combination gets a patient-antibody-assessment element
@@ -533,7 +540,7 @@ class Converter(object):
                             validationFeedback += 'Missing negative control for lot ' + str(lotID) + ';\n'
                             # Reject the document here, set the validation to something smart.
                             self.xmlData=''
-                            return validationFeedback
+                            #return validationFeedback
                         if('PC' in csvData[sampleID][patientID][runDate][lotID]):
                             pcMfi = csvData[sampleID][patientID][runDate][lotID]['PC'][2]
                         else:
@@ -541,7 +548,7 @@ class Converter(object):
                             validationFeedback += 'Missing positive control for lot ' + str(lotID) + ';\n'
                             # Reject the document here, set the validation to something smart.
                             self.xmlData=''
-                            return validationFeedback
+                            #return validationFeedback
 
                     patientElement = ET.SubElement(data, 'patient-antibody-assessment',
                         {'sampleID': str(sampleID),
@@ -556,11 +563,28 @@ class Converter(object):
                         current_row_panel = ET.SubElement(patientElement, 'solid-phase-panel',
                             {'kit-manufacturer': self.manufacturer,
                             'lot': lotID
+                             
+                    patientAntibodyAssmtElement = makeSubElement(data, 'patient', 
+                                                                 {'patient-id': patientID})
+                    sampleAntibodyAssmtElement = makeSubElement(patientAntibodyAssmtElement, 'sample',
+                                                                {'sample-id': sampleID,
+                                                                 'testing-laboratory': self.labID})
+
+                    # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
+                    for lotID in csvData[sampleID][patientID][runDate]:
+                        assayAntibodyAssmtElement = makeSubElement(sampleAntibodyAssmtElement, 'assay', 
+                                                                  {'test-date': str(runDate)})
+                        panelAntibodyAssmtElement = makeSubElement(assayAntibodyAssmtElement, 'working-sample', 
+                            {'working-sample-id': str(sampleID)})
+                        current_row_panel = makeSubElement(panelAntibodyAssmtElement, 'solid-phase-panel', 
+                            {'kit-manufacturer': str(self.manufacturer),
+                            'lot-number': str(lotID)
+
                             })
 
                         for allele in csvData[sampleID][patientID][runDate][lotID]:
 
-                            baedID, beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
+                            beadID, beadAssignment, rawMfi = csvData[sampleID][patientID][runDate][lotID][allele]
 
                             # Skip if it's NC or PC, we already printed those values.
                             if(allele=='NC' and beadAssignment=='NC') or (allele=='PC' and beadAssignment=='PC'):
@@ -574,11 +598,18 @@ class Converter(object):
                                     validationFeedback = appendFeedback(validationFeedback=validationFeedback, newFeedback='I do not understand this bead assignment, I expected Positive/Negative:' + str(beadAssignment))
                                     ranking = 2  # default value, this is negative
 
-                                current_row_panel_bead = ET.SubElement(current_row_panel, 'bead',
-                                    {'HLA-allele-specificity': str(allele),
-                                    'raw-MFI': str(rawMfi).replace(',', '.'),
-                                    'Ranking': str(ranking),
-                                    })
+                                current_row_panel_bead = makeSubElement(current_row_panel, 'bead')
+                                current_row_panel_beadInfo = makeSubElement(current_row_panel_bead, 'bead-info', 
+                                                                           {'HLA-target-type': str(allele),
+                                                                            'bead-id': str(beadID)})
+                                current_row_panel_beadRaw = makeSubElement(current_row_panel_bead, 'raw-data', 
+                                                                           {'sample-raw-MFI': rawMfi})
+                                current_row_panel_beadAdjusted = makeSubElement(current_row_panel_bead, 'converted-data', 
+                                                                           {'sample-adjusted-MFI': 'NA'})
+                                current_row_panel_beadInterpretation = makeSubElement(current_row_panel_beadAdjusted, 'bead-interpretation', 
+                                                                           {'classification-entity': 'MatchIt',
+                                                                            'bead-classification': beadAssignment})
+                                #TODO check if we need to convert +- to # or # to +-
 
 
         self.xmlData = ET.tostring(data)
@@ -640,6 +671,7 @@ def readCsvFile(csvFileName=None, delimiter=None, allFieldsQuoted=False):
     except Exception as e:
         print('Exception when reading csv file ' + str(csvFileName) + ' : ' + str(e))
         raise(e)
+
 def makeSubElement(parent, tag, extra=None):
     SE = ET.SubElement(parent, tag)
     if (extra is None):
@@ -654,6 +686,7 @@ def parseArgs():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--csv", help="xml file to validate", type=str, required=True)
     parser.add_argument("-x", "--xml", help="xml(haml) file to write output to.", type=str, required=True)
+    parser.add_argument("-l", "--lab", help="lab identifier", type=str, required=False)
 
     return parser.parse_args()
 
@@ -663,11 +696,15 @@ if __name__ == '__main__':
     args = parseArgs()
     csvFile = args.csv
     xmlFile = args.xml
+    try:
+        labID = args.lab
+    except Exception as e:
+        labID = "Unavailable"
 
     print('csvFile:' + csvFile)
     print('xmlFile:' + str(xmlFile))
 
-    converter = Converter(csvFileName=csvFile, manufacturer=None, xmlFile=xmlFile)
+    converter = Converter(csvFileName=csvFile, manufacturer=None, xmlFile=xmlFile, labID=labID)
     converter.convert()
 
     print('Validation Feedback:' + str(converter.validationFeedback))
