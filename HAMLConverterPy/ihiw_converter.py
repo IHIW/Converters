@@ -175,11 +175,16 @@ class Converter(object):
 
         try:
             # Data is the root element.
-            data = ET.Element("haml",xmlns='urn:HAML.Namespace')
+            data = ET.Element("haml",xmlns='urn:HAML.Namespace', version = "0.4.3")
             # OLReader is a pandas DataFrame.
             # Each row is a namedtuple
             # The first row contains the negative control info.
             # The second row contains positive control info.
+            reportingCenter = makeSubElement(data, 'reporting-center')
+            reportingCenter.text = 'Reporting Center ID'
+
+            documentContext = makeSubElement(data, 'document-context')
+            documentContext.text = 'Sample document context for working purposes'
 
             # State variable to iterate through. States cycle through negative_control->positive_control->bead_values
             readerState = 'negative_control'
@@ -193,7 +198,6 @@ class Converter(object):
             for line, row in enumerate(pandasCsvReader.itertuples(), 1):
 
                 #print('row:' + str(row))
-
 
                 currentRowSampleIDName = str(row.SampleIDName).strip()
                 currentRowPatientID = str(row.PatientID).strip()
@@ -248,26 +252,32 @@ class Converter(object):
                             currentRowPatientID) + '. Data was in an unexpected format.')
                         print('Exception:' + str(e))
 
-                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
-                        {'sampleID': str(sampleID),
-                         'patientID': str(patientID),
-                         'reporting-centerID': 'ReportingCenterID',
-                         # TODO No reporting center in the input file. Should we pass that in somehow?
-                         'sample-test-date': self.formatRunDate(row.RunDate),
-                         'negative-control-MFI': negativeControlMFI,
-                         'positive-control-MFI': positiveControlMFI
-                         # Problem: I dont have these data yet. I should print this after assigning positive and negative rows.
-                         })
+                    patientElement = makeSubElement(data, 'patient',
+                                                                 {'patient-id': patientID})
+
+                    sampleElement = makeSubElement(patientElement, 'sample',
+                                                                {'sample-id': sampleID,
+                                                                 'testing_laboratory': 'DaSH Hackathon Lab'})
+
+                    assayElement = makeSubElement(sampleElement, 'assay',
+                                                                {'assay-date': self.formatRunDate(row.RunDate),
+                                                                 })
+
+                    workingSampleElement = makeSubElement(assayElement, 'working-sample',
+                                                               {'working-sample-id': str(sampleID)})
 
                     # For any new sampleID or patientID,  this is a new solid-phase-panel.
                     # TODO: We also need this If the catalogID has changed. If there are multiple catalogs in the input csv there should be new solid-phase panel for each.
                     #   For now it works that we're creating new patient-antibody-assessment AND a new solid-phase-panel for every change.
                     catalogID = currentRowCatalogID
                     # print('Found a new bead catalog: ' + str(catalogID))
-                    current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
-                        {'kit-manufacturer': self.manufacturer,
-                            'lot': catalogID
-                        })
+
+                    solidPhasePanel = makeSubElement(workingSampleElement, 'solid-phase-panel', None)
+                    kitManufacturer = makeSubElement(solidPhasePanel, 'kit-manufacturer')
+                    kitManufacturer.text = self.manufacturer
+
+                    lot = makeSubElement(solidPhasePanel, 'lot')
+                    lot.text = catalogID
 
                 elif(readerState=='bead_values'):
                     if row.PatientID is None:
@@ -333,12 +343,15 @@ class Converter(object):
                                 else:
                                     pass
 
-                            current_row_panel_bead = ET.SubElement(current_row_panel,'bead',
-                                {'HLA-allele-specificity':str(locusDataRow),
-                                    'raw-MFI':str(Raw),
-                                    'adjusted-MFI':str(Norm),
-                                    'Ranking':str(Ranking),
-                                })
+                            beadElement = makeSubElement(solidPhasePanel, 'bead', None)
+                            beadInfo = makeSubElement(beadElement, 'bead-info',
+                                                      {'HLA-target-type':str(locusDataRow)
+                                            })
+
+                            rawData = makeSubElement(beadElement, 'raw-data', {'sample-raw-MFI': str(Raw)})
+                            adjustedData = makeSubElement(beadElement, 'converted-data', {'sample-adjusted-MFI': str(Norm)})
+                            beadInterp = makeSubElement(adjustedData, 'bead-interpretation', {'classification-entity': 'One Lambda Software',
+                                                        'bead-classification':str(Ranking)})
 
 
             # create a new XML file with the results
@@ -501,7 +514,7 @@ class Converter(object):
         # Write XML from that data.
         # TODO: Consider writing each sample to an individual HAML file. This would need to create child elements for each HAML.
         # for each sample id/row start converting
-        data = ET.Element("haml", xmlns='urn:HAML.Namespace')
+        data = ET.Element("haml", xmlns='urn:HAML.Namespace', version='0.4.3')
         # Structure = csvData[sampleID][patientID][runDate][lotID][allele] = (assignment, rawMFI)
 
         # Each sampleID/patientID combination gets a patient-antibody-assessment element
@@ -530,11 +543,9 @@ class Converter(object):
                             self.xmlData=''
                             return validationFeedback
 
-                    patientAntibodyAssmtElement = ET.SubElement(data, 'patient-antibody-assessment',
+                    patientElement = ET.SubElement(data, 'patient-antibody-assessment',
                         {'sampleID': str(sampleID),
                          'patientID': str(patientID),
-                         'reporting-centerID': str(reportingCenterID),
-                         # TODO No reporting center in the input file. Should we pass that in somehow?
                          'sample-test-date': self.formatRunDate(runDate),
                          'negative-control-MFI': str(ncMfi),
                          'positive-control-MFI': str(pcMfi)
@@ -542,7 +553,7 @@ class Converter(object):
 
                     # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
                     for lotID in csvData[sampleID][patientID][runDate]:
-                        current_row_panel = ET.SubElement(patientAntibodyAssmtElement, 'solid-phase-panel',
+                        current_row_panel = ET.SubElement(patientElement, 'solid-phase-panel',
                             {'kit-manufacturer': self.manufacturer,
                             'lot': lotID
                             })
@@ -604,8 +615,6 @@ class Converter(object):
             print('Not known manufacturer, unable to convert file')
             return False
 
-
-
 def readCsvFile(csvFileName=None, delimiter=None, allFieldsQuoted=False):
     #print('Reading csv File:' + str(csvFileName))
 
@@ -631,6 +640,15 @@ def readCsvFile(csvFileName=None, delimiter=None, allFieldsQuoted=False):
     except Exception as e:
         print('Exception when reading csv file ' + str(csvFileName) + ' : ' + str(e))
         raise(e)
+def makeSubElement(parent, tag, extra=None):
+    SE = ET.SubElement(parent, tag)
+    if (extra is None):
+        return SE
+    else:
+        for element in extra:
+            SSE = ET.SubElement(SE, element)
+            SSE.text = extra[element]
+        return SE
 
 def parseArgs():
     parser = argparse.ArgumentParser()
