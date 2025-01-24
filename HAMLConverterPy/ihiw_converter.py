@@ -258,7 +258,7 @@ class Converter(object):
 
                     sampleElement = makeSubElement(patientElement, 'sample',
                                                                 {'sample-id': sampleID,
-                                                                 'testing_laboratory': self.labID})
+                                                                 'testing-laboratory': self.labID})
 
                     assayElement = makeSubElement(sampleElement, 'assay',
                                                                 {'assay-date': self.formatRunDate(row.RunDate),
@@ -277,7 +277,7 @@ class Converter(object):
                     kitManufacturer = makeSubElement(solidPhasePanel, 'kit-manufacturer')
                     kitManufacturer.text = self.manufacturer
 
-                    lot = makeSubElement(solidPhasePanel, 'lot')
+                    lot = makeSubElement(solidPhasePanel, 'lot-number')
                     lot.text = catalogID
 
                 elif(readerState=='bead_values'):
@@ -346,14 +346,14 @@ class Converter(object):
 
                             beadElement = makeSubElement(solidPhasePanel, 'bead', None)
                             beadInfo = makeSubElement(beadElement, 'bead-info',
-                                                      {'HLA-target-type':str(locusDataRow)
+                                                      {'bead-id': str(row.BeadID),
+                                                          'HLA-target-type':str(locusDataRow)
                                             })
 
                             rawData = makeSubElement(beadElement, 'raw-data', {'sample-raw-MFI': str(Raw)})
                             adjustedData = makeSubElement(beadElement, 'converted-data', {'sample-adjusted-MFI': str(Norm)})
                             beadInterp = makeSubElement(adjustedData, 'bead-interpretation', 
                                                         {'classification-entity': 'One Lambda Software',
-                                                        'bead-classification': '',
                                                         'bead-rank': str(Ranking)})
 
 
@@ -376,7 +376,7 @@ class Converter(object):
         switcher = {'Positive':8, 'Weak':6, 'Negative':2}
 
         # A lookup for the columns. They're not very apparent in the pandas DataFrame so we need to find the data. I don't like Pandas, it is difficult.
-        immucorColumnNames = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
+        immucorColumnNames = {'Sample_ID':-1, 'Patient_Name':-1, 'Lot_ID':-1, 'Run_Date':-1, 'Bead_ID':-1, 'Allele':-1, 'Assignment':-1, 'Raw_Value':-1}
 
         # colnames = [str(c.strip('"').strip().replace(' ', '_').replace('\ufeff"','')) for c in pandasCsvReader.columns.tolist()]
         #print('Bad Colnames:' + str(pandasCsvReader.columns.tolist()))
@@ -559,7 +559,7 @@ class Converter(object):
                     # If the catalogID has changed, this is a new solid-phase-panel. But we also need this for any new sampleID or patientID
                     for lotID in csvData[sampleID][patientID][runDate]:
                         assayAntibodyAssmtElement = makeSubElement(sampleAntibodyAssmtElement, 'assay', 
-                                                                  {'test-date': self.formatRunDate(runDate)})
+                                                                  {'assay-date': self.formatRunDate(runDate)})
                         panelAntibodyAssmtElement = makeSubElement(assayAntibodyAssmtElement, 'working-sample', 
                             {'working-sample-id': str(sampleID)})
                         current_row_panel = makeSubElement(panelAntibodyAssmtElement, 'solid-phase-panel', 
@@ -589,8 +589,7 @@ class Converter(object):
                                                                             'bead-id': str(beadID)})
                                 current_row_panel_beadRaw = makeSubElement(current_row_panel_bead, 'raw-data', 
                                                                            {'sample-raw-MFI': rawMfi})
-                                current_row_panel_beadAdjusted = makeSubElement(current_row_panel_bead, 'converted-data', 
-                                                                           {'sample-adjusted-MFI': 'NA'})
+                                current_row_panel_beadAdjusted = makeSubElement(current_row_panel_bead, 'converted-data')
                                 current_row_panel_beadInterpretation = makeSubElement(current_row_panel_beadAdjusted, 'bead-interpretation', 
                                                                            {'classification-entity': 'MatchIt',
                                                                             'bead-classification': beadAssignment,
