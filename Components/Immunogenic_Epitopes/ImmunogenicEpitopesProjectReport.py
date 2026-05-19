@@ -236,9 +236,13 @@ def reduceGenotypings(typings=None):
                                 # Get the first 2 fields
                                 nomenclatureTokens = allele.split(':')
                                 if(len(nomenclatureTokens)==1):
-                                    #''.join(filter(str.isdigit, 'aas30dsa20'))
-                                    numericalValue = ''.join(filter(str.isdigit, str(nomenclatureTokens[0].split('*')[1])))
-                                    alleleOptions[allele]=float(numericalValue)
+                                    try:
+                                        #''.join(filter(str.isdigit, 'aas30dsa20'))
+                                        numericalValue = ''.join(filter(str.isdigit, str(nomenclatureTokens[0].split('*')[1])))
+                                        alleleOptions[allele]=float(numericalValue)
+                                    except Exception as e:
+                                        print(f'Warning! could not parse HLA nomenclature for typings {typings}:{e}')
+                                        print(f'alleleString:{alleleString}  allele:{allele} will be discarded.')
                                 else:
                                     shortAlleleName = nomenclatureTokens[0] + ':' + nomenclatureTokens[1]
                                     expressionCharacter = allele[-1]
@@ -247,8 +251,12 @@ def reduceGenotypings(typings=None):
                                         # Check if there are > 2 fields before adding charcter, otherwise we get doubled-up expression characters.
                                         if(len(nomenclatureTokens)>2):
                                             shortAlleleName = shortAlleleName + expressionCharacter
-                                    numericalValue = ''.join(filter(str.isdigit, str(nomenclatureTokens[0].split('*')[1] + '.' + nomenclatureTokens[1])))
-                                    alleleOptions[shortAlleleName] = float(numericalValue)
+                                    try:
+                                        numericalValue = ''.join(filter(str.isdigit, str(nomenclatureTokens[0].split('*')[1] + '.' + nomenclatureTokens[1])))
+                                        alleleOptions[shortAlleleName] = float(numericalValue)
+                                    except Exception as e:
+                                        print(f'Warning! could not parse HLA nomenclature for typings {typings}:{e}')
+                                        print(f'alleleString:{alleleString}  allele:{allele} shortAlleleName:{shortAlleleName} will be discarded.')
 
                                 #print('alleleOptions:' + str(alleleOptions))
 
@@ -530,7 +538,7 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     # Data Matrix Report Headers
     dataMatrixReportHeaders = ['transplantation_index','data_matrix_filename', 'data_matrix_row_num', 'submitting_user'
         , 'submitting_lab', 'submission_date', 'recipient_glstring', 'donor_glstring', 'transplantation_report']
-    dataMatrixHeaders = ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=True)
+    dataMatrixHeaders = ImmunogenicEpitopesValidator.get_column_names(is_immunogenic=True)
     dataMatrixReportHeaders.extend(dataMatrixHeaders)
 
     for headerIndex, header in enumerate(dataMatrixReportHeaders):
@@ -564,6 +572,9 @@ def createImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, toke
     antibodiesPostTxLookup = {}
     recipientGenotypingsLookup = {}
     donorGenotypingsLookup = {}
+
+    # TODO: DEBUG CODE
+    #dataMatrixUploadList = dataMatrixUploadList[17:]
 
     # Combine data matrices together for summary worksheet..
     for dataMatrixIndex, dataMatrixUpload in enumerate(sorted(dataMatrixUploadList, key=lambda d: d['id'])):
@@ -819,7 +830,7 @@ def createNonImmunogenicEpitopesReport(bucket=None, projectIDs=None, url=None, t
     # Data Matrix Report Headers
     dataMatrixReportHeaders = ['datarow_id','data_matrix_filename', 'data_matrix_row_num', 'submitting_user'
         , 'submitting_lab', 'submission_date', 'recipient_glstring']
-    dataMatrixHeaders = ImmunogenicEpitopesValidator.getColumnNames(isImmunogenic=False)
+    dataMatrixHeaders = ImmunogenicEpitopesValidator.get_column_names(is_immunogenic=False)
     dataMatrixReportHeaders.extend(dataMatrixHeaders)
 
     for headerIndex, header in enumerate(dataMatrixReportHeaders):
