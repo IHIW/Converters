@@ -125,53 +125,56 @@ def immunogenic_epitope_handler(event, context):
 
 def validateCell(columnIndexLookup=None, currentCell=None, uploadList=None, hmlUploadList=None, hamlUploadList=None, isImmunogenic=None):
     columnLetter = get_column_letter(currentCell.column)
-    headerName = columnIndexLookup[columnLetter]
-    cellValue = currentCell.value
-    #print(str(currentCell) + ' contains data for column ' + str(columnLetter) + ' which is header ' + headerName)
-
-    currentValidationFeedback = ''
-    if(isImmunogenic):
-        if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName,  uploadList=uploadList)
-        elif(headerName == 'recipient_sample_id'): currentValidationFeedback = ''
-        elif(headerName == 'donor_sample_id'): currentValidationFeedback = ''
-        elif(headerName=='recipient_haml_pre_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
-        elif(headerName=='recipient_haml_post_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
-        elif(headerName=='recipient_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName)
-        elif(headerName=='recipient_year_of_birth'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_pregnancies'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
-        elif(headerName=='recipient_transfusions'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_dialysis_date'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_deceased_date'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='donor_year_of_birth'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_blood_group'): currentValidationFeedback = Validation.validateBloodGroup(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='donor_source_type'): currentValidationFeedback = Validation.validateDonorSourceType(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='donor_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName, uploadList=uploadList)
-        elif(headerName=='donor_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='donor_blood_group'): currentValidationFeedback = Validation.validateBloodGroup(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='transplantation_date'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='transplant_organ_category'): currentValidationFeedback = Validation.validateOrganCategory(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='prozone_pre_tx'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
-        elif(headerName=='prozone_post_tx'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
-        elif(headerName=='availability_pre_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='availability_post_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='date_antibody_pre_tx'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='date_antibody_post_tx'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='timing_antibody_post_tx'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='immune_suppr_post_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='organ_status_post_tx'): currentValidationFeedback = Validation.validateOrganStatus(query=cellValue, columnName=headerName, required=False)
-        else: currentValidationFeedback = 'Unknown Column Name:' + str(headerName)
+    if columnLetter not in columnIndexLookup.keys():
+        currentValidationFeedback = f'Cannot find column {columnLetter} in the column header lookup.'
     else:
-        if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName, uploadList=uploadList)
-        elif (headerName == 'recipient_sample_id'): currentValidationFeedback = ''
-        elif(headerName=='recipient_haml'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
-        elif(headerName=='prozone'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
-        elif(headerName=='sample_availability'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
-        elif(headerName=='age_recipient_years'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_pregnancies'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_transfusions'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        elif(headerName=='recipient_transplantations'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
-        else: currentValidationFeedback = 'Unknown Column Name:' + str(headerName)
+        headerName = columnIndexLookup[columnLetter]
+        cellValue = currentCell.value
+        #print(str(currentCell) + ' contains data for column ' + str(columnLetter) + ' which is header ' + headerName)
+
+        currentValidationFeedback = ''
+        if(isImmunogenic):
+            if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName,  uploadList=uploadList)
+            elif(headerName == 'recipient_sample_id'): currentValidationFeedback = ''
+            elif(headerName == 'donor_sample_id'): currentValidationFeedback = ''
+            elif(headerName=='recipient_haml_pre_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
+            elif(headerName=='recipient_haml_post_tx'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
+            elif(headerName=='recipient_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName)
+            elif(headerName=='recipient_year_of_birth'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_pregnancies'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
+            elif(headerName=='recipient_transfusions'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_dialysis_date'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_deceased_date'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='donor_year_of_birth'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_blood_group'): currentValidationFeedback = Validation.validateBloodGroup(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='donor_source_type'): currentValidationFeedback = Validation.validateDonorSourceType(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='donor_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName, uploadList=uploadList)
+            elif(headerName=='donor_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='donor_blood_group'): currentValidationFeedback = Validation.validateBloodGroup(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='transplantation_date'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='transplant_organ_category'): currentValidationFeedback = Validation.validateOrganCategory(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='prozone_pre_tx'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
+            elif(headerName=='prozone_post_tx'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
+            elif(headerName=='availability_pre_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='availability_post_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='date_antibody_pre_tx'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='date_antibody_post_tx'): currentValidationFeedback = Validation.validateDate(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='timing_antibody_post_tx'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='immune_suppr_post_tx'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='organ_status_post_tx'): currentValidationFeedback = Validation.validateOrganStatus(query=cellValue, columnName=headerName, required=False)
+            else: currentValidationFeedback = 'Unknown Column Name:' + str(headerName)
+        else:
+            if(headerName=='recipient_hla'): currentValidationFeedback = Validation.validateHlaGenotypeEntry(query=cellValue, searchList=hmlUploadList, allowPartialMatch=True, columnName=headerName, uploadList=uploadList)
+            elif (headerName == 'recipient_sample_id'): currentValidationFeedback = ''
+            elif(headerName=='recipient_haml'): currentValidationFeedback = Validation.validateUniqueEntryInList(query=cellValue, searchList=hamlUploadList, allowPartialMatch=True, columnName=headerName, delimiter=',')
+            elif(headerName=='prozone'): currentValidationFeedback = Validation.validateProzoneType(query=cellValue, columnName=headerName)
+            elif(headerName=='sample_availability'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName)
+            elif(headerName=='age_recipient_years'): currentValidationFeedback = Validation.validateNumber(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_sex'): currentValidationFeedback = Validation.validateMaleFemale(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_pregnancies'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_transfusions'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            elif(headerName=='recipient_transplantations'): currentValidationFeedback = Validation.validateBoolean(query=cellValue, columnName=headerName, required=False)
+            else: currentValidationFeedback = 'Unknown Column Name:' + str(headerName)
 
     #print('Validation Feedback:' + str(currentValidationFeedback))
     # Set Cell background color and feedback text
@@ -192,10 +195,10 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
         return ('Cannot determine if this is a immunogenic or non immunogenic matrix. Please pass isImmunogenic=True/False', inputExcelData, validationErrors)
     elif (isImmunogenic):
         print('Validating Immunogenic Epitopes.')
-        epitopeColumnNames = getColumnNames(isImmunogenic=True)
+        epitopeColumnNames = get_column_names(is_immunogenic=True)
     else:
         print('Validating Non Immunogenic Epitopes.')
-        epitopeColumnNames = getColumnNames(isImmunogenic=False)
+        epitopeColumnNames = get_column_names(is_immunogenic=False)
 
     try:
         xlWorkbook = load_workbook(filename=excelFile)
@@ -258,8 +261,8 @@ def validateEpitopesDataMatrix(excelFile=None, isImmunogenic=None, projectIDs=No
     reportWorkbook.columnNameLookup = inputColumns # Sneakily embedding a column lookup in the result worksheet.
     return validationErrors, reportWorkbook
 
-def getColumnNames(isImmunogenic=True):
-    if (isImmunogenic):
+def get_column_names(is_immunogenic=True):
+    if (is_immunogenic):
         return [
             'recipient_sample_id'
             , 'recipient_hla'
